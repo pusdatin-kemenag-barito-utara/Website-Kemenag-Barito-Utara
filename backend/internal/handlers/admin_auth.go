@@ -116,8 +116,8 @@ _, pc, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{AllowEditor: t
 func AdminLoginHandler(c *fiber.Ctx) error {
 	ip := middleware.GetClientIP(c)
 
-	// rate limit IP: 5/menit
-	if err := checkRate(c, "admin:login:"+ip, 5, 60000); err != nil {
+	// rate limit IP: 30/menit
+	if err := checkRate(c, "admin:login:"+ip, 30, 60000); err != nil {
 		return err
 	}
 
@@ -134,8 +134,8 @@ func AdminLoginHandler(c *fiber.Ctx) error {
 		return response.Error(c, 400, "Email dan password wajib diisi.", "VALIDATION_ERROR")
 	}
 
-	// rate limit per email: 5/15 menit (account lockout)
-	if err := checkRate(c, "admin:login:email:"+email, 5, 15*60000); err != nil {
+	// rate limit per email: 15/15 menit
+	if err := checkRate(c, "admin:login:email:"+email, 15, 15*60000); err != nil {
 		return response.Error(c, 429, "Terlalu banyak percobaan login. Akun dikunci sementara.", "ACCOUNT_LOCKED")
 	}
 
@@ -153,6 +153,10 @@ func AdminLoginHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return response.Error(c, 401, "Email atau password salah.", "INVALID_CREDENTIALS")
 	}
+
+	// Reset rate limit key saat login berhasil
+	_ = cache.Del(ctx, "rl:admin:login:email:"+email)
+	_ = cache.Del(ctx, "rl:admin:login:"+ip)
 
 	// cek role admin/editor
 	sessCtx := middleware.BuildSessionFromUser(ctx, &session.User)

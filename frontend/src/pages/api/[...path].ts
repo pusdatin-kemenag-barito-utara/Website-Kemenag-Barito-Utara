@@ -13,6 +13,14 @@ export const ALL: APIRoute = async ({ request, params }) => {
   reqHeaders.delete("accept-encoding");
 
   // Forward client IP and original host/protocol
+  const clientIP = request.headers.get("cf-connecting-ip") ||
+                   request.headers.get("x-real-ip") ||
+                   request.headers.get("x-forwarded-for") ||
+                   "127.0.0.1";
+  reqHeaders.set("cf-connecting-ip", clientIP);
+  reqHeaders.set("x-forwarded-for", clientIP);
+  reqHeaders.set("x-real-ip", clientIP);
+
   const originalHost = request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
   const originalProto = request.headers.get("x-forwarded-proto") || (url.protocol.replace(":", "") || "http");
   if (originalHost) reqHeaders.set("x-forwarded-host", originalHost);

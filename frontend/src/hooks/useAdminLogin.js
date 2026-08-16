@@ -19,9 +19,19 @@ function decodeSavedEmail(encoded) {
 }
 
 function mapLoginError(error) {
+  const rawCode = String(error?.code || "").toUpperCase();
   const rawMessage = String(error?.message || "").toLowerCase();
-  if (rawMessage.includes("invalid login credentials")) {
-    return "Password salah / akun tidak ada, silahkan coba lagi.";
+  if (rawCode === "ACCOUNT_LOCKED" || rawCode === "RATE_LIMITED" || rawMessage.includes("terlalu banyak")) {
+    return error?.message || "Terlalu banyak percobaan login. Akun dikunci sementara demi keamanan. Silakan tunggu beberapa saat.";
+  }
+  if (rawMessage.includes("invalid login credentials") || rawCode === "INVALID_CREDENTIALS") {
+    return "Email atau password salah, silakan coba lagi.";
+  }
+  if (rawCode === "NOT_ADMIN") {
+    return "Akun ini tidak memiliki hak akses ke panel admin.";
+  }
+  if (rawCode === "CAPTCHA_FAILED") {
+    return "Verifikasi captcha gagal. Silakan ulangi verifikasi.";
   }
   return error?.message || "Terjadi kesalahan saat login admin.";
 }

@@ -19,15 +19,23 @@ type RateLimitOpts struct {
 
 // GetClientIP membaca IP dari header proxy.
 func GetClientIP(c *fiber.Ctx) string {
-	forwarded := c.Get("x-forwarded-for")
-	if forwarded != "" {
-		return strings.TrimSpace(strings.Split(forwarded, ",")[0])
+	if cf := c.Get("cf-connecting-ip"); cf != "" {
+		return strings.TrimSpace(cf)
 	}
-	realIP := c.Get("x-real-ip")
-	if realIP != "" {
+	if forwarded := c.Get("x-forwarded-for"); forwarded != "" {
+		parts := strings.Split(forwarded, ",")
+		if len(parts) > 0 && strings.TrimSpace(parts[0]) != "" {
+			return strings.TrimSpace(parts[0])
+		}
+	}
+	if realIP := c.Get("x-real-ip"); realIP != "" {
 		return strings.TrimSpace(realIP)
 	}
-	return "unknown"
+	ip := c.IP()
+	if ip != "" && ip != "0.0.0.0" {
+		return ip
+	}
+	return "127.0.0.1"
 }
 
 // CheckRateLimit memeriksa apakah key melebihi batas rate limit.
