@@ -82,8 +82,17 @@ func HomeHandler(c *fiber.Ctx) error {
 		defer wg.Done()
 		hariIni = queryHomeBerita(ctx, pool, "is_published = true", "published_at DESC, created_at DESC LIMIT 3")
 		latest = queryHomeBerita(ctx, pool, "is_published = true AND category IN ('Umum','Kegiatan')", "published_at DESC, created_at DESC LIMIT 6")
+		if len(latest) == 0 {
+			latest = queryHomeBerita(ctx, pool, "is_published = true", "published_at DESC, created_at DESC LIMIT 6")
+		}
 		nasional = queryHomeBerita(ctx, pool, "is_published = true AND category = 'Nasional'", "published_at DESC, created_at DESC LIMIT 3")
-		popular = queryHomeBerita(ctx, pool, "is_published = true AND published_at >= NOW() - INTERVAL '14 days'", "views DESC, published_at DESC LIMIT 5")
+		if len(nasional) == 0 {
+			nasional = queryHomeBerita(ctx, pool, "is_published = true", "published_at DESC, created_at DESC LIMIT 3")
+		}
+		popular = queryHomeBerita(ctx, pool, "is_published = true AND published_at >= NOW() - INTERVAL '30 days'", "views DESC, published_at DESC LIMIT 5")
+		if len(popular) == 0 {
+			popular = queryHomeBerita(ctx, pool, "is_published = true", "views DESC, published_at DESC LIMIT 5")
+		}
 	}()
 
 	// 2) Grouped per kategori

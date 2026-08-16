@@ -35,9 +35,9 @@ export default function HomeNewsSection({
   const nasionalList = nasionalBerita || [];
 
   const displayHariIni = hariIniList.slice(0, 3);
-  const displayLatest = latestList.slice(0, 6);
-  const displayNasional = nasionalList.slice(0, 3);
-  const displayPopular = popularList.slice(0, 5);
+  const displayLatest = (latestList.length > 0 ? latestList : hariIniList).slice(0, 6);
+  const displayNasional = (nasionalList.length > 0 ? nasionalList : latestList).slice(0, 3);
+  const displayPopular = (popularList.length > 0 ? popularList : latestList).slice(0, 5);
 
   const isEn = locale === "en";
   const hariIniBadgeText = isEn ? "TODAY'S NEWS" : "BERITA HARI INI";
@@ -80,7 +80,13 @@ export default function HomeNewsSection({
     }
   };
 
-  if (displayLatest.length === 0) {
+  const hasAnyNews =
+    displayHariIni.length > 0 ||
+    displayLatest.length > 0 ||
+    displayNasional.length > 0 ||
+    displayPopular.length > 0;
+
+  if (!hasAnyNews) {
     return (
       <section className="w-full px-6 py-16 sm:px-10 lg:px-16 lg:py-20 xl:px-20 overflow-hidden">
         <div className="theme-news-empty rounded-2xl p-10 text-center">
