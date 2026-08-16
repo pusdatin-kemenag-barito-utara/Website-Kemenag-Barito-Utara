@@ -53,6 +53,7 @@ func ChatHandler(c *fiber.Ctx) error {
 			return w.Flush()
 		})
 		if err != nil {
+			fmt.Printf("[chat error] all providers failed: %v\n", err)
 			msg := `Mohon maaf, layanan AI sedang sibuk. Silakan hubungi WhatsApp Call Center PTSP melalui https://wa.me/6285117491212`
 			writeSSE(fmt.Sprintf(`data: {"type":"text-delta","delta":%s}`+"\n\n", jsonString(msg)))
 		} else {

@@ -12,10 +12,14 @@ function createId(prefix = "msg") {
 function parseSSE(buf) {
   const events = [];
   const lines = buf.split("\n");
-  let current = null;
+  let remainder = "";
+  if (!buf.endsWith("\n")) {
+    remainder = lines.pop() || "";
+  }
   for (const line of lines) {
-    if (line.startsWith("data:")) {
-      current = line.slice(5).trim();
+    const trimmed = line.trim();
+    if (trimmed.startsWith("data:")) {
+      const current = trimmed.slice(5).trim();
       if (current) {
         try {
           events.push(JSON.parse(current));
@@ -23,10 +27,9 @@ function parseSSE(buf) {
           events.push({ type: "text-delta", delta: current });
         }
       }
-      current = null;
     }
   }
-  return events;
+  return { events, remainder };
 }
 
 export function useChat({
@@ -39,6 +42,9 @@ export function useChat({
   const [messages, setMessages] = useState(() =>
     initialMessages.map((m, i) => ({ id: m.id || createId("init"), role: m.role, content: m.content, createdAt: m.createdAt || new Date() }))
   );
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
   const [status, setStatus] = useState("ready");
   const abortRef = useRef(null);
 
@@ -56,11 +62,12 @@ export function useChat({
         ? extraMessages.map((m) => ({ id: m.id || createId("user"), role: m.role, content: m.content, createdAt: new Date() }))
         : [{ id: createId("user"), role: "user", content: text, createdAt: new Date() }];
 
+      const currentMessages = messagesRef.current;
       setMessages((prev) => [...prev, ...userMessage]);
       setStatus("submitted");
 
       const history = [
-        ...messages
+        ...currentMessages
           .filter((m) => m.role === "user" || m.role === "assistant")
           .map((m) => ({ role: m.role, content: String(m.content || "") })),
         ...userMessage.map((m) => ({ role: m.role, content: String(m.content || "") })),
@@ -92,8 +99,9 @@ export function useChat({
           const { done, value } = await reader.read();
           if (done) break;
           buf += decoder.decode(value, { stream: true });
-          const events = parseSSE(buf);
-          buf = "";
+          const { events, remainder } = parseSSE(buf);
+          buf = remainder;
+
           for (const ev of events) {
             if (ev.type === "text-start") {
               assistantText = "";
@@ -142,13 +150,13 @@ export function useChat({
         setStatus("ready");
       }
     },
-    [api, messages, stop, onResponse, onError],
+    [api, stop, onResponse, onError],
   );
 
   const reload = useCallback(() => {
-    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const lastUser = [...messagesRef.current].reverse().find((m) => m.role === "user");
     if (lastUser) sendMessage({ text: lastUser.content });
-  }, [messages, sendMessage]);
+  }, [sendMessage]);
 
   const isLoading = status === "submitted" || status === "streaming";
 

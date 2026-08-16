@@ -10,6 +10,7 @@
     opacity: 1;
   }
 }
+
 @keyframes fadeSlideIn {
   from {
     opacity: 0;
@@ -20,6 +21,7 @@
     transform: translateY(0);
   }
 }
+
 @keyframes pulseGreen {
   0%,
   100% {
@@ -35,42 +37,22 @@
 }
 
 .ai-chat-window {
-  transition:
-    opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
-    transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   transform-origin: bottom right;
-  width: 370px;
-  height: 580px;
-}
-.ai-chat-window.closed {
-  opacity: 0;
-  transform: scale(0.8) translateY(20px);
-  pointer-events: none;
-}
-.ai-chat-window.open {
-  opacity: 1 !important;
-  transform: scale(1) translateY(0) !important;
-  pointer-events: auto !important;
+  width: 380px;
+  height: 590px;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .ai-fab-button {
-  transition:
-    opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
-    transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   bottom: 24px;
   right: 24px;
-  width: 48px;
-  height: 48px;
-}
-.ai-fab-button.hidden {
-  opacity: 0;
-  transform: scale(0) rotate(-45deg);
-  pointer-events: none;
-}
-.ai-fab-button.visible {
-  opacity: 1;
-  transform: scale(1) rotate(0);
-  pointer-events: auto;
+  width: 52px;
+  height: 52px;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 @media (max-width: 1024px) {
@@ -81,17 +63,18 @@
     right: 20px;
   }
 }
+
 @media (max-width: 640px) {
   .ai-chat-window {
-    left: 50% !important;
-    right: auto !important;
-    transform: translateX(-50%) !important;
+    left: 16px !important;
+    right: 16px !important;
+    margin: 0 auto !important;
     transform-origin: center bottom !important;
     width: calc(100vw - 32px) !important;
-    max-width: 380px !important;
-    height: min(560px, calc(100vh - 80px)) !important;
+    max-width: 400px !important;
+    height: min(580px, calc(100dvh - 70px)) !important;
     bottom: 16px !important;
-    border-radius: 20px !important;
+    border-radius: 24px !important;
   }
 }
 
@@ -106,7 +89,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #075E54;
+  background: #075e54;
   display: inline-block;
   animation: typingBounce 1.2s ease-in-out infinite;
 }

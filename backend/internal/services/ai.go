@@ -57,7 +57,7 @@ func (g *geminiClient) stream(ctx context.Context, system string, messages []AIM
 		},
 	})
 
-	for _, model := range []string{"gemini-flash-lite-latest", "gemini-3-flash-preview", "gemini-flash-latest"} {
+	for _, model := range []string{"gemini-flash-latest", "gemini-flash-lite-latest", "gemini-3.7-flash", "gemini-3-flash-preview"} {
 		url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent?alt=sse&key=%s", model, g.apiKey)
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 		if err != nil {
@@ -247,6 +247,7 @@ func StreamChat(ctx context.Context, system string, messages []AIMessage, cb Str
 		if err == nil {
 			return p.name, nil
 		}
+		fmt.Printf("[ai provider fallback] %s error: %v\n", p.name, err)
 		lastErr = err
 	}
 	if lastErr == nil {
