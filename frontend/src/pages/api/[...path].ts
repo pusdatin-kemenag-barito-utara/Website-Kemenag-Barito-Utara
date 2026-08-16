@@ -9,6 +9,8 @@ export const ALL: APIRoute = async ({ request, params }) => {
 
   const reqHeaders = new Headers(request.headers);
   reqHeaders.set("host", "127.0.0.1:8080");
+  // Prevent double-compression issues across reverse proxy
+  reqHeaders.delete("accept-encoding");
 
   // Forward client IP and original host/protocol
   const originalHost = request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
@@ -28,7 +30,10 @@ export const ALL: APIRoute = async ({ request, params }) => {
 
     const resHeaders = new Headers();
     response.headers.forEach((val, key) => {
-      if (key.toLowerCase() !== "set-cookie") {
+      const lower = key.toLowerCase();
+      // Skip cookies here to handle via getSetCookie below
+      // Also strip content-encoding / content-length because Node fetch decodes stream
+      if (lower !== "set-cookie" && lower !== "content-encoding" && lower !== "content-length") {
         resHeaders.set(key, val);
       }
     });
@@ -46,6 +51,13 @@ export const ALL: APIRoute = async ({ request, params }) => {
       if (setCookie) {
         resHeaders.append("set-cookie", setCookie);
       }
+    }
+
+    // Explicitly disable buffering and compression for SSE streams
+    const contentType = resHeaders.get("content-type") || "";
+    if (contentType.includes("text/event-stream")) {
+      resHeaders.set("Cache-Control", "no-cache, no-transform");
+      resHeaders.set("X-Accel-Buffering", "no");
     }
 
     return new Response(response.body, {

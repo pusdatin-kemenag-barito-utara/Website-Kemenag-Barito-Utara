@@ -33,6 +33,7 @@ func ChatHandler(c *fiber.Ctx) error {
 	c.Set("Cache-Control", "no-cache, no-transform")
 	c.Set("Connection", "keep-alive")
 	c.Set("X-Accel-Buffering", "no")
+	c.Set("Content-Encoding", "identity")
 
 	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
 		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
