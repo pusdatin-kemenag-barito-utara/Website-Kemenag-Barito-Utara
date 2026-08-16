@@ -46,7 +46,7 @@ ENV PORT=3000
 ENV BACKEND_PORT=8080
 ENV TZ=Asia/Jakarta
 
-RUN apk add --no-cache ca-certificates tzdata bash
+RUN apk add --no-cache ca-certificates tzdata bash curl wget
 
 # Create non-root user
 RUN addgroup --system --gid 1001 appgroup && \

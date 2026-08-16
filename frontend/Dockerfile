@@ -47,6 +47,8 @@ ENV HOST=0.0.0.0
 ENV PORT=3000
 ENV TZ=Asia/Jakarta
 
+RUN apk add --no-cache ca-certificates tzdata curl wget
+
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 astro

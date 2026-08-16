@@ -27,8 +27,8 @@ FROM alpine:3.21 AS runner
 
 WORKDIR /app
 
-# Install ca-certificates & timezone
-RUN apk add --no-cache ca-certificates tzdata
+# Install ca-certificates, timezone & healthcheck tools
+RUN apk add --no-cache ca-certificates tzdata curl wget
 ENV TZ=Asia/Jakarta
 
 # Create non-root user
