@@ -36,7 +36,12 @@ function Guard({ page, id }) {
     );
   }
 
-  const hasAccess = !!a.role || !!a.sessionData?.permissions?.hasAdminPanelAccess || !!a.sessionData?.permissions?.isAdmin;
+  const hasAccess =
+    !!a.role ||
+    !!a.sessionData?.authenticated ||
+    !!a.sessionData?.permissions?.hasAdminPanelAccess ||
+    !!a.sessionData?.permissions?.isAdmin ||
+    !!a.sessionData?.permissions?.isEditor;
 
   if (!hasAccess) {
     return <NotFoundView />;
