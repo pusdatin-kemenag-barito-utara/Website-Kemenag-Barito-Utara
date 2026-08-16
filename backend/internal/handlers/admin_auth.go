@@ -117,14 +117,9 @@ _, pc, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{AllowEditor: t
 func AdminLoginHandler(c *fiber.Ctx) error {
 	ip := middleware.GetClientIP(c)
 
-	// rate limit IP: 30/menit
-	if err := checkRate(c, "admin:login:"+ip, 30, 60000); err != nil {
-		return err
-	}
-
 	var body struct {
-		Email         string `json:"email"`
-		Password      string `json:"password"`
+		Email          string `json:"email"`
+		Password       string `json:"password"`
 		TurnstileToken string `json:"turnstileToken"`
 	}
 	if err := c.BodyParser(&body); err != nil {
@@ -133,11 +128,6 @@ func AdminLoginHandler(c *fiber.Ctx) error {
 	email := strings.ToLower(strings.TrimSpace(body.Email))
 	if email == "" || body.Password == "" {
 		return response.Error(c, 400, "Email dan password wajib diisi.", "VALIDATION_ERROR")
-	}
-
-	// rate limit per email: 15/15 menit
-	if err := checkRate(c, "admin:login:email:"+email, 15, 15*60000); err != nil {
-		return response.Error(c, 429, "Terlalu banyak percobaan login. Akun dikunci sementara.", "ACCOUNT_LOCKED")
 	}
 
 	// Turnstile (opsional jika tidak dikonfigurasi)
