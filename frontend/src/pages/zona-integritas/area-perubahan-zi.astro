@@ -1,0 +1,22 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import AreaPerubahanZiShell from "@/components/features/zona-integritas/AreaPerubahanZiShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="8 Area Perubahan Reformasi Birokrasi | Zona Integritas - Kemenag Barito Utara"
+  description="Kerangka kerja utama Pembangunan Zona Integritas (ZI) menuju Wilayah Bebas dari Korupsi (WBK) & Wilayah Birokrasi Bersih dan Melayani (WBBM) Kankemenag Kabupaten Barito Utara."
+  canonical="/zona-integritas/area-perubahan-zi"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Zona Integritas", url: "/zona-integritas/area-perubahan-zi" },
+      { name: "8 Area Perubahan ZI", url: "/zona-integritas/area-perubahan-zi" },
+    ]),
+  ]}
+>
+  <AreaPerubahanZiShell client:load />
+</BaseLayout>

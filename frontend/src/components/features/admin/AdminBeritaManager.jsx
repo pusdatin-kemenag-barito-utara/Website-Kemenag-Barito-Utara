@@ -1,0 +1,100 @@
+"use client";
+
+import React from "react";
+import { useBeritaManager } from "@/hooks/useBeritaManager";
+import { FloatingFeedback } from "./berita/BeritaUI";
+import { BeritaStats } from "./berita/BeritaStats";
+import { BeritaFilters } from "./berita/BeritaFilters";
+import { BeritaTable } from "./berita/BeritaTable";
+import { BeritaPagination } from "./berita/BeritaPagination";
+import { BeritaFormModal } from "./berita/BeritaFormModal";
+import { DeleteConfirmModal, CloseFormConfirmModal, LinkPromptModal, ImagePromptModal } from "./berita/BeritaModals";
+
+export default function AdminBeritaManager() {
+  const m = useBeritaManager();
+
+  return (
+    <>
+      <DeleteConfirmModal
+        open={Boolean(m.deleteTarget)}
+        item={m.deleteTarget}
+        deleting={Boolean(m.deletingId)}
+        onClose={m.onCloseDeleteModal}
+        onConfirm={m.onDeleteConfirmed}
+      />
+
+      <CloseFormConfirmModal
+        open={m.closeConfirmOpen}
+        onCancel={m.handleCancelCloseConfirm}
+        onConfirm={m.handleConfirmCloseForm}
+      />
+
+      <LinkPromptModal
+        open={m.linkModalOpen}
+        onClose={() => m.setLinkModalOpen(false)}
+        onSubmit={m.handleLinkModalSubmit}
+      />
+
+      <ImagePromptModal
+        open={m.imageModalOpen}
+        initialData={m.imageModalData}
+        isUploading={m.uploadingImage}
+        onClose={() => m.setImageModalOpen(false)}
+        onSubmit={m.handleImageModalSubmit}
+      />
+
+      <FloatingFeedback
+        message={m.message}
+        error={m.error}
+        onClose={() => { m.setMessage(""); m.setError(""); }}
+      />
+
+      <section className="space-y-4 sm:space-y-6">
+        <BeritaStats stats={m.stats} />
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+          <BeritaFilters
+            query={m.query} setQuery={m.setQuery}
+            statusFilter={m.statusFilter} setStatusFilter={m.setStatusFilter}
+            yearFilter={m.yearFilter} setYearFilter={m.setYearFilter}
+            monthFilter={m.monthFilter} setMonthFilter={m.setMonthFilter}
+            categoryFilter={m.categoryFilter} setCategoryFilter={m.setCategoryFilter}
+            yearOptions={m.yearOptions} monthOptions={m.monthOptions} categoryOptions={m.categoryOptions}
+            onAddClick={m.handleOpenCreate}
+            filteredCount={m.filteredItems.length} totalCount={m.items.length}
+          />
+
+          <BeritaTable
+            items={m.paginatedItems} loading={m.loading}
+            startIndex={m.startIndex} onEdit={m.handleOpenEdit}
+            onDelete={m.handleAskDelete}
+            deletingId={m.deletingId}
+          />
+
+          <BeritaPagination
+            totalPages={m.totalPages}
+            safeCurrentPage={m.safeCurrentPage}
+            setCurrentPage={m.setCurrentPage}
+          />
+        </div>
+      </section>
+
+      <BeritaFormModal
+        open={m.openForm} editingId={m.editingId} form={m.form}
+        dirty={m.dirty} saving={m.saving} uploadingCover={m.uploadingCover}
+        wordCount={m.wordCount} readingTime={m.readingTime} previewSlug={m.previewSlug}
+        coverPreviewSrc={m.coverPreviewSrc} editorRef={m.editorRef}
+        isDraggingCover={m.isDraggingCover}
+        onClose={m.handleCloseForm} onChange={m.handleChange}
+        onPublishedToggle={m.handlePublishedToggle} onEditorInput={m.onEditorInput}
+        onEditorPaste={m.onEditorPaste} onEditorClick={m.onEditorClick} onEditorKeyDown={m.onEditorKeyDown} onRunCommand={m.onRunCommand}
+        onInsertText={m.onInsertText} onInsertLink={m.onInsertLink} onInsertImage={m.onInsertImage} onCoverChange={m.onCoverChange}
+        onCoverDragOver={m.handleCoverDragOver}
+        onCoverDragLeave={m.handleCoverDragLeave}
+        onCoverDrop={m.handleCoverDrop}
+        onClearCover={m.onClearCover} onSave={m.onSave}
+        error={m.error}
+      />
+    </>
+  );
+}

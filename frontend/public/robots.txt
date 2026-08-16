@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /login
+Disallow: /debug-error
+
+Sitemap: https://baritoutara.kemenag.go.id/sitemap-index.xml

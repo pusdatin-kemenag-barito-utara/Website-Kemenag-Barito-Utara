@@ -1,0 +1,22 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import KalkulatorShell from "@/components/features/layanan/KalkulatorShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="Kalkulator Zakat & Waris | Kemenag Barito Utara"
+  description="Simulasi perhitungan Zakat Profesi, Zakat Maal, dan simulasi pembagian hak Waris Islam (Faraid) dasar secara mandiri."
+  canonical="/layanan/kalkulator"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Layanan", url: "/layanan" },
+      { name: "Kalkulator Zakat & Waris", url: "/layanan/kalkulator" },
+    ]),
+  ]}
+>
+  <KalkulatorShell client:load />
+</BaseLayout>

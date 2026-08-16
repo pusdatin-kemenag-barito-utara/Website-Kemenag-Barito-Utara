@@ -1,0 +1,22 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import BeritaZonaIntegritasShell from "@/components/features/zona-integritas/BeritaZonaIntegritasShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="Berita & Informasi Zona Integritas | Kemenag Barito Utara"
+  description="Kabar terkini mengenai kegiatan, sosialisasi, dan aksi nyata Pembangunan Zona Integritas (ZI) WBK/WBBM di lingkungan Kankemenag Kabupaten Barito Utara."
+  canonical="/zona-integritas/berita-zona-integritas"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Zona Integritas", url: "/zona-integritas/area-perubahan-zi" },
+      { name: "Berita Zona Integritas", url: "/zona-integritas/berita-zona-integritas" },
+    ]),
+  ]}
+>
+  <BeritaZonaIntegritasShell client:load />
+</BaseLayout>

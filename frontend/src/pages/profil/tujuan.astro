@@ -1,0 +1,22 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import TujuanShell from "@/components/features/profil/TujuanShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="Tujuan Kelembagaan | Kemenag Barito Utara"
+  description="Tujuan strategis Kantor Kementerian Agama Kabupaten Barito Utara dalam meningkatkan mutu pelayanan, memperkuat kerukunan, serta mewujudkan tata kelola bersih dan akuntabel."
+  canonical="/profil/tujuan"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Profil", url: "/profil/sejarah" },
+      { name: "Tujuan", url: "/profil/tujuan" },
+    ]),
+  ]}
+>
+  <TujuanShell client:load />
+</BaseLayout>

@@ -1,0 +1,225 @@
+---
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { siteInfo } from "@/data/site";
+import {
+  organizationSchema,
+  websiteSchema,
+  navigationSchema,
+} from "@/lib/structured-data";
+import JsonLd from "@/components/features/seo/JsonLd";
+import ChatWidget from "@/components/features/chat/ChatWidget.jsx";
+import AccessibilityWidget from "@/components/features/accessibility/AccessibilityWidget.jsx";
+import RealtimeSync from "@/components/common/RealtimeSync";
+import PageViewTracker from "@/components/common/PageViewTracker";
+import PwaRegister from "@/components/layout/PwaRegister";
+import PushNotificationPrompt from "@/components/features/pwa/PushNotificationPrompt.jsx";
+import AntiCopasGuard from "@/components/common/AntiCopasGuard.jsx";
+
+import "@/styles/tailwind.css";
+import "@/styles/globals.css";
+
+const BASE = (import.meta.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+const oneSignalAppId =
+  import.meta.env.PUBLIC_ONESIGNAL_APP_ID ||
+  import.meta.env.NEXT_PUBLIC_ONESIGNAL_APP_ID ||
+  "";
+
+interface Props {
+  title?: string;
+  description?: string;
+  canonical?: string;
+  image?: string;
+  type?: "website" | "article";
+  publishedTime?: string;
+  author?: string;
+  jsonLd?: unknown[];
+}
+
+const {
+  title = siteInfo.shortName,
+  description = siteInfo.description,
+  canonical = "/",
+  image = "/assets/icons/kemenag-512.png",
+  type = "website",
+  publishedTime,
+  author,
+  jsonLd = [],
+} = Astro.props;
+
+const gaId =
+  import.meta.env.PUBLIC_GA_ID ||
+  import.meta.env.NEXT_PUBLIC_GA_ID ||
+  "";
+const gtmId =
+  import.meta.env.PUBLIC_GTM_ID ||
+  import.meta.env.NEXT_PUBLIC_GTM_ID ||
+  "";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+let criticalCss = "";
+try {
+  criticalCss = fs.readFileSync(
+    path.join(__dirname, "../styles/critical.css"),
+    "utf-8",
+  );
+} catch {
+  criticalCss = "";
+}
+const pageTitle = title && typeof title === "string" && !title.includes(siteInfo.shortName)
+  ? `${title} | ${siteInfo.shortName}`
+  : title || siteInfo.shortName;
+const isProd = import.meta.env.PROD || (BASE && !BASE.includes("localhost"));
+const enableOneSignal = Boolean(oneSignalAppId && isProd);
+
+const canonicalUrl = canonical.startsWith("http")
+  ? canonical
+  : `${BASE}${canonical.startsWith("/") ? canonical : "/" + canonical}`;
+const imageUrl = image.startsWith("http")
+  ? image
+  : `${BASE}${image.startsWith("/") ? image : "/" + image}`;
+---
+
+<html lang="id" data-scroll-behavior="smooth">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#059669" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#047857" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+    <meta name="author" content={author || siteInfo.name} />
+
+    <!-- Open Graph / Facebook / WhatsApp / Telegram -->
+    <meta property="og:site_name" content={siteInfo.shortName} />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:type" content={type} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:alt" content={pageTitle} />
+    {publishedTime && <meta property="article:published_time" content={publishedTime} />}
+    {author && <meta property="article:author" content={author} />}
+
+    <!-- Twitter / X Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content={canonicalUrl} />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
+    <meta name="twitter:image:alt" content={pageTitle} />
+
+    <link rel="preconnect" href={BASE} />
+    <link rel="icon" href="/assets/icons/kemenag-192.png" sizes="192x192" type="image/png" />
+    <link rel="icon" href="/assets/branding/kemenag.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/assets/icons/kemenag-192.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="application-name" content="Kemenag Barito Utara" />
+    <meta name="apple-mobile-web-app-title" content="Kemenag Barito Utara" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="google-site-verification" content="3ZH4iRGfl0Jurquu3gczAWNvE_-NQRDlEERr_ZDwJjA" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style is:inline>{criticalCss}</style>
+    <JsonLd data={[organizationSchema(), websiteSchema(), navigationSchema(), ...jsonLd]} />
+
+    <!-- Google Analytics (GA4) & Google Tag Manager (GTM) -->
+    {(gtmId || gaId) && (
+      <>
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
+        <link rel="preconnect" href="https://www.google-analytics.com" />
+      </>
+    )}
+    {gtmId && (
+      <script is:inline define:vars={{ gtmId }}>
+        (function (w, d, s, l, i) {
+          w[l] = w[l] || [];
+          w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
+          var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+          j.async = true;
+          j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+          f.parentNode.insertBefore(j, f);
+        })(window, document, "script", "dataLayer", gtmId);
+      </script>
+    )}
+    {gaId && (
+      <>
+        <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />
+        <script is:inline define:vars={{ gaId }}>
+          window.dataLayer = window.dataLayer || [];
+          function gtag() {
+            window.dataLayer.push(arguments);
+          }
+          gtag("js", new Date());
+          gtag("config", gaId, {
+            send_page_view: true,
+          });
+        </script>
+      </>
+    )}
+
+    {enableOneSignal && (
+      <>
+        <link rel="preconnect" href="https://cdn.onesignal.com" />
+        <link rel="preconnect" href="https://onesignal.com" />
+        <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+        <script is:inline define:vars={{ oneSignalAppId }}>
+          window.OneSignalDeferred = window.OneSignalDeferred || [];
+          window.OneSignalDeferred.push(async function (OneSignal) {
+            await OneSignal.init({
+              appId: oneSignalAppId,
+              notifyButton: { enable: false },
+              allowLocalhostAsSecureOrigin: true,
+            });
+          });
+        </script>
+      </>
+    )}
+  </head>
+  <body class="font-sans antialiased">
+    {gtmId && (
+      <noscript>
+        <iframe
+          src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
+          height="0"
+          width="0"
+          style="display:none;visibility:hidden"
+        />
+      </noscript>
+    )}
+    <slot />
+    <script is:inline>
+      (function () {
+        try {
+          var k = window.location.pathname.startsWith("/admin") ? "admin-theme" : "site-theme",
+            t = document.documentElement,
+            n = window.localStorage.getItem(k),
+            r = n === "light" || n === "dark" ? n : "light";
+          t.dataset.theme = r;
+          r === "dark" ? t.classList.add("dark") : t.classList.remove("dark");
+          t.style.colorScheme = r;
+        } catch (e) {}
+      })();
+    </script>
+    <RealtimeSync client:load />
+    <PageViewTracker client:load />
+    <PwaRegister client:load />
+    <PushNotificationPrompt client:idle />
+    <AntiCopasGuard client:load />
+    <ChatWidget client:load />
+    <AccessibilityWidget client:load />
+  </body>
+</html>

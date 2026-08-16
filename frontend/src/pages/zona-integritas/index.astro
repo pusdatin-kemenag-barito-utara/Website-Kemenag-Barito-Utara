@@ -1,0 +1,21 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import ZonaIntegritasShell from "@/components/features/zona-integritas/ZonaIntegritasShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="Zona Integritas | Kemenag Barito Utara"
+  description="Halaman utama Pembangunan Zona Integritas (ZI) menuju Wilayah Bebas dari Korupsi (WBK) & Wilayah Birokrasi Bersih dan Melayani (WBBM) Kankemenag Kabupaten Barito Utara."
+  canonical="/zona-integritas"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Zona Integritas", url: "/zona-integritas" },
+    ]),
+  ]}
+>
+  <ZonaIntegritasShell client:load />
+</BaseLayout>

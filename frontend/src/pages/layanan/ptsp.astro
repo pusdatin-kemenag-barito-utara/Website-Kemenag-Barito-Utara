@@ -1,0 +1,22 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import PtspShell from "@/components/features/layanan/PtspShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="PTSP SI ATAK | Kemenag Barito Utara"
+  description="Layanan Terpadu Satu Pintu (PTSP) berbasis digital Kantor Kementerian Agama Kabupaten Barito Utara - mengarahkan ke portal resmi PTSP."
+  canonical="/layanan/ptsp"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Layanan", url: "/layanan" },
+      { name: "PTSP SI ATAK", url: "/layanan/ptsp" },
+    ]),
+  ]}
+>
+  <PtspShell client:load />
+</BaseLayout>

@@ -1,0 +1,213 @@
+import { siteInfo, siteLinks } from "@/data/site";
+
+const BASE: string = siteInfo.siteUrl.replace(/\/$/, "");
+
+interface Crumb {
+  name: string;
+  url?: string;
+}
+
+interface BeritaItem {
+  slug?: string;
+  coverImage?: string | null;
+  publishedAt?: string | null;
+  isoDate?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  title?: string;
+  excerpt?: string | null;
+  category?: string | null;
+}
+
+export function organizationSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": ["GovernmentOrganization", "GovernmentOffice"],
+    "@id": `${BASE}#organization`,
+    name: "Kemenag Barito Utara",
+    alternateName: [
+      "Kantor Kementerian Agama Kabupaten Barito Utara",
+      "Kemenag Barut",
+      "Kementerian Agama Kabupaten Barito Utara",
+      "Kemenag Muara Teweh",
+      "Kementerian Agama Barito Utara",
+    ],
+    url: `${BASE}/`,
+    logo: {
+      "@type": "ImageObject",
+      url: `${BASE}/assets/icons/kemenag-512.png`,
+      width: 512,
+      height: 512,
+    },
+    image: [
+      `${BASE}/assets/icons/kemenag-512.png`,
+      `${BASE}/assets/images/logo-share.png`,
+      `${BASE}/assets/images/kantor-kemenag.jpg`,
+    ],
+    priceRange: "Gratis",
+    description: siteInfo.description,
+    email: siteInfo.email,
+    telephone: siteInfo.phone,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "Jl. Ahmad Yani No.126",
+      addressLocality: "Muara Teweh",
+      addressRegion: "Kalimantan Tengah",
+      postalCode: "73811",
+      addressCountry: "ID",
+    },
+    geo: {
+      "@type": "GeoCoordinates",
+      latitude: "-0.9576",
+      longitude: "114.8967",
+    },
+    openingHoursSpecification: [
+      {
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday"],
+        opens: "07:30",
+        closes: "16:00",
+      },
+      {
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: "Friday",
+        opens: "07:30",
+        closes: "16:30",
+      },
+    ],
+    areaServed: {
+      "@type": "AdministrativeArea",
+      name: "Kabupaten Barito Utara",
+    },
+    parentOrganization: {
+      "@type": "GovernmentOrganization",
+      name: "Kementerian Agama Republik Indonesia",
+      url: "https://kemenag.go.id",
+    },
+    sameAs: [siteLinks.instagram, siteLinks.youtube].filter(Boolean),
+  };
+}
+
+export function websiteSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${BASE}#website`,
+    url: `${BASE}/`,
+    name: "Kemenag Barito Utara",
+    alternateName: [
+      "Kantor Kementerian Agama Kabupaten Barito Utara",
+      "Kemenag Barut",
+      "Kementerian Agama Kabupaten Barito Utara",
+      "Kemenag Muara Teweh",
+      "Kementerian Agama Barito Utara",
+    ],
+    description: siteInfo.description,
+    inLanguage: "id-ID",
+    publisher: { "@id": `${BASE}#organization` },
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${BASE}/pencarian?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  };
+}
+
+export function newsArticleSchema(
+  berita: BeritaItem | null,
+  { canonicalUrl }: { canonicalUrl?: string } = {},
+) {
+  if (!berita) return null;
+  const url = canonicalUrl || `${BASE}/berita/${berita.slug}`;
+  const image = berita.coverImage
+    ? [String(berita.coverImage)]
+    : [`${BASE}/assets/icons/kemenag-512.png`];
+  const datePublished =
+    berita.publishedAt || berita.isoDate || berita.createdAt || null;
+  const dateModified = berita.updatedAt || datePublished;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    headline: String(berita.title || "").slice(0, 110),
+    description: berita.excerpt || siteInfo.description,
+    image,
+    datePublished: safeIso(datePublished),
+    dateModified: safeIso(dateModified),
+    articleSection: berita.category || "Umum",
+    inLanguage: "id-ID",
+    author: {
+      "@type": "Organization",
+      name: siteInfo.shortName,
+      url: `${BASE}/`,
+    },
+    publisher: {
+      "@type": "GovernmentOrganization",
+      name: siteInfo.name,
+      logo: {
+        "@type": "ImageObject",
+        url: `${BASE}/assets/icons/kemenag-512.png`,
+        width: 512,
+        height: 512,
+      },
+    },
+  };
+}
+
+export function breadcrumbSchema(crumbs: Crumb[] = []) {
+  if (!Array.isArray(crumbs) || crumbs.length === 0) return null;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((crumb, idx) => ({
+      "@type": "ListItem",
+      position: idx + 1,
+      name: crumb.name,
+      item: crumb.url?.startsWith("http") ? crumb.url : `${BASE}${crumb.url}`,
+    })),
+  };
+}
+
+export function contactPageSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ContactPage",
+    url: `${BASE}/kontak`,
+    name: `Kontak - ${siteInfo.shortName}`,
+    description:
+      "Kanal kontak resmi Kementerian Agama Kabupaten Barito Utara: WhatsApp, telepon, email, dan lokasi kantor.",
+    isPartOf: { "@id": `${BASE}#website` },
+    about: { "@id": `${BASE}#organization` },
+  };
+}
+
+export function navigationSchema() {
+  const items = [
+    { name: "Beranda", url: "/beranda" },
+    { name: "Profil Instansi", url: "/profil/sejarah" },
+    { name: "Layanan PTSP Digital", url: "/layanan/ptsp" },
+    { name: "Berita Terbaru", url: "/berita" },
+    { name: "Informasi Publik & PPID", url: "/informasi" },
+    { name: "Kontak Kantor", url: "/kontak" },
+  ];
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: items.map((item, idx) => ({
+      "@type": "SiteNavigationElement",
+      position: idx + 1,
+      name: item.name,
+      url: `${BASE}${item.url}`,
+    })),
+  };
+}
+
+function safeIso(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d.toISOString();
+}

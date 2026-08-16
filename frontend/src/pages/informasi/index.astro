@@ -1,0 +1,30 @@
+---
+import { apiGet } from "@/lib/api-client";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import InformasiIndexShell from "@/components/features/informasi/InformasiIndexShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+
+let staticPages = [];
+try {
+  const res = await apiGet("/static-pages");
+  staticPages = Array.isArray(res?.pages) ? res.pages : [];
+} catch (err) {
+  staticPages = [];
+}
+---
+
+<BaseLayout
+  title="Informasi Publik"
+  description="Informasi publik, regulasi, profil pejabat, struktur organisasi, dan dasar hukum di lingkungan Kantor Kementerian Agama Kabupaten Barito Utara."
+  canonical="/informasi"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Informasi Publik", url: "/informasi" },
+    ]),
+  ]}
+>
+  <InformasiIndexShell client:load staticPages={staticPages} />
+</BaseLayout>

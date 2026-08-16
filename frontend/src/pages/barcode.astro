@@ -1,0 +1,21 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import BarcodeShell from "@/components/features/barcode/BarcodeShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="Barcode Portal | Kemenag Barito Utara"
+  description="Scan QR Code untuk mengakses Portal Layanan Digital Kemenag Barito Utara."
+  canonical="/barcode"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Barcode Portal", url: "/barcode" },
+    ]),
+  ]}
+>
+  <BarcodeShell client:load />
+</BaseLayout>

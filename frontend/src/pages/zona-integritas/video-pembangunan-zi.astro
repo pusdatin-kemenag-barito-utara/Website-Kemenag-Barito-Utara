@@ -1,0 +1,22 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import VideoPembangunanZiShell from "@/components/features/zona-integritas/VideoPembangunanZiShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="Video Pembangunan Zona Integritas | Kemenag Barito Utara"
+  description="Dokumentasi audio visual sosialisasi, kampanye publik, serta inovasi pelayanan Pembangunan Zona Integritas (ZI) Kankemenag Kabupaten Barito Utara."
+  canonical="/zona-integritas/video-pembangunan-zi"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Zona Integritas", url: "/zona-integritas/area-perubahan-zi" },
+      { name: "Video Pembangunan ZI", url: "/zona-integritas/video-pembangunan-zi" },
+    ]),
+  ]}
+>
+  <VideoPembangunanZiShell client:load />
+</BaseLayout>

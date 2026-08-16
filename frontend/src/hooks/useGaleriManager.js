@@ -1,0 +1,315 @@
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { compressImageToBase64 } from "@/lib/image-compress";
+import { preloadImages } from "@/lib/cover-image";
+
+const ITEMS_PER_PAGE = 12;
+
+const emptyForm = {
+  published_at: null,
+  gallery_upload_base64: "", // for edit
+  gallery_uploads: [],       // for bulk upload
+  image_url: "",
+};
+
+export function useGaleriManager() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
+  const [availableYears, setAvailableYears] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const [openForm, setOpenForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+  const loadItems = useCallback(async (signal, page = 1, search = "", year = "") => {
+    try {
+      setLoading(true);
+      let url = `/api/admin/galeri?page=${page}&limit=${ITEMS_PER_PAGE}`;
+      if (search && search.trim()) {
+        url += `&q=${encodeURIComponent(search.trim())}`;
+      }
+      if (year) {
+        url += `&year=${encodeURIComponent(year)}`;
+      }
+      const response = await fetch(url, { cache: "no-store", signal });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Gagal memuat galeri.");
+      const list = data.items || [];
+      setItems(list);
+      preloadImages(list.map((it) => it.image_url));
+
+      const total = Number(data.total ?? data.pagination?.total ?? (data.items?.length || 0));
+      const pages = Number(data.totalPages ?? data.pagination?.totalPages ?? Math.ceil(total / ITEMS_PER_PAGE) ?? 1);
+      setTotalPages(Math.max(1, pages));
+      setTotalItems(total);
+      if (Array.isArray(data.availableYears)) {
+        setAvailableYears(data.availableYears);
+      }
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadItems(controller.signal, currentPage, searchQuery, yearFilter);
+    return () => controller.abort();
+  }, [currentPage, searchQuery, yearFilter, refreshKey, loadItems]);
+
+  const paginatedItems = items; // Already paginated from server
+
+  const imagePreview = useMemo(() => {
+    if (editingId && form.gallery_upload_base64) return [form.gallery_upload_base64];
+    if (editingId && form.image_url) return [form.image_url];
+    if (!editingId && form.gallery_uploads.length > 0) return form.gallery_uploads;
+    return [];
+  }, [form.gallery_upload_base64, form.image_url, form.gallery_uploads, editingId]);
+
+  function handleOpenCreate() {
+    setEditingId(null);
+    setForm({ ...emptyForm, published_at: new Date() });
+    setOpenForm(true);
+  }
+
+  function handleOpenEdit(item) {
+    setEditingId(item.id);
+    setForm({
+      published_at: item.published_at ? new Date(item.published_at) : new Date(),
+      image_url: item.image_url || "",
+      gallery_upload_base64: "",
+      gallery_uploads: [],
+    });
+    setOpenForm(true);
+  }
+
+  function handleCloseForm() {
+    setOpenForm(false);
+    setForm(emptyForm);
+    setEditingId(null);
+  }
+
+  function handleChange(e) {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  async function processImageFiles(files) {
+    if (!files || files.length === 0) return;
+
+    // Filter file gambar dan batasi maksimal 20 foto per batch
+    const validFiles = Array.from(files)
+      .filter((file) => file && file.type && file.type.startsWith("image/"))
+      .slice(0, 20);
+
+    if (validFiles.length === 0) {
+      setError("File harus berupa gambar (JPG, PNG, JPEG, WebP).");
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setError("");
+
+      const processedImages = await Promise.all(
+        validFiles.map(async (file) => {
+          const compressed = await compressImageToBase64(file, {
+            targetSizeKB: 420,
+            hardMaxSizeKB: 500,
+            throwIfOverHardLimit: false,
+            maxWidth: 1600,
+            maxHeight: 2133,
+            initialQuality: 0.85,
+          });
+          return compressed?.base64 || null;
+        })
+      );
+
+      const filteredImages = processedImages.filter(Boolean);
+      if (filteredImages.length === 0) {
+        setError("Gagal memproses gambar yang dipilih.");
+        return;
+      }
+
+      setForm((prev) => {
+        if (editingId) {
+          // Edit mode only supports 1 image
+          return { ...prev, gallery_upload_base64: filteredImages[0] };
+        } else {
+          // Bulk upload mode (maks 20 total)
+          return {
+            ...prev,
+            gallery_uploads: [...prev.gallery_uploads, ...filteredImages].slice(0, 20),
+          };
+        }
+      });
+    } catch (err) {
+      setError(err?.message || "Terjadi kesalahan saat memproses gambar.");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  async function handleImageFileChange(e) {
+    const files = Array.from(e.target.files || []);
+    await processImageFiles(files);
+  }
+
+  const handleImageDragOver = (e) => {
+    e.preventDefault();
+    setIsDraggingImage(true);
+  };
+
+  const handleImageDragLeave = () => {
+    setIsDraggingImage(false);
+  };
+
+  const handleImageDrop = (e) => {
+    e.preventDefault();
+    setIsDraggingImage(false);
+    const files = Array.from(e.dataTransfer.files || []);
+    processImageFiles(files);
+  };
+
+  async function handleSave() {
+    try {
+      setSaving(true);
+      const url = editingId
+        ? `/api/admin/galeri?id=${editingId}`
+        : "/api/admin/galeri";
+      const method = editingId ? "PUT" : "POST";
+
+      const payload = {
+        published_at: form.published_at,
+      };
+
+      if (editingId) {
+        payload.gallery_upload_base64 = form.gallery_upload_base64;
+      } else {
+        payload.gallery_uploads = form.gallery_uploads;
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Gagal menyimpan.");
+
+      setMessage(data.message);
+      handleCloseForm();
+      
+      // If we are on page 1, manually reload, else set page 1 to trigger reload
+      if (currentPage === 1) {
+        await loadItems(null, 1);
+      } else {
+        setCurrentPage(1);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleDelete(item) {
+    setDeleteTarget(item);
+    setShowDeleteConfirm(true);
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    try {
+      setDeletingId(deleteTarget.id);
+      const response = await fetch(`/api/admin/galeri?id=${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Gagal menghapus.");
+      setMessage("Item berhasil dihapus.");
+      setShowDeleteConfirm(false);
+      setDeleteTarget(null);
+      await loadItems(null, currentPage); // stay on same page
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  function handleRemoveImage(index) {
+    setForm((prev) => ({
+      ...prev,
+      gallery_uploads: prev.gallery_uploads.filter((_, i) => i !== index),
+    }));
+  }
+
+  function handleClearAllImages() {
+    setForm((prev) => ({
+      ...prev,
+      gallery_uploads: [],
+      gallery_upload_base64: "",
+    }));
+  }
+
+  return {
+    items,
+    loading,
+    message,
+    setMessage,
+    error,
+    setError,
+    currentPage,
+    setCurrentPage,
+    openForm,
+    handleOpenCreate,
+    handleOpenEdit,
+    handleCloseForm,
+    editingId,
+    form,
+    handleChange,
+    handleImageFileChange,
+    isDraggingImage,
+    handleImageDragOver,
+    handleImageDragLeave,
+    handleImageDrop,
+    handleSave,
+    saving,
+    uploadingImage,
+    imagePreview,
+    handleDelete,
+    showDeleteConfirm,
+    handleConfirmDelete,
+    handleCancelDelete: () => setShowDeleteConfirm(false),
+    handleRemoveImage,
+    handleClearAllImages,
+    deletingId,
+    totalPages,
+    totalItems,
+    paginatedItems,
+    searchQuery,
+    setSearchQuery,
+    yearFilter,
+    setYearFilter,
+    availableYears,
+    triggerRefresh: () => setRefreshKey((k) => k + 1),
+  };
+}

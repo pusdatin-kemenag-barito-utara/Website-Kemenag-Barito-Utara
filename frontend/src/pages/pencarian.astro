@@ -1,0 +1,26 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import PencarianShell from "@/components/features/pencarian/PencarianShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+
+const query =
+  typeof Astro.url.searchParams.get("q") === "string"
+    ? Astro.url.searchParams.get("q")
+    : "";
+---
+
+<BaseLayout
+  title="Pencarian | Kemenag Barito Utara"
+  description="Temukan berita, layanan, dokumen publik, dan informasi penting lainnya."
+  canonical="/pencarian"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Pencarian", url: "/pencarian" },
+    ]),
+  ]}
+>
+  <PencarianShell client:load initialQuery={query} />
+</BaseLayout>

@@ -1,0 +1,353 @@
+"use client";
+import Image from "@/components/common/NextImage";
+import Link from "@/components/common/NextLink";
+import { motion, AnimatePresence } from "framer-motion";
+import Turnstile from "@/components/ui/Turnstile";
+import { siteInfo } from "@/data/site";
+import { useAdminLogin } from "@/hooks/useAdminLogin";
+import { EyeIcon, inputClassName, LoginLoading } from "./login/LoginUI";
+import { LogIn, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 32 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const stagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
+};
+
+export default function AdminLoginClient({ initialUnauthorized = false }) {
+  const l = useAdminLogin(initialUnauthorized);
+
+  if (l.loadingSession) return <LoginLoading />;
+
+  return (
+    <section className="relative flex min-h-screen bg-white dark:bg-slate-950">
+      {/* Left Side: Image / Branding */}
+      <div className="hidden lg:flex lg:w-1/2 relative bg-emerald-950 overflow-hidden items-center justify-center">
+        <Image
+          src="/assets/images/kantor-kemenag.jpg"
+          alt="Kantor Kemenag"
+          fill
+          className="object-cover opacity-20 mix-blend-overlay"
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-900/80 to-transparent" />
+        <div className="relative z-10 flex flex-col items-center text-center px-12 max-w-xl">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="mb-8"
+          >
+            <Image
+              src={siteInfo.logoSrc}
+              alt={siteInfo.shortName}
+              width={120}
+              height={120}
+              className="drop-shadow-2xl"
+              unoptimized
+            />
+          </motion.div>
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="text-4xl font-black uppercase tracking-tight text-white leading-tight mb-4"
+          >
+            Sistem Informasi <br />
+            <span className="text-emerald-400">Terintegrasi</span>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className="text-emerald-100/80 text-sm leading-relaxed"
+          >
+            Portal administrasi dan manajemen konten resmi {siteInfo.shortName}. 
+            Gunakan kredensial Anda untuk masuk ke panel kendali.
+          </motion.p>
+        </div>
+      </div>
+
+      {/* Right Side: Login Form */}
+      <div className="flex w-full lg:w-1/2 items-center justify-center px-4 py-12 sm:px-6 lg:px-8 relative overflow-hidden bg-slate-50 dark:bg-slate-950">
+        {/* Decorative Background Elements */}
+        <div className="absolute -left-24 -top-24 h-96 w-96 rounded-full bg-emerald-500/10 blur-[120px] dark:bg-emerald-500/5" />
+        <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-blue-500/10 blur-[120px] dark:bg-blue-500/5" />
+
+        <motion.div
+          className="relative w-full max-w-[420px]"
+          initial="hidden"
+          animate="visible"
+          variants={stagger}
+        >
+          {/* Header Mobile (Hidden on Desktop) */}
+          <motion.div
+            className="mb-10 flex flex-col items-center text-center"
+            variants={fadeInUp}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            <motion.div
+              whileHover={{ scale: 1.1, rotate: 3 }}
+              whileTap={{ scale: 0.95 }}
+              className="mb-8 lg:hidden"
+            >
+              <Link href="/">
+                <Image
+                  src={siteInfo.logoSrc}
+                  alt={siteInfo.shortName}
+                  width={72}
+                  height={72}
+                  className="w-20 h-20 object-contain drop-shadow-2xl"
+                  unoptimized
+                />
+              </Link>
+            </motion.div>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-700 dark:text-emerald-400">
+                Administrative Portal
+              </p>
+            </div>
+
+            <h1 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white uppercase leading-none">
+              Panel Kendali
+            </h1>
+            <p className="mt-3 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 lg:hidden">
+              {siteInfo.shortName}
+            </p>
+          </motion.div>
+
+          {/* Form Card */}
+          <motion.div
+            className="rounded-[2.5rem] border-2 border-white bg-white/90 p-8 shadow-2xl backdrop-blur-xl dark:border-white/5 dark:bg-slate-900/90 sm:p-10"
+            variants={fadeInUp}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            <form onSubmit={l.handleSubmit} className="space-y-5">
+              <EmailField value={l.email} onChange={l.setEmail} />
+
+              <PasswordField
+                value={l.password}
+                onChange={l.setPassword}
+                show={l.showPassword}
+                onToggleShow={() => l.setShowPassword(!l.showPassword)}
+                onKeyState={l.handlePasswordKeyState}
+                capsLock={l.capsLock}
+                error={l.error}
+              />
+
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={l.rememberMe}
+                  onClick={() => l.setRememberMe(!l.rememberMe)}
+                  className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-opacity-75 ${
+                    l.rememberMe ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-700"
+                  }`}
+                >
+                  <span className="sr-only">Ingat Saya</span>
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      l.rememberMe ? "translate-x-4" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+                <label
+                  onClick={() => l.setRememberMe(!l.rememberMe)}
+                  className="ml-3 block text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 cursor-pointer select-none"
+                >
+                  Ingat Saya
+                </label>
+              </div>
+
+              <div className="pt-2 flex justify-center w-full">
+                <Turnstile
+                  siteKey={import.meta.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                  onVerify={l.setTurnstileToken}
+                  resetKey={l.turnstileResetKey}
+                  theme="light"
+                />
+              </div>
+
+              <AnimatePresence>
+                {l.error && (
+                  <motion.div
+                    id="admin-login-error"
+                    initial={{ opacity: 0, y: -8, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: "auto" }}
+                    exit={{ opacity: 0, y: -8, height: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="flex items-start gap-3 rounded-2xl border-2 border-rose-100 bg-rose-50 p-4 dark:border-rose-900/30 dark:bg-rose-950/20 overflow-hidden"
+                  >
+                    <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-500 text-white">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-3 w-3"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      >
+                        <path d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </div>
+                    <p className="text-xs font-bold leading-relaxed text-rose-700 dark:text-rose-400">
+                      {l.error}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <SubmitButton
+                submitting={l.submitting}
+                disabled={!l.email || !l.password || !l.turnstileToken}
+              />
+            </form>
+
+            <div className="mt-8 flex flex-col items-center gap-4 text-center">
+              <Link
+                href="/beranda"
+                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 transition-colors hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" strokeWidth={3} />
+                Kembali ke Beranda
+              </Link>
+            </div>
+          </motion.div>
+
+          <motion.div
+            className="mt-8 text-center"
+            variants={fadeInUp}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
+              © {new Date().getFullYear()} {siteInfo.shortName}
+            </p>
+          </motion.div>
+        </motion.div>
+      </div>
+
+      {/* Success Toast */}
+      <AnimatePresence>
+        {l.success && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9, y: -20 }}
+            className="fixed top-6 right-6 z-50 flex items-center gap-3 rounded-2xl bg-slate-900 px-6 py-4 text-white shadow-2xl dark:bg-emerald-950 dark:border dark:border-emerald-800"
+          >
+            <CheckCircle className="h-6 w-6 text-emerald-400" />
+            <div>
+              <p className="text-sm font-bold">Login Berhasil!</p>
+              <p className="text-xs text-slate-300 dark:text-emerald-200/70">Mengarahkan ke Dashboard...</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
+  );
+}
+
+function EmailField({ value, onChange }) {
+  return (
+    <div className="group">
+      <label
+        htmlFor="admin-email"
+        className="mb-2 block text-[9px] font-black uppercase tracking-[0.25em] text-slate-400"
+      >
+        Email Admin
+      </label>
+      <input
+        id="admin-email"
+        type="email"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={inputClassName()}
+        placeholder="nama@gmail.com"
+        autoComplete="email"
+        required
+      />
+    </div>
+  );
+}
+
+function PasswordField({
+  value,
+  onChange,
+  show,
+  onToggleShow,
+  onKeyState,
+  capsLock,
+  error,
+}) {
+  return (
+    <div className="group">
+      <label
+        htmlFor="admin-password"
+        className="mb-2 block text-[9px] font-black uppercase tracking-[0.25em] text-slate-400"
+      >
+        Password
+      </label>
+      <div className="relative">
+        <input
+          id="admin-password"
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyUp={onKeyState}
+          onKeyDown={onKeyState}
+          className={inputClassName(true)}
+          placeholder="••••••••"
+          autoComplete="current-password"
+          aria-invalid={Boolean(error)}
+          required
+        />
+        <button
+          type="button"
+          onClick={onToggleShow}
+          className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white transition-all"
+        >
+          <EyeIcon isOpen={show} />
+        </button>
+      </div>
+      {capsLock && (
+        <p className="mt-2 text-[9px] font-black text-amber-600 uppercase tracking-widest">
+          CAPS LOCK AKTIF
+        </p>
+      )}
+    </div>
+  );
+}
+
+function SubmitButton({ submitting, disabled }) {
+  return (
+    <motion.button
+      type="submit"
+      disabled={submitting || disabled}
+      whileHover={!disabled && !submitting ? { scale: 1.02 } : {}}
+      whileTap={!disabled && !submitting ? { scale: 0.97 } : {}}
+      className="group relative flex h-14 w-full items-center justify-center overflow-hidden rounded-xl bg-slate-900 text-xs font-black uppercase tracking-[0.25em] text-white transition-all hover:bg-black disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:bg-white dark:text-black dark:hover:bg-slate-200"
+    >
+      <span className="relative z-10 flex items-center gap-2">
+        {submitting ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.5} />
+            Memverifikasi...
+          </>
+        ) : (
+          <>
+            Masuk ke Dashboard
+            <LogIn className="h-4 w-4" strokeWidth={2.5} />
+          </>
+        )}
+      </span>
+      <div className="absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/10 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
+    </motion.button>
+  );
+}

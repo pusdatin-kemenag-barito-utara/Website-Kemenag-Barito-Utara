@@ -1,0 +1,21 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import EPengaduanShell from "@/components/features/e-pengaduan/EPengaduanShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="E-Pengaduan | Kemenag Barito Utara"
+  description="Pusat layanan pengaduan resmi, penanganan aspirasi, serta pelaporan pelanggaran di lingkungan Kantor Kementerian Agama Kabupaten Barito Utara."
+  canonical="/e-pengaduan"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "E-Pengaduan", url: "/e-pengaduan" },
+    ]),
+  ]}
+>
+  <EPengaduanShell client:load />
+</BaseLayout>

@@ -1,0 +1,22 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import DasarHukumShell from "@/components/features/informasi/DasarHukumShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="Dasar Hukum Penyelenggaraan"
+  description="Landasan hukum konstitusional, undang-undang, peraturan pemerintah, dan keputusan resmi yang menopang seluruh tugas dan pelayanan Kankemenag Kab. Barito Utara."
+  canonical="/informasi/dasar-hukum"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Informasi Publik", url: "/informasi" },
+      { name: "Dasar Hukum", url: "/informasi/dasar-hukum" },
+    ]),
+  ]}
+>
+  <DasarHukumShell client:load />
+</BaseLayout>

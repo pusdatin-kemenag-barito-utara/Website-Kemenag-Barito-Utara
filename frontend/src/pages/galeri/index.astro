@@ -1,0 +1,55 @@
+---
+import { apiGet } from "@/lib/api-client";
+import { normalizeCoverImageUrl, toCoverPreviewUrl } from "@/lib/cover-image";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import GaleriPageShell from "@/components/features/galeri/GaleriPageShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+
+function mapGaleriItems(rows = []) {
+  return rows
+    .filter(Boolean)
+    .map((item) => {
+      const normalizedImage = normalizeCoverImageUrl(item?.image_url || "");
+      const previewImage = toCoverPreviewUrl(normalizedImage);
+      return {
+        id: item?.id ?? null,
+        title: item?.title || "Dokumentasi kegiatan",
+        imageUrl: previewImage || "/assets/branding/kemenag.svg",
+        linkUrl: item?.link_url && item.link_url !== "#" ? item.link_url : "",
+        publishedAt: item?.published_at || item?.created_at || null,
+      };
+    });
+}
+
+let items = [];
+try {
+  const res = await apiGet("/galeri?limit=100");
+  const rows = res?.items || [];
+  const published = rows.filter(
+    (r) => r.is_published === true && r.source_type === "manual",
+  );
+  items = mapGaleriItems(
+    published.length > 0
+      ? published
+      : rows.filter((r) => r.is_published !== false && r.source_type === "manual"),
+  );
+} catch (err) {
+  items = [];
+}
+---
+
+<BaseLayout
+  title="Galeri"
+  description="Galeri dokumentasi kegiatan dan publikasi Kementerian Agama Barito Utara."
+  canonical="/galeri"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Galeri", url: "/galeri" },
+    ]),
+  ]}
+>
+  <GaleriPageShell client:load items={items} />
+</BaseLayout>

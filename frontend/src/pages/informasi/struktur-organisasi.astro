@@ -1,0 +1,40 @@
+---
+import { apiGet } from "@/lib/api-client";
+import { buildLeadershipData } from "@/lib/seksi-normalize";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import StrukturOrganisasiShell from "@/components/features/informasi/StrukturOrganisasiShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+
+const breadcrumb = [
+  { label: "Beranda", href: "/beranda" },
+  { label: "Informasi Publik", href: "/informasi" },
+  { label: "Struktur Organisasi" },
+];
+
+let leadershipData = [];
+try {
+  const res = await apiGet("/seksi");
+  if (res?.seksi) {
+    leadershipData = buildLeadershipData(res.seksi);
+  }
+} catch (err) {
+  leadershipData = [];
+}
+---
+
+<BaseLayout
+  title="Struktur Organisasi"
+  description="Bagan struktur organisasi dan profil pimpinan Kantor Kementerian Agama Kabupaten Barito Utara."
+  canonical="/informasi/struktur-organisasi"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Informasi Publik", url: "/informasi" },
+      { name: "Struktur Organisasi", url: "/informasi/struktur-organisasi" },
+    ]),
+  ]}
+>
+  <StrukturOrganisasiShell client:load breadcrumb={breadcrumb} leadershipData={leadershipData} />
+</BaseLayout>

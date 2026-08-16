@@ -1,0 +1,35 @@
+---
+import { apiGet } from "@/lib/api-client";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import VideoPageShell from "@/components/features/video/VideoPageShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+
+let videos = [];
+try {
+  const res = await apiGet("/youtube");
+  videos = (Array.isArray(res) ? res : []).map((v) => ({
+    ...v,
+    id: String(v.id),
+    created_at: v.created_at ? new Date(v.created_at).toISOString() : null,
+    updated_at: v.updated_at ? new Date(v.updated_at).toISOString() : null,
+  }));
+} catch (err) {
+  videos = [];
+}
+---
+
+<BaseLayout
+  title="Video Youtube - Kementerian Agama Kabupaten Barito Utara"
+  description="Dokumentasi visual video kegiatan dan pelayanan dari channel YouTube resmi Kementerian Agama Kabupaten Barito Utara."
+  canonical="/video"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Video", url: "/video" },
+    ]),
+  ]}
+>
+  <VideoPageShell client:load videos={videos} />
+</BaseLayout>

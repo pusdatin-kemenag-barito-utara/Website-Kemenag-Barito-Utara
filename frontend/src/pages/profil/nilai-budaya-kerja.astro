@@ -1,0 +1,22 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import NilaiBudayaKerjaShell from "@/components/features/profil/NilaiBudayaKerjaShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="Nilai Budaya Kerja & 5S | Kemenag Barito Utara"
+  description="Fondasi etika dan pedoman perilaku aparatur Kemenag Barito Utara dalam menghadirkan pelayanan publik yang profesional, hangat, ramah, dan berintegritas."
+  canonical="/profil/nilai-budaya-kerja"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Profil", url: "/profil/sejarah" },
+      { name: "Nilai Budaya Kerja & 5S", url: "/profil/nilai-budaya-kerja" },
+    ]),
+  ]}
+>
+  <NilaiBudayaKerjaShell client:load />
+</BaseLayout>

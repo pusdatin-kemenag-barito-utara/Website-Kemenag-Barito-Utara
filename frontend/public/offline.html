@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline — Kemenag Barito Utara</title>
+    <link rel="icon" href="/assets/branding/kemenag.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at top, #0f172a, #020617);
+        color: #f8fafc;
+        padding: 1.5rem;
+      }
+      .card {
+        max-width: 440px;
+        width: 100%;
+        background: rgba(30, 41, 59, 0.7);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 2rem;
+        padding: 2.5rem 2rem;
+        text-align: center;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        animation: fadeIn 0.5s ease-out;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .icon-wrapper {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        border-radius: 1.5rem;
+      }
+      .icon-wrapper img {
+        width: 48px;
+        height: 48px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(245, 158, 11, 0.15);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        color: #fbbf24;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 0.35rem 0.85rem;
+        border-radius: 9999px;
+        margin-bottom: 1rem;
+      }
+      .pulse-dot {
+        width: 8px;
+        height: 8px;
+        background: #f59e0b;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.85); }
+      }
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+        margin-bottom: 0.75rem;
+        color: #ffffff;
+      }
+      p {
+        color: #94a3b8;
+        font-size: 0.925rem;
+        line-height: 1.6;
+        margin-bottom: 1.75rem;
+      }
+      .btn-reload {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 0.9rem 1.5rem;
+        background: linear-gradient(135deg, #059669, #0d9488);
+        color: #ffffff;
+        border: none;
+        border-radius: 1rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 10px 25px -5px rgba(5, 150, 105, 0.4);
+      }
+      .btn-reload:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px -5px rgba(5, 150, 105, 0.5);
+      }
+      .btn-reload:active {
+        transform: scale(0.98);
+      }
+      .footer-text {
+        margin-top: 1.5rem;
+        font-size: 0.75rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="icon-wrapper">
+        <img src="/assets/branding/kemenag.svg" alt="Logo Kemenag" />
+      </div>
+      <div class="badge">
+        <span class="pulse-dot"></span>
+        <span>Mode Offline</span>
+      </div>
+      <h1>Koneksi Internet Terputus</h1>
+      <p>
+        Halaman ini tidak dapat dimuat karena perangkat Anda sedang tidak terhubung ke jaringan internet.
+      </p>
+      <button class="btn-reload" onclick="window.location.reload()">
+        Coba Muat Ulang
+      </button>
+      <div class="footer-text">
+        Kemenag Kabupaten Barito Utara
+      </div>
+    </main>
+
+    <script>
+      // Auto-reload saat koneksi kembali online
+      window.addEventListener("online", () => {
+        window.location.reload();
+      });
+    </script>
+  </body>
+</html>

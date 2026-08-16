@@ -1,0 +1,22 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import DownloadAppShell from "@/components/features/layanan/DownloadAppShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="Download Aplikasi Portal (PWA) | Kemenag Barito Utara"
+  description="Pasang Aplikasi Portal Resmi Kementerian Agama Kabupaten Barito Utara di smartphone Android, iPhone, dan Laptop Anda."
+  canonical="/layanan/download-app"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Layanan", url: "/layanan" },
+      { name: "Download Aplikasi PWA", url: "/layanan/download-app" },
+    ]),
+  ]}
+>
+  <DownloadAppShell client:load />
+</BaseLayout>

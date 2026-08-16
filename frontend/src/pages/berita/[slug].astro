@@ -1,0 +1,85 @@
+---
+import { siteInfo } from "@/data/site";
+import { apiGet } from "@/lib/api-client";
+import { normalizeBerita } from "@/lib/berita-normalize";
+import { toCoverPreviewUrl } from "@/lib/cover-image";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import BeritaDetailShell from "@/components/features/berita/BeritaDetailShell";
+import { breadcrumbSchema, newsArticleSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+
+let berita: any = null;
+let relatedItems: any[] = [];
+let adjacent: any = {};
+
+try {
+  const res = await apiGet(`/berita/${slug}`);
+  const raw = res?.berita;
+  if (raw) {
+    const normalized = normalizeBerita(raw);
+    if (normalized) {
+      normalized.author = raw.author || "Admin Kemenag";
+      normalized.reaction_bermanfaat = raw.reaction_bermanfaat || 0;
+      normalized.reaction_inspiratif = raw.reaction_inspiratif || 0;
+      normalized.reaction_informatif = raw.reaction_informatif || 0;
+      berita = normalized;
+    }
+
+    relatedItems = (raw.related || [])
+      .map(normalizeBerita)
+      .filter(Boolean);
+
+    const normAdjacent = (item: any) =>
+      item
+        ? {
+            id: item.id,
+            slug: item.slug,
+            title: item.title,
+            category: item.category,
+            coverImage: toCoverPreviewUrl(item.cover_image),
+            isoDate: item.published_at,
+          }
+        : null;
+
+    adjacent = {
+      older: normAdjacent(raw.prev),
+      newer: normAdjacent(raw.next),
+    };
+  }
+} catch (err) {
+  berita = null;
+}
+
+if (!berita) {
+  return Astro.redirect("/berita", 404);
+}
+
+const description =
+  berita.excerpt ||
+  String(berita.content || "").replace(/<[^>]*>/g, " ").slice(0, 180) ||
+  siteInfo.description;
+const publishedTime = berita.publishedAt || berita.isoDate || berita.createdAt;
+---
+
+<BaseLayout
+  title={berita.title}
+  description={description}
+  canonical={`/berita/${berita.slug}`}
+  image={berita.coverImage || "/assets/icons/kemenag-512.png"}
+  type="article"
+  publishedTime={publishedTime}
+  author={berita.author}
+  jsonLd={[
+    newsArticleSchema(berita),
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Berita", url: "/berita" },
+      { name: berita.title, url: `/berita/${berita.slug}` },
+    ]),
+  ]}
+>
+  <BeritaDetailShell client:load berita={berita} relatedItems={relatedItems as any} adjacent={adjacent as any} />
+</BaseLayout>

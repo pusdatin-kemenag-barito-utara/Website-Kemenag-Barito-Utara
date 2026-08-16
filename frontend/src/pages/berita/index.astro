@@ -1,0 +1,110 @@
+---
+import { siteInfo } from "@/data/site";
+import { apiGet } from "@/lib/api-client";
+import { normalizeBerita } from "@/lib/berita-normalize";
+import { BERITA_CATEGORIES } from "@/lib/berita-utils";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import BeritaPageShell from "@/components/features/berita/BeritaPageShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+
+const ITEMS_PER_PAGE = 18;
+
+const url = new URL(Astro.request.url);
+const q = (url.searchParams.get("q") || "").trim();
+const category = url.searchParams.get("category") || "";
+const month = url.searchParams.get("month") || "";
+const sort = url.searchParams.get("sort") || "newest";
+
+const requestedPage = Number(url.searchParams.get("page") || 1);
+const initialPage =
+  !Number.isFinite(requestedPage) || requestedPage < 1 ? 1 : requestedPage;
+
+const isFirstPage = initialPage === 1;
+const limit = isFirstPage ? ITEMS_PER_PAGE + 1 : ITEMS_PER_PAGE;
+const offset = isFirstPage ? 0 : (initialPage - 1) * ITEMS_PER_PAGE + 1;
+
+const params = new URLSearchParams();
+if (q) params.set("q", q);
+if (category) params.set("category", category);
+if (month) params.set("month", month);
+if (sort && sort !== "newest") params.set("sort", sort);
+params.set("limit", String(limit));
+params.set("offset", String(offset));
+if (!isFirstPage) params.set("page", String(initialPage));
+
+let dbData = [];
+let totalResults = 0;
+let months = [];
+
+try {
+  const [listRes, monthsRes] = await Promise.all([
+    apiGet(`/berita?${params.toString()}`),
+    apiGet("/berita/months"),
+  ]);
+  dbData = (listRes?.items || []).map(normalizeBerita).filter(Boolean);
+  totalResults = Number(listRes?.total || 0);
+  months = Array.isArray(monthsRes?.months) ? monthsRes.months : [];
+} catch (err) {
+  dbData = [];
+  totalResults = 0;
+  months = [];
+}
+
+const remainingTotal = Math.max(0, totalResults - 1);
+const totalPages = Math.max(1, Math.ceil(remainingTotal / ITEMS_PER_PAGE));
+const currentPage = Math.max(
+  1,
+  Math.min(initialPage, totalPages),
+);
+
+let latestNews = null;
+let remainingNews = [];
+
+if (isFirstPage && dbData.length > 0) {
+  latestNews = dbData[0];
+  remainingNews = dbData.slice(1);
+} else {
+  remainingNews = dbData;
+}
+
+const showFeatured = currentPage === 1 && Boolean(latestNews);
+
+const dynamicTitle = q
+  ? `Pencarian Berita: ${q}`
+  : category
+    ? `Kategori Berita: ${category}`
+    : "Berita";
+const dynamicDescription = q
+  ? `Hasil pencarian berita untuk kata kunci "${q}" di Kementerian Agama Kabupaten Barito Utara.`
+  : category
+    ? `Kumpulan berita dengan kategori ${category} di Kementerian Agama Kabupaten Barito Utara.`
+    : "Publikasi berita dan informasi terbaru Kementerian Agama Kabupaten Barito Utara.";
+---
+
+<BaseLayout
+  title={dynamicTitle}
+  description={dynamicDescription}
+  canonical="/berita"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Berita", url: "/berita" },
+    ]),
+  ]}
+>
+  <BeritaPageShell
+    client:load
+    categories={BERITA_CATEGORIES}
+    months={months}
+    values={{ q, category, month, sort }}
+    totalResults={totalResults}
+    latestNews={latestNews}
+    paginatedNews={remainingNews}
+    remainingNews={remainingNews}
+    currentPage={currentPage}
+    totalPages={totalPages}
+    showFeatured={showFeatured}
+  />
+</BaseLayout>

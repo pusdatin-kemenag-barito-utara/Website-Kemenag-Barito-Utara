@@ -1,0 +1,22 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import RegulasiShell from "@/components/features/informasi/RegulasiShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="Regulasi Kementerian Agama"
+  description="Pusat informasi peraturan perundang-undangan, Peraturan Menteri Agama (PMA), dan Surat Keputusan resmi di lingkungan Kankemenag Kab. Barito Utara."
+  canonical="/informasi/regulasi"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Informasi Publik", url: "/informasi" },
+      { name: "Regulasi", url: "/informasi/regulasi" },
+    ]),
+  ]}
+>
+  <RegulasiShell client:load />
+</BaseLayout>

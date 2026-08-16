@@ -1,0 +1,207 @@
+import React from "react";
+import Image from "@/components/common/NextImage";
+import Link from "@/components/common/NextLink";
+import { FooterLink, FooterInfoItem, SocialIconLink } from "./FooterUI";
+import {
+  FacebookIcon,
+  XIcon,
+  InstagramIcon,
+  YouTubeIcon,
+  TikTokIcon,
+} from "./FooterIcons";
+import { useLanguage } from "@/context/LanguageContext";
+import { useSiteSettings } from "@/context/SettingsContext";
+import { Mail, Phone, MessageCircle, Clock, MapPin } from "lucide-react";
+
+export function FooterBrand() {
+  const { t } = useLanguage();
+  const { siteInfo } = useSiteSettings();
+  return (
+    <div>
+      <div className="flex items-center gap-3">
+        <div className="theme-footer-panel flex h-12 w-12 items-center justify-center rounded-2xl p-2">
+          <Image
+            src={siteInfo.logoSrc}
+            alt={siteInfo.shortName}
+            width={40}
+            height={40}
+            style={{ width: "auto", height: "auto" }}
+            className="object-contain"
+            unoptimized
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-(--primary-strong) truncate">
+              {siteInfo.logoTitleLine1}
+            </p>
+          </div>
+          <p className="theme-footer-muted text-xs line-clamp-1 mt-1">
+            {siteInfo.logoTitleLine2}
+          </p>
+        </div>
+      </div>
+      <div className="mt-5 mb-1.5">
+        <Image
+          src="/assets/branding/hapakat.webp"
+          alt="Hapakat"
+          width={80}
+          height={24}
+          className="h-5 sm:h-6 w-auto object-contain opacity-90 mb-1.5"
+          style={{ width: "auto" }}
+        />
+        <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+          <span className="text-amber-500">H</span>armonis,{" "}
+          <span className="text-amber-500">A</span>manah,{" "}
+          <span className="text-amber-500">P</span>rofesional,{" "}
+          <span className="text-amber-500">A</span>kuntabel,{" "}
+          <span className="text-amber-500">K</span>reatif,{" "}
+          <span className="text-amber-500">A</span>dil dan{" "}
+          <span className="text-amber-500">T</span>ransparan
+        </p>
+      </div>
+      <p className="theme-footer-muted mt-2 max-w-md text-sm leading-6">
+        {t("home.hero.description")}
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link
+          href="/kontak"
+          className="inline-flex items-center rounded-full bg-emerald-700 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+        >
+          {t("nav.kontak")}
+        </Link>
+        <Link
+          href="/profil/sejarah"
+          className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100/70 px-4 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-emerald-400"
+        >
+          {t("nav.profil")}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export function FooterMenu() {
+  const { t } = useLanguage();
+  const menuItems = [
+    { label: t("nav.home"), href: "/beranda" },
+    { label: t("nav.profil"), href: "/profil/sejarah" },
+    { label: t("nav.berita"), href: "/berita" },
+    { label: t("nav.layanan"), href: "/layanan/sekjen" },
+    { label: t("nav.informasi"), href: "/informasi" },
+    { label: t("nav.galeri"), href: "/galeri" },
+    { label: t("nav.kontak"), href: "/kontak" },
+  ];
+
+  return (
+    <div className="hidden lg:block">
+      <p
+        className="text-xs font-bold uppercase tracking-[0.18em]"
+        style={{ color: "var(--footer-fg)" }}
+      >
+        {t("footer.quickLinks")}
+      </p>
+      <div className="mt-3 grid grid-cols-1 gap-2">
+        {menuItems.map((item) => (
+          <FooterLink key={item.href} href={item.href}>
+            {item.label}
+          </FooterLink>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function FooterContact() {
+  const { t } = useLanguage();
+  const { siteInfo, siteLinks } = useSiteSettings();
+  return (
+    <div>
+      <p
+        className="text-xs font-bold uppercase tracking-[0.18em]"
+        style={{ color: "var(--footer-fg)" }}
+      >
+        {t("nav.kontak")}
+      </p>
+      <div className="mt-4 space-y-5">
+        <FooterInfoItem
+          label={t("footer.email")}
+          value={siteInfo.email}
+          href={siteLinks.emailHref}
+          icon={Mail}
+        />
+        <FooterInfoItem
+          label={t("footer.phone")}
+          value={siteInfo.phone}
+          href={siteLinks.phoneHref}
+          icon={Phone}
+        />
+        {siteInfo.whatsapp && (
+          <FooterInfoItem
+            label="WhatsApp"
+            value={siteInfo.whatsapp}
+            href={siteLinks.whatsappHref}
+            icon={MessageCircle}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function FooterSocial() {
+  const { t } = useLanguage();
+  const { siteInfo, siteLinks } = useSiteSettings();
+
+  const formattedOfficeHours =
+    siteInfo.officeHoursSummary ||
+    (Array.isArray(siteInfo.officeHours) && siteInfo.officeHours.length > 0
+      ? siteInfo.officeHours.join(" | ")
+      : t("contact.officeHours"));
+
+  const formattedAddress = siteInfo.address || t("footer.regionValue");
+
+  const socialLinks = [
+    { label: "Instagram", href: siteLinks.instagram, icon: InstagramIcon },
+    { label: "YouTube", href: siteLinks.youtube, icon: YouTubeIcon },
+    { label: "TikTok", href: siteLinks.tiktok, icon: TikTokIcon },
+    { label: "Facebook", href: siteLinks.facebook, icon: FacebookIcon },
+    { label: "X / Twitter", href: siteLinks.x, icon: XIcon },
+  ].filter((item) => Boolean(item.href));
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="space-y-5">
+        <FooterInfoItem
+          label={t("footer.officeHours")}
+          value={formattedOfficeHours}
+          icon={Clock}
+        />
+        <FooterInfoItem
+          label={t("footer.region")}
+          value={formattedAddress}
+          icon={MapPin}
+        />
+      </div>
+
+      <div>
+        <p
+          className="text-xs font-bold uppercase tracking-[0.18em]"
+          style={{ color: "var(--footer-fg)" }}
+        >
+          {t("footer.followUs")}
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {socialLinks.map((item) => (
+            <SocialIconLink
+              key={item.label}
+              label={item.label}
+              href={item.href}
+              icon={item.icon}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

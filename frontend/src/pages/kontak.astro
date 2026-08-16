@@ -1,0 +1,29 @@
+---
+import { apiGet } from "@/lib/api-client";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import KontakShell from "@/components/features/kontak/KontakShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+
+let initialSettings = null;
+try {
+  initialSettings = await apiGet("/settings");
+} catch {
+  initialSettings = null;
+}
+---
+
+<BaseLayout
+  title="Kontak | Kemenag Barito Utara"
+  description="Pilih kanal komunikasi yang paling sesuai, temukan lokasi kantor, dan hubungi instansi melalui jalur resmi yang tersedia."
+  canonical="/kontak"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Kontak", url: "/kontak" },
+    ]),
+  ]}
+>
+  <KontakShell client:load initialSettings={initialSettings} />
+</BaseLayout>

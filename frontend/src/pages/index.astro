@@ -1,0 +1,25 @@
+---
+import { apiGet } from "@/lib/api-client";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import PortalShell from "@/components/features/portal/PortalShell";
+
+export const prerender = false;
+
+let initialData = null;
+try {
+  const res = await apiGet("/portal");
+  if (res && res.beritaCount !== undefined) {
+    initialData = res;
+  }
+} catch (err) {
+  initialData = null;
+}
+---
+
+<BaseLayout
+  title="Kemenag Barito Utara"
+  description="Akses cepat layanan digital, informasi publik, dan portal aplikasi Kementerian Agama Kabupaten Barito Utara."
+  canonical="/"
+>
+  <PortalShell client:load initialData={initialData} />
+</BaseLayout>

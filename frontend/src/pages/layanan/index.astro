@@ -1,0 +1,22 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import LayananShell from "@/components/features/layanan/LayananShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+import { serviceCategories } from "@/data/services";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="Layanan Publik | Kemenag Barito Utara"
+  description="Pusat informasi satu pintu mengenai jenis layanan, prosedur, persyaratan, dan standardisasi pelayanan publik pada Kantor Kementerian Agama Kabupaten Barito Utara."
+  canonical="/layanan"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Layanan", url: "/layanan" },
+    ]),
+  ]}
+>
+  <LayananShell client:load services={serviceCategories} />
+</BaseLayout>

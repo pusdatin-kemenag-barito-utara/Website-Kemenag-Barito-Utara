@@ -1,0 +1,22 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import VisiMisiShell from "@/components/features/profil/VisiMisiShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="Visi & Misi | Kemenag Barito Utara"
+  description="Arah strategis dan komitmen Kantor Kementerian Agama Kabupaten Barito Utara dalam mewujudkan pelayanan keagamaan yang rukun, maslahat, dan cerdas."
+  canonical="/profil/visi-misi"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Profil", url: "/profil/sejarah" },
+      { name: "Visi & Misi", url: "/profil/visi-misi" },
+    ]),
+  ]}
+>
+  <VisiMisiShell client:load />
+</BaseLayout>

@@ -1,0 +1,50 @@
+---
+import { apiGet } from "@/lib/api-client";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import ProfilPejabatSlugShell from "@/components/features/informasi/ProfilPejabatSlugShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+
+let seksiData: any = null;
+try {
+  const res = await apiGet(`/seksi/${slug}`);
+  if (res?.seksi) {
+    seksiData = res.seksi;
+  }
+} catch (_err) {
+  seksiData = null;
+}
+
+if (!seksiData) {
+  try {
+    const listRes = await apiGet("/seksi");
+    const found = (listRes?.seksi || []).find((s: any) => s.slug === slug);
+    if (found) {
+      seksiData = { ...found, pegawai: [] };
+    }
+  } catch (_e) {}
+}
+
+if (!seksiData) {
+  return Astro.redirect("/informasi", 404);
+}
+---
+
+<BaseLayout
+  title={`${seksiData.judul} | Kemenag Barito Utara`}
+  description={seksiData.deskripsi || `Profil pejabat ${seksiData.judul} Kantor Kementerian Agama Kabupaten Barito Utara.`}
+  canonical={`/informasi/profil-pejabat/${slug}`}
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Informasi Publik", url: "/informasi" },
+      { name: "Profil Pejabat", url: "/informasi/profil-pejabat" },
+      { name: seksiData.judul, url: `/informasi/profil-pejabat/${slug}` },
+    ]),
+  ]}
+>
+  <ProfilPejabatSlugShell client:load slug={slug} initialData={seksiData} />
+</BaseLayout>

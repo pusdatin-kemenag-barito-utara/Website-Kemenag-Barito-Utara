@@ -1,0 +1,12 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import AdminApp from "@/components/layout/Admin/AdminApp";
+
+export const prerender = false;
+
+const { id } = Astro.params;
+---
+
+<AdminLayout title="Kelola Kepegawaian & Seksi | Admin Kemenag Barito Utara">
+  <AdminApp page="seksi-detail" id={id} client:load />
+</AdminLayout>

@@ -1,0 +1,29 @@
+---
+import { apiGet } from "@/lib/api-client";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import PpidShell from "@/components/features/ppid/PpidShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+
+let initialSettings = null;
+try {
+  initialSettings = await apiGet("/settings");
+} catch {
+  initialSettings = null;
+}
+---
+
+<BaseLayout
+  title="PPID - Pejabat Pengelola Informasi dan Dokumentasi"
+  description="Layanan Pejabat Pengelola Informasi dan Dokumentasi (PPID) Kementerian Agama Kabupaten Barito Utara sesuai UU No. 14 Tahun 2008."
+  canonical="/ppid"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "PPID", url: "/ppid" },
+    ]),
+  ]}
+>
+  <PpidShell client:load initialSettings={initialSettings} />
+</BaseLayout>

@@ -1,0 +1,51 @@
+---
+import { apiGet } from "@/lib/api-client";
+import { normalizeLaporanCategory } from "@/lib/laporan-normalize";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import LaporanCategoryShell from "@/components/features/laporan/LaporanCategoryShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+
+let category = null;
+let documents = [];
+
+try {
+  const res = await apiGet(`/laporan/${slug}`);
+  if (res?.category) {
+    category = normalizeLaporanCategory(res.category, res.documents || []);
+    documents = category.documents;
+  }
+} catch (err) {
+  category = null;
+}
+
+if (!category) {
+  return Astro.redirect("/laporan/sop", 404);
+}
+---
+
+<BaseLayout
+  title={`${category.title} | Laporan dan Akuntabilitas`}
+  description={
+    category.description ||
+    `Daftar dokumen ${category.title} Kementerian Agama Kabupaten Barito Utara.`
+  }
+  canonical={`/laporan/${category.slug}`}
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Laporan", url: "/laporan" },
+      { name: category.title, url: `/laporan/${category.slug}` },
+    ]),
+  ]}
+>
+  <LaporanCategoryShell
+    client:load
+    slug={category.slug}
+    category={category}
+    documents={documents}
+  />
+</BaseLayout>

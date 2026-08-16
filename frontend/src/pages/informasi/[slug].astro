@@ -1,0 +1,44 @@
+---
+import { apiGet } from "@/lib/api-client";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import InformasiSlugShell from "@/components/features/informasi/InformasiSlugShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+
+let pageData = null;
+try {
+  const res = await apiGet(`/static-pages?slug=${encodeURIComponent(slug)}`);
+  if (res && res.title) {
+    pageData = {
+      title: res.title,
+      description: res.description || "",
+      content: res.content || "",
+      updated_at: res.updated_at || null,
+    };
+  }
+} catch (err) {
+  pageData = null;
+}
+
+if (!pageData) {
+  return Astro.redirect("/informasi", 404);
+}
+---
+
+<BaseLayout
+  title={`${pageData.title} | Kemenag Barito Utara`}
+  description={pageData.description || "Informasi publik Kantor Kementerian Agama Kabupaten Barito Utara."}
+  canonical={`/informasi/${slug}`}
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Informasi Publik", url: "/informasi" },
+      { name: pageData.title, url: `/informasi/${slug}` },
+    ]),
+  ]}
+>
+  <InformasiSlugShell client:load slug={slug} pageData={pageData} />
+</BaseLayout>

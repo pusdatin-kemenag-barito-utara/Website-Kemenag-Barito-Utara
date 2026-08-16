@@ -1,0 +1,25 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import ZonaSlugShell from "@/components/features/zona-integritas/ZonaSlugShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+
+const { slug = "" } = Astro.params;
+const label = "Zona Integritas";
+---
+
+<BaseLayout
+  title="Zona Integritas | Kemenag Barito Utara"
+  description="Informasi mengenai Pembangunan Zona Integritas (ZI) di Kementerian Agama Kabupaten Barito Utara menuju Wilayah Bebas dari Korupsi (WBK) & Wilayah Birokrasi Bersih dan Melayani (WBBM)."
+  canonical={`/zona-integritas/${slug}`}
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Zona Integritas", url: "/zona-integritas" },
+      { name: label, url: `/zona-integritas/${slug}` },
+    ]),
+  ]}
+>
+  <ZonaSlugShell client:load slug={slug} />
+</BaseLayout>

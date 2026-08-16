@@ -1,0 +1,22 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import KodeEtikShell from "@/components/features/profil/KodeEtikShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="Kode Etik Pelayanan | Kemenag Barito Utara"
+  description="Pedoman etika, prinsip pelaksanaan, dan kewajiban aparatur Kantor Kementerian Agama Kabupaten Barito Utara dalam memberikan pelayanan publik."
+  canonical="/profil/kode-etik"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Profil", url: "/profil/sejarah" },
+      { name: "Kode Etik", url: "/profil/kode-etik" },
+    ]),
+  ]}
+>
+  <KodeEtikShell client:load />
+</BaseLayout>

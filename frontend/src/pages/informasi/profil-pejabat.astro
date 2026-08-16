@@ -1,0 +1,73 @@
+---
+import { apiGet } from "@/lib/api-client";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import ProfilPejabatShell from "@/components/features/informasi/ProfilPejabatShell";
+import { breadcrumbSchema } from "@/lib/structured-data";
+
+export const prerender = false;
+
+const SLUG_ORDER = [
+  "kepala-kantor",
+  "sekjen",
+  "seksi-pendidikan-madrasah",
+  "seksi-pendidikan-agama-islam",
+  "seksi-pendidikan-diniyah-dan-pondok-pesantren",
+  "seksi-bimas-islam",
+  "penyelenggara-zakat-wakaf",
+  "penyelenggara-hindu",
+  "kua-kantor-urusan-agama",
+];
+
+let rawSeksiList = [];
+try {
+  const res = await apiGet("/seksi");
+  rawSeksiList = Array.isArray(res?.seksi) ? res.seksi : [];
+} catch (err) {
+  rawSeksiList = [];
+}
+
+const seksiList = rawSeksiList
+  .map((s) => ({
+    ...s,
+    id: String(s.id ?? ""),
+    _count: { pegawai_seksi: Number(s.pegawai_count ?? 0) },
+  }))
+  .sort((a, b) => {
+    let indexA = SLUG_ORDER.indexOf(a.slug);
+    let indexB = SLUG_ORDER.indexOf(b.slug);
+    if (indexA === -1) indexA = 999;
+    if (indexB === -1) indexB = 999;
+    return indexA - indexB;
+  });
+
+const kepalaKantor = seksiList.find((s) => s.slug === "kepala-kantor") || null;
+const pejabatList = seksiList.filter(
+  (s) => s.slug !== "kepala-kantor" && s.slug !== "kua-kantor-urusan-agama",
+);
+
+const breadcrumb = [
+  { label: "Beranda", href: "/beranda" },
+  { label: "Informasi Publik", href: "/informasi" },
+  { label: "Profil Pejabat" },
+];
+---
+
+<BaseLayout
+  title="Profil Pejabat"
+  description="Kenali para pemimpin dan pejabat struktural yang mengabdi di Kantor Kementerian Agama Kabupaten Barito Utara."
+  canonical="/informasi/profil-pejabat"
+  jsonLd={[
+    breadcrumbSchema([
+      { name: "Beranda", url: "/beranda" },
+      { name: "Informasi Publik", url: "/informasi" },
+      { name: "Profil Pejabat", url: "/informasi/profil-pejabat" },
+    ]),
+  ]}
+>
+  <ProfilPejabatShell
+    client:load
+    breadcrumb={breadcrumb}
+    kepalaKantor={kepalaKantor}
+    pejabatList={pejabatList}
+  />
+</BaseLayout>

@@ -1,0 +1,28 @@
+{
+  "name": "kemenag-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Website resmi Kementerian Agama Kabupaten Barito Utara — Monorepo (Astro + Go Fiber)",
+  "scripts": {
+    "dev": "concurrently -k -n FE,BE -c cyan,green \"npm --prefix frontend run dev\" \"go -C backend run github.com/air-verse/air@v1.61.7 -c .air.toml\"",
+    "dev:fe": "npm --prefix frontend run dev",
+    "dev:be": "go -C backend run github.com/air-verse/air@v1.61.7 -c .air.toml",
+    "dev:be:plain": "go -C backend run ./cmd/server",
+    "build": "npm run build:fe && npm run build:be",
+    "build:fe": "npm --prefix frontend run build",
+    "build:be": "go -C backend build -o bin/server ./cmd/server",
+    "start": "concurrently -k -n FE,BE -c cyan,green \"npm run start:fe\" \"npm run start:be\"",
+    "start:fe": "npm --prefix frontend run start",
+    "start:be": "./backend/bin/server",
+    "lint": "npm --prefix frontend run lint",
+    "test": "npm --prefix frontend run test && go -C backend test ./...",
+    "gen": "go -C backend run github.com/sqlc-dev/sqlc/cmd/sqlc generate"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ]
+}
