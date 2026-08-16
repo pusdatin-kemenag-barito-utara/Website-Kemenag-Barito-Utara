@@ -44,6 +44,7 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 ENV BACKEND_PORT=8080
+ENV BACKEND_INTERNAL_URL=http://127.0.0.1:8080
 ENV TZ=Asia/Jakarta
 
 RUN apk add --no-cache ca-certificates tzdata bash curl wget
@@ -53,9 +54,9 @@ RUN addgroup --system --gid 1001 appgroup && \
     adduser --system --uid 1001 appuser -G appgroup
 
 # Copy Go backend binary
-COPY --from=builder-be /app/server /app/backend/server
+COPY --from=builder-be --chown=appuser:appgroup /app/server /app/backend/server
 
-# Copy Astro frontend build
+# Copy Astro frontend build & dependencies
 COPY --from=builder-fe --chown=appuser:appgroup /app/frontend/dist /app/frontend/dist
 COPY --from=builder-fe --chown=appuser:appgroup /app/frontend/node_modules /app/frontend/node_modules
 COPY --from=builder-fe --chown=appuser:appgroup /app/frontend/package.json /app/frontend/package.json
@@ -63,8 +64,15 @@ COPY --from=builder-fe --chown=appuser:appgroup /app/frontend/package.json /app/
 # Copy start script
 RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'PORT=8080 /app/backend/server &' >> /app/start.sh && \
+    echo 'for i in $(seq 1 20); do' >> /app/start.sh && \
+    echo '  if wget -q -O - http://127.0.0.1:8080/api/health >/dev/null 2>&1 || curl -s http://127.0.0.1:8080/api/health >/dev/null 2>&1; then' >> /app/start.sh && \
+    echo '    break' >> /app/start.sh && \
+    echo '  fi' >> /app/start.sh && \
+    echo '  sleep 0.5' >> /app/start.sh && \
+    echo 'done' >> /app/start.sh && \
     echo 'cd /app/frontend && PORT=3000 HOST=0.0.0.0 exec node ./dist/server/entry.mjs' >> /app/start.sh && \
-    chmod +x /app/start.sh
+    chmod +x /app/start.sh && \
+    chown appuser:appgroup /app/start.sh
 
 USER appuser
 

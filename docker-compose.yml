@@ -27,6 +27,7 @@ services:
       - PORT=3000
       - HOST=0.0.0.0
       - PUBLIC_API_URL=http://backend:8080
+      - BACKEND_INTERNAL_URL=http://backend:8080
       - TZ=Asia/Jakarta
     depends_on:
       - backend
