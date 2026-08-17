@@ -21,13 +21,15 @@ export function normalizeCoverImageUrl(value = "") {
     return raw;
   }
 
-  if (raw.startsWith("/storage/")) {
-    const clean = raw.replace(/^\/storage\/?/, "");
+  // Handle any path or full URL containing /api/storage/media/ (e.g. from backend or production domain)
+  const apiStorageIdx = raw.indexOf("/api/storage/media/");
+  if (apiStorageIdx !== -1) {
+    const clean = raw.slice(apiStorageIdx + "/api/storage/media/".length).replace(/^\/+/, "");
     return `${getSupabaseStorageMedia()}/${clean}`;
   }
 
-  if (raw.startsWith("/api/storage/media/")) {
-    const clean = raw.replace(/^\/api\/storage\/media\/?/, "");
+  if (raw.startsWith("/storage/")) {
+    const clean = raw.replace(/^\/storage\/?/, "");
     return `${getSupabaseStorageMedia()}/${clean}`;
   }
 

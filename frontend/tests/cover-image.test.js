@@ -34,6 +34,15 @@ describe("normalizeCoverImageUrl", () => {
     expect(result).toContain("/storage/v1/object/public/cms-media/galeri/foto.webp");
   });
 
+  it("resolves full domain URLs containing /api/storage/media/ to Supabase storage URL", () => {
+    const fullApiPath =
+      "https://baritoutara.kemenag.go.id/api/storage/media/berita/2026/08/cover-sample.webp";
+    const result = normalizeCoverImageUrl(fullApiPath);
+    expect(result).toContain(
+      "/storage/v1/object/public/cms-media/berita/2026/08/cover-sample.webp"
+    );
+  });
+
   it("preserves valid HTTPS URLs (Supabase storage)", () => {
     const supabaseUrl =
       "https://abc.supabase.co/storage/v1/object/public/cms-media/foto.webp";

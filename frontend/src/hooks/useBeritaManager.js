@@ -579,10 +579,11 @@ export function useBeritaManager() {
       });
 
       const data = await readJsonSafely(response);
-      const imageUrl = data?.url || data?.data?.url;
-      if (!response.ok || !imageUrl) {
+      const rawImageUrl = data?.url || data?.data?.url;
+      if (!response.ok || !rawImageUrl) {
         throw new Error(data?.error || data?.message || "Gagal mengunggah gambar.");
       }
+      const imageUrl = normalizeCoverImageUrl(rawImageUrl);
 
       // Restore selection
       const selection = window.getSelection();

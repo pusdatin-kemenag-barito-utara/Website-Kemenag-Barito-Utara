@@ -1,3 +1,5 @@
+import { normalizeCoverImageUrl } from "@/lib/cover-image";
+
 export const BERITA_CATEGORIES = [
   "Umum",
   "Kegiatan",
@@ -94,7 +96,14 @@ export function sanitizeEditorHtml(html = "") {
   if (!html) return "";
 
   if (typeof window === "undefined" || !window.DOMParser) {
-    return String(html || "");
+    let result = String(html || "");
+    result = result.replace(/src="([^"]*\/api\/storage\/media\/[^"]*)"/g, (match, p1) => {
+      return `src="${normalizeCoverImageUrl(p1)}"`;
+    });
+    result = result.replace(/data-url="([^"]*\/api\/storage\/media\/[^"]*)"/g, (match, p1) => {
+      return `data-url="${normalizeCoverImageUrl(p1)}"`;
+    });
+    return result;
   }
 
   try {
@@ -116,6 +125,8 @@ export function sanitizeEditorHtml(html = "") {
     });
 
     doc.body.querySelectorAll("*").forEach((element) => {
+      const tagName = element.tagName.toLowerCase();
+
       [...element.attributes].forEach((attr) => {
         const name = attr.name.toLowerCase();
 
@@ -126,10 +137,8 @@ export function sanitizeEditorHtml(html = "") {
 
         if (name === "style") {
           const styleValue = attr.value.toLowerCase();
-          // Hanya izinkan text-align untuk perataan teks
-          if (styleValue.includes("text-align")) {
-            // Kita bisa membersihkan style lain jika perlu, tapi untuk sekarang
-            // kita izinkan jika ada text-align agar fitur editor berfungsi
+          // Izinkan text-align dan tata letak teks aman
+          if (styleValue.includes("text-align") || styleValue.includes("float") || styleValue.includes("margin")) {
             return;
           }
           element.removeAttribute("style");
@@ -147,13 +156,30 @@ export function sanitizeEditorHtml(html = "") {
 
       element.classList.remove("Apple-interchange-newline");
 
-      if (element.tagName.toLowerCase() === "a") {
+      if (tagName === "a") {
         element.setAttribute("target", "_blank");
         element.setAttribute("rel", "noopener noreferrer");
       }
-      
-      // We rely on globals.css for styling figures, images, and captions in the public view.
-      // Modifying classes here causes cursor resets during editing and unexpected layout in the editor.
+
+      if (tagName === "img") {
+        const currentSrc = element.getAttribute("src");
+        if (currentSrc) {
+          const normalized = normalizeCoverImageUrl(currentSrc);
+          if (normalized && normalized !== currentSrc) {
+            element.setAttribute("src", normalized);
+          }
+        }
+      }
+
+      if (tagName === "figure") {
+        const dataUrl = element.getAttribute("data-url");
+        if (dataUrl) {
+          const normalized = normalizeCoverImageUrl(dataUrl);
+          if (normalized && normalized !== dataUrl) {
+            element.setAttribute("data-url", normalized);
+          }
+        }
+      }
     });
 
     return doc.body.innerHTML;
