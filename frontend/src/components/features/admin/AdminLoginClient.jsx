@@ -19,8 +19,12 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
 };
 
-export default function AdminLoginClient({ initialUnauthorized = false }) {
+export default function AdminLoginClient({
+  initialUnauthorized = false,
+  turnstileSiteKey: propSiteKey = "",
+}) {
   const l = useAdminLogin(initialUnauthorized);
+  const activeSiteKey = propSiteKey || getTurnstileSiteKey();
 
   if (l.loadingSession) return <LoginLoading />;
 
@@ -170,7 +174,7 @@ export default function AdminLoginClient({ initialUnauthorized = false }) {
 
               <div className="pt-2 flex justify-center w-full">
                 <Turnstile
-                  siteKey={getTurnstileSiteKey()}
+                  siteKey={activeSiteKey}
                   onVerify={l.setTurnstileToken}
                   resetKey={l.turnstileResetKey}
                   theme="light"

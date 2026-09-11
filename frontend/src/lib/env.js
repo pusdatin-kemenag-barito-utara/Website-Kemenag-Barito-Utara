@@ -62,7 +62,12 @@ export function getSupabaseAnonKey() {
 }
 
 export function getTurnstileSiteKey() {
-  return getEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY");
+  return (
+    getEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY") ||
+    getEnv("TURNSTILE_SITE_KEY") ||
+    getEnv("PUBLIC_TURNSTILE_SITE_KEY") ||
+    "0x4AAAAAADR1O_LSp1lgc3km"
+  );
 }
 
 export function getGaId() {

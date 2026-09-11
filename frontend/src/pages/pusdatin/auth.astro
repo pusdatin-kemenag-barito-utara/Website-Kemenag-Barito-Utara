@@ -1,8 +1,11 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import AdminLoginClient from "@/components/features/admin/AdminLoginClient";
+import { getTurnstileSiteKey } from "@/lib/env";
+
+const turnstileSiteKey = getTurnstileSiteKey();
 ---
 
 <AdminLayout title="Login Admin">
-  <AdminLoginClient client:load />
+  <AdminLoginClient client:load turnstileSiteKey={turnstileSiteKey} />
 </AdminLayout>
