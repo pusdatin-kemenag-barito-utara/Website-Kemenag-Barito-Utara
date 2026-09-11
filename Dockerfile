@@ -3,9 +3,10 @@
 # ================================================================
 
 # --- Stage 1: Build Go Fiber Backend ---
-FROM golang:1.24-alpine AS builder-be
+FROM golang:alpine AS builder-be
 WORKDIR /app
 RUN apk add --no-cache git ca-certificates tzdata
+ENV GOTOOLCHAIN=auto
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/ ./

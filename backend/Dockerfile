@@ -3,12 +3,13 @@
 # ================================================================
 
 # --- Stage 1: Build binary ---
-FROM golang:1.24-alpine AS builder
+FROM golang:alpine AS builder
 
 WORKDIR /app
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
+ENV GOTOOLCHAIN=auto
 
 # Cache go modules
 COPY backend/go.mod backend/go.sum ./
