@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -11,11 +12,11 @@ import (
 	"kemenag-backend/internal/middleware"
 	"kemenag-backend/internal/response"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // LaporanCategoriesHandler — GET /api/laporan (kategori + dokumen kosong)
-func LaporanCategoriesHandler(c *fiber.Ctx) error {
+func LaporanCategoriesHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
 	pool := db.Get()
@@ -52,7 +53,7 @@ func LaporanCategoriesHandler(c *fiber.Ctx) error {
 }
 
 // LaporanCategoryHandler — GET /api/laporan/:slug (dokumen per kategori + tahun)
-func LaporanCategoryHandler(c *fiber.Ctx) error {
+func LaporanCategoryHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
 	pool := db.Get()
@@ -75,8 +76,7 @@ func LaporanCategoryHandler(c *fiber.Ctx) error {
 	yearStr := strings.TrimSpace(c.Query("year"))
 	year := 0
 	if yearStr != "" {
-		y := c.QueryInt("year")
-		if y >= 2000 && y <= 2100 {
+		if y, err := strconv.Atoi(yearStr); err == nil && y >= 2000 && y <= 2100 {
 			year = y
 		}
 	}
@@ -176,7 +176,7 @@ func getLaporanDoc(ctx context.Context, id string, increment string) (fileURL, f
 }
 
 // streamRemoteFile proxy fetch upstream file dengan header konten.
-func streamRemoteFile(c *fiber.Ctx, fileURL string, disposition, fallbackName string, extraHeaders map[string]string) error {
+func streamRemoteFile(c fiber.Ctx, fileURL string, disposition, fallbackName string, extraHeaders map[string]string) error {
 	if fileURL == "" {
 		return response.Error(c, 404, "File tidak ditemukan.", "FILE_NOT_FOUND")
 	}
@@ -196,7 +196,12 @@ func streamRemoteFile(c *fiber.Ctx, fileURL string, disposition, fallbackName st
 
 	if resp.StatusCode >= 400 {
 		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		return response.Error(c, 502, "Upstream mengembalikan "+itoa(resp.StatusCode), "UPSTREAM_ERROR")
+		return response.Error(c, 502, "Upstream mengembalikan "+strconv.Itoa(resp.StatusCode), "UPSTREAM_ERROR")
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return response.Error(c, 502, "Gagal membaca file upstream.", "UPSTREAM_ERROR")
 	}
 
 	contentType := resp.Header.Get("Content-Type")
@@ -213,22 +218,17 @@ func streamRemoteFile(c *fiber.Ctx, fileURL string, disposition, fallbackName st
 	c.Set("Cache-Control", "public, max-age=3600")
 	c.Set("Access-Control-Allow-Origin", "*")
 	c.Set("Accept-Ranges", "bytes")
-	if len := resp.Header.Get("Content-Length"); len != "" {
-		c.Set("Content-Length", len)
-	}
+	c.Set("Content-Length", strconv.Itoa(len(body)))
 	for k, v := range extraHeaders {
 		c.Set(k, v)
 	}
 
 	c.Status(200)
-	if _, err := io.Copy(c, resp.Body); err != nil {
-		return err
-	}
-	return nil
+	return c.Send(body)
 }
 
 // LaporanViewProxyHandler — GET /api/laporan/view/:id
-func LaporanViewProxyHandler(c *fiber.Ctx) error {
+func LaporanViewProxyHandler(c fiber.Ctx) error {
 	id := strings.TrimSpace(c.Params("id"))
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
@@ -241,7 +241,7 @@ func LaporanViewProxyHandler(c *fiber.Ctx) error {
 }
 
 // LaporanDownloadProxyHandler — GET /api/laporan/download/:id
-func LaporanDownloadProxyHandler(c *fiber.Ctx) error {
+func LaporanDownloadProxyHandler(c fiber.Ctx) error {
 	id := strings.TrimSpace(c.Params("id"))
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()

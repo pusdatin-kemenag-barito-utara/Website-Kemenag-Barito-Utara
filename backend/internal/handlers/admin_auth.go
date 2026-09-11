@@ -16,7 +16,7 @@ import (
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // sessionPublic mengubah SessionContext jadi map publik (tanpa user token).
@@ -48,7 +48,7 @@ func sessionPublic(s *middleware.SessionContext) fiber.Map {	profile := fiber.Ma
 }
 
 // AdminSummaryHandler — GET /api/admin
-func AdminSummaryHandler(c *fiber.Ctx) error {
+func AdminSummaryHandler(c fiber.Ctx) error {
 	session, pc, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{AllowEditor: true})
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func AdminSummaryHandler(c *fiber.Ctx) error {
 
 // AdminSessionHandler — GET /api/admin/session
 // Kontrak = route Next /api/admin/session: {authenticated, user, permissions}.
-func AdminSessionHandler(c *fiber.Ctx) error {
+func AdminSessionHandler(c fiber.Ctx) error {
 	session := middleware.LoadSession(c)
 
 	user := fiber.Map(nil)
@@ -93,7 +93,7 @@ func AdminSessionHandler(c *fiber.Ctx) error {
 
 // AdminMyPermissionsHandler — GET /api/admin/my-permissions
 // Kontrak = route Next: {ok, permissionContext: {role, email, isAdmin, isEditor, ...}}.
-func AdminMyPermissionsHandler(c *fiber.Ctx) error {
+func AdminMyPermissionsHandler(c fiber.Ctx) error {
 _, pc, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{AllowEditor: true})
 	if err != nil {
 		return err
@@ -113,8 +113,8 @@ _, pc, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{AllowEditor: t
 	})
 }
 
-// AdminLoginHandler — POST /api/admin/login
-func AdminLoginHandler(c *fiber.Ctx) error {
+// AdminLoginHandler — POST /api/admin/login & /api/pusdatin/auth
+func AdminLoginHandler(c fiber.Ctx) error {
 	ip := middleware.GetClientIP(c)
 
 	var body struct {
@@ -122,7 +122,7 @@ func AdminLoginHandler(c *fiber.Ctx) error {
 		Password       string `json:"password"`
 		TurnstileToken string `json:"turnstileToken"`
 	}
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	email := strings.ToLower(strings.TrimSpace(body.Email))
@@ -210,7 +210,7 @@ func AdminLoginHandler(c *fiber.Ctx) error {
 }
 
 // AdminLogoutHandler — POST /api/admin/logout
-func AdminLogoutHandler(c *fiber.Ctx) error {
+func AdminLogoutHandler(c fiber.Ctx) error {
 	accessToken := middleware.GetAccessTokenFromCookie(c)
 	if accessToken != "" {
 		ctx, cancel := context.WithTimeout(c.Context(), 5*time.Second)
@@ -222,7 +222,7 @@ func AdminLogoutHandler(c *fiber.Ctx) error {
 }
 
 // AdminUpdateProfileHandler — POST /api/admin/update-profile
-func AdminUpdateProfileHandler(c *fiber.Ctx) error {
+func AdminUpdateProfileHandler(c fiber.Ctx) error {
 	ip := middleware.GetClientIP(c)
 	if err := checkRate(c, "admin:update-profile:"+ip, 10, 60000); err != nil {
 		return err
@@ -233,7 +233,7 @@ func AdminUpdateProfileHandler(c *fiber.Ctx) error {
 		FullName    string `json:"fullName"`
 		AvatarBase64 string `json:"avatar"` // data URL
 	}
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	if body.AccessToken == "" {
@@ -287,7 +287,7 @@ func AdminUpdateProfileHandler(c *fiber.Ctx) error {
 }
 
 // AdminUpdatePasswordHandler — POST /api/admin/update-password (OTP Redis)
-func AdminUpdatePasswordHandler(c *fiber.Ctx) error {
+func AdminUpdatePasswordHandler(c fiber.Ctx) error {
 	ip := middleware.GetClientIP(c)
 	if err := checkRate(c, "admin:update-password:"+ip, 5, 60000); err != nil {
 		return err
@@ -298,7 +298,7 @@ func AdminUpdatePasswordHandler(c *fiber.Ctx) error {
 		OtpCode     string `json:"otpCode"`
 		NewPassword string `json:"newPassword"`
 	}
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	if len(body.NewPassword) < 8 {
@@ -351,7 +351,7 @@ func InvalidateDashboardStatsCache() {
 }
 
 // AdminDashboardStatsHandler — GET /api/admin/dashboard/stats
-func AdminDashboardStatsHandler(c *fiber.Ctx) error {
+func AdminDashboardStatsHandler(c fiber.Ctx) error {
 	if _, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{}); err != nil {
 		return err
 	}
@@ -540,7 +540,7 @@ func AdminDashboardStatsHandler(c *fiber.Ctx) error {
 	return response.OK(c, result)
 }
 
-func checkRate(c *fiber.Ctx, key string, limit int, windowMs int64) error {
+func checkRate(c fiber.Ctx, key string, limit int, windowMs int64) error {
 	windowSec := windowMs / 1000
 	if windowSec <= 0 {
 		windowSec = 60

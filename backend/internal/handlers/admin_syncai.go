@@ -7,12 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"kemenag-backend/internal/config"
 	"kemenag-backend/internal/db"
 	"kemenag-backend/internal/middleware"
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 var htmlTagRe = regexp.MustCompile(`<[^>]+>`)
@@ -39,7 +40,7 @@ func vecToString(v []float64) string {
 
 // AdminSyncAIHandler — POST /api/admin/sync-ai
 // Embed seluruh berita published ke ai_knowledge_base (Gemini text-embedding-004, 768D).
-func AdminSyncAIHandler(c *fiber.Ctx) error {
+func AdminSyncAIHandler(c fiber.Ctx) error {
 	if _, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "ai:manage"}); err != nil {
 		return err
 	}
@@ -48,7 +49,7 @@ func AdminSyncAIHandler(c *fiber.Ctx) error {
 	defer cancel()
 	pool := db.Get()
 
-	limit := c.QueryInt("limit", 100)
+	limit := parseIntDefault(c.Query("limit"), 100)
 	if limit < 1 {
 		limit = 100
 	}
@@ -109,7 +110,8 @@ func AdminSyncAIHandler(c *fiber.Ctx) error {
 			failed++
 			continue
 		}
-		sourceURL := "https://baritoutara.kemenag.go.id/berita/" + it.Slug
+		baseURL := strings.TrimRight(config.Cfg.SiteURL, "/")
+		sourceURL := baseURL + "/berita/" + it.Slug
 		_, err = pool.Exec(ctx, `
 			INSERT INTO kemenag_website.ai_knowledge_base (title, content_summary, source_type, source_url, embedding)
 			VALUES ($1, $2, 'berita', $3, $4::vector)`,

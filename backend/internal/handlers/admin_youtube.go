@@ -16,7 +16,7 @@ import (
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 var youtubeIDRe = regexp.MustCompile(`(?:youtube\.com/(?:watch\?v=|embed/|shorts/|live/)|youtu\.be/)([A-Za-z0-9_-]{6,15})`)
@@ -64,7 +64,7 @@ func fetchYoutubeInfo(videoID string) (title string, thumb string, err error) {
 }
 
 // AdminYoutubeListHandler — GET /api/admin/youtube
-func AdminYoutubeListHandler(c *fiber.Ctx) error {
+func AdminYoutubeListHandler(c fiber.Ctx) error {
 	if _, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{AllowEditor: true}); err != nil {
 		return err
 	}
@@ -99,13 +99,13 @@ func AdminYoutubeListHandler(c *fiber.Ctx) error {
 }
 
 // AdminYoutubeCreateHandler — POST /api/admin/youtube
-func AdminYoutubeCreateHandler(c *fiber.Ctx) error {
+func AdminYoutubeCreateHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "youtube:manage"})
 	if err != nil {
 		return err
 	}
 	var body fiber.Map
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	rawURL := lib.CleanString(body["url"], 2000)
@@ -165,7 +165,7 @@ func AdminYoutubeCreateHandler(c *fiber.Ctx) error {
 }
 
 // AdminYoutubeInfoHandler — GET /api/admin/youtube/info?url=... or ?id=...
-func AdminYoutubeInfoHandler(c *fiber.Ctx) error {
+func AdminYoutubeInfoHandler(c fiber.Ctx) error {
 	if _, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{AllowEditor: true}); err != nil {
 		return err
 	}
@@ -185,13 +185,13 @@ func AdminYoutubeInfoHandler(c *fiber.Ctx) error {
 }
 
 // AdminYoutubeUpdateHandler — PATCH /api/admin/youtube/:id
-func AdminYoutubeUpdateHandler(c *fiber.Ctx) error {
+func AdminYoutubeUpdateHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "youtube:manage"})
 	if err != nil {
 		return err
 	}
 	var body fiber.Map
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	id := c.Params("id")
@@ -229,7 +229,7 @@ func AdminYoutubeUpdateHandler(c *fiber.Ctx) error {
 }
 
 // AdminYoutubeDeleteHandler — DELETE /api/admin/youtube/:id
-func AdminYoutubeDeleteHandler(c *fiber.Ctx) error {
+func AdminYoutubeDeleteHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "youtube:manage"})
 	if err != nil {
 		return err

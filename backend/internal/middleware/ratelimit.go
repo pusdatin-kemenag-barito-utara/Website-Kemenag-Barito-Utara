@@ -7,7 +7,7 @@ import (
 
 	"kemenag-backend/internal/cache"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // RateLimitOpts konfigurasi rate limiter (pola rate-limit.ts Next.js).
@@ -18,7 +18,7 @@ type RateLimitOpts struct {
 }
 
 // GetClientIP membaca IP dari header proxy.
-func GetClientIP(c *fiber.Ctx) string {
+func GetClientIP(c fiber.Ctx) string {
 	if cf := c.Get("cf-connecting-ip"); cf != "" {
 		return strings.TrimSpace(cf)
 	}
@@ -81,7 +81,7 @@ func RateLimit(opts RateLimitOpts) fiber.Handler {
 	}
 	windowSec := maxInt64(1, windowMs/1000)
 
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		key := opts.Key
 		if strings.Contains(key, "{ip}") {
 			key = strings.ReplaceAll(key, "{ip}", GetClientIP(c))
@@ -104,7 +104,7 @@ func RateLimit(opts RateLimitOpts) fiber.Handler {
 	}
 }
 
-func responseJSON(c *fiber.Ctx, status int, body any) error {
+func responseJSON(c fiber.Ctx, status int, body any) error {
 	c.Set("Cache-Control", "no-store")
 	c.Set("Retry-After", c.Get("Retry-After"))
 	return c.Status(status).JSON(body)

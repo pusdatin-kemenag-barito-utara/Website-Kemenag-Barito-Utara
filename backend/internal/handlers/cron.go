@@ -11,10 +11,10 @@ import (
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
-func cronAuthorized(c *fiber.Ctx) bool {
+func cronAuthorized(c fiber.Ctx) bool {
 	secret := config.Cfg.CRONSecret
 	if secret == "" {
 		return false
@@ -31,7 +31,7 @@ func cronAuthorized(c *fiber.Ctx) bool {
 }
 
 // CronPublishBeritaHandler — GET/POST /api/cron/publish-berita
-func CronPublishBeritaHandler(c *fiber.Ctx) error {
+func CronPublishBeritaHandler(c fiber.Ctx) error {
 	if !cronAuthorized(c) {
 		return response.Error(c, 401, "Unauthorized.", "UNAUTHORIZED")
 	}
@@ -61,7 +61,7 @@ func CronPublishBeritaHandler(c *fiber.Ctx) error {
 }
 
 // CronPruneAuditHandler — GET/POST /api/cron/prune-audit (no-op, ditangani pusdatin)
-func CronPruneAuditHandler(c *fiber.Ctx) error {
+func CronPruneAuditHandler(c fiber.Ctx) error {
 	if !cronAuthorized(c) {
 		return response.Error(c, 401, "Unauthorized.", "UNAUTHORIZED")
 	}

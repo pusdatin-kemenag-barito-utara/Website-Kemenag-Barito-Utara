@@ -42,4 +42,7 @@ USER appuser
 EXPOSE 8080
 ENV PORT=8080
 
+HEALTHCHECK --interval=25s --timeout=5s --start-period=30s --retries=3 \
+    CMD wget -q -O - http://127.0.0.1:8080/api/health >/dev/null 2>&1 || exit 1
+
 CMD ["/app/server"]

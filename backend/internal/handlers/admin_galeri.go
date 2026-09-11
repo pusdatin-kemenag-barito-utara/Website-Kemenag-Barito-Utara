@@ -13,11 +13,11 @@ import (
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // AdminGaleriListHandler — GET /api/admin/galeri
-func AdminGaleriListHandler(c *fiber.Ctx) error {
+func AdminGaleriListHandler(c fiber.Ctx) error {
 	if _, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{}); err != nil {
 		return err
 	}
@@ -25,18 +25,18 @@ func AdminGaleriListHandler(c *fiber.Ctx) error {
 	defer cancel()
 	pool := db.Get()
 
-	page := c.QueryInt("page", 1)
+	page := parseIntDefault(c.Query("page"), 1)
 	if page < 1 {
 		page = 1
 	}
-	limit := c.QueryInt("limit", 16)
+	limit := parseIntDefault(c.Query("limit"), 16)
 	if limit < 1 {
 		limit = 16
 	}
 	offset := (page - 1) * limit
 
 	q := strings.TrimSpace(c.Query("q"))
-	year := c.QueryInt("year", 0)
+	year := parseIntDefault(c.Query("year"), 0)
 
 	whereClauses := []string{"1=1"}
 	args := []any{}
@@ -214,7 +214,7 @@ func uploadGalleryImages(ctx context.Context, uploads []any, defaultTitle string
 }
 
 // AdminGaleriCreateHandler — POST /api/admin/galeri (massal)
-func AdminGaleriCreateHandler(c *fiber.Ctx) error {
+func AdminGaleriCreateHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{})
 	if err != nil {
 		return err
@@ -224,7 +224,7 @@ func AdminGaleriCreateHandler(c *fiber.Ctx) error {
 		PublishedAt string `json:"published_at"`
 		Uploads     []any  `json:"gallery_uploads"`
 	}
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	if len(body.Uploads) == 0 {
@@ -285,13 +285,13 @@ func AdminGaleriCreateHandler(c *fiber.Ctx) error {
 }
 
 // AdminGaleriUpdateHandler — PUT /api/admin/galeri?id=
-func AdminGaleriUpdateHandler(c *fiber.Ctx) error {
+func AdminGaleriUpdateHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{})
 	if err != nil {
 		return err
 	}
 	var body fiber.Map
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	id := strings.TrimSpace(c.Query("id"))
@@ -366,7 +366,7 @@ func AdminGaleriUpdateHandler(c *fiber.Ctx) error {
 }
 
 // AdminGaleriDeleteHandler — DELETE /api/admin/galeri?id=
-func AdminGaleriDeleteHandler(c *fiber.Ctx) error {
+func AdminGaleriDeleteHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{})
 	if err != nil {
 		return err

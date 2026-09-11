@@ -10,11 +10,11 @@ import (
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // PublicSettingsHandler — GET /api/settings & GET /api/pengaturan (public settings for frontend & footer)
-func PublicSettingsHandler(c *fiber.Ctx) error {
+func PublicSettingsHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
 	pool := db.Get()
@@ -45,7 +45,7 @@ func PublicSettingsHandler(c *fiber.Ctx) error {
 }
 
 // AdminPengaturanGetHandler — GET /api/admin/pengaturan
-func AdminPengaturanGetHandler(c *fiber.Ctx) error {
+func AdminPengaturanGetHandler(c fiber.Ctx) error {
 	if _, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{AllowEditor: true}); err != nil {
 		return err
 	}
@@ -53,13 +53,13 @@ func AdminPengaturanGetHandler(c *fiber.Ctx) error {
 }
 
 // AdminPengaturanSaveHandler — POST /api/admin/pengaturan
-func AdminPengaturanSaveHandler(c *fiber.Ctx) error {
+func AdminPengaturanSaveHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "pengaturan:manage"})
 	if err != nil {
 		return err
 	}
 	var body fiber.Map
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 

@@ -1,3 +1,5 @@
+import { getSiteUrl } from "@/lib/env";
+
 export function buildWhatsAppLink(number, message = "") {
   const normalized = String(number || "").replace(/\D/g, "");
   const text = message ? `?text=${encodeURIComponent(message)}` : "";
@@ -27,13 +29,7 @@ export const siteInfo = {
   address: "Jl. Ahmad Yani No. 126, Muara Teweh, Kabupaten Barito Utara, Kalimantan Tengah 73812",
   complaintHref: "/kontak",
   logoSrc: "/assets/branding/kemenag.svg",
-  siteUrl:
-    (typeof import.meta !== "undefined" &&
-      (import.meta.env?.NEXT_PUBLIC_SITE_URL ||
-        import.meta.env?.PUBLIC_SITE_URL)) ||
-    (typeof process !== "undefined" &&
-      (process.env?.NEXT_PUBLIC_SITE_URL || process.env?.PUBLIC_SITE_URL)) ||
-    "https://baritoutara.kemenag.go.id",
+  siteUrl: getSiteUrl(),
 };
 
 export const siteLinks = {

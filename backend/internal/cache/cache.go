@@ -27,8 +27,28 @@ type memoryEntry struct {
 	expiresAt time.Time
 }
 
+var cleanupOnce sync.Once
+
+func startMemoryCleanup() {
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			memoryStore.Lock()
+			now := time.Now()
+			for k, v := range memoryStore.data {
+				if !v.expiresAt.IsZero() && now.After(v.expiresAt) {
+					delete(memoryStore.data, k)
+				}
+			}
+			memoryStore.Unlock()
+		}
+	}()
+}
+
 // Init membuat koneksi Redis opsional. Gagal → fallback in-memory.
 func Init(url string) {
+	cleanupOnce.Do(startMemoryCleanup)
 	rdbSetup = true
 	if url == "" {
 		log.Println("[cache] Redis tidak dikonfigurasi — memakai in-memory store")
@@ -47,17 +67,34 @@ func Init(url string) {
 	rdb = redis.NewClient(opts)
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
+	startPing := time.Now()
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		log.Printf("[cache] koneksi Redis gagal (%v) — memakai in-memory store", err)
 		rdb = nil
 		return
 	}
+	pingDuration := time.Since(startPing)
 	rdbURL = url
-	log.Println("[cache] koneksi Redis berhasil")
+	log.Printf("[cache] koneksi Redis berhasil (ping: %v)", pingDuration.Round(100*time.Microsecond))
+}
+
+// Ping mengecek status koneksi Redis dan mengembalikan latensi. Jika in-memory, mengembalikan 0.
+func Ping(ctx context.Context) (time.Duration, error) {
+	rdbMu.RLock()
+	r := rdb
+	rdbMu.RUnlock()
+	if r == nil {
+		return 0, nil
+	}
+	start := time.Now()
+	err := r.Ping(ctx).Err()
+	return time.Since(start), err
 }
 
 // HasRedis: true jika Redis aktif (bukan in-memory).
 func HasRedis() bool {
+	rdbMu.RLock()
+	defer rdbMu.RUnlock()
 	return rdb != nil
 }
 

@@ -1,7 +1,5 @@
 ---
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import criticalCss from "@/styles/critical.css?raw";
 import { siteInfo } from "@/data/site";
 import {
   organizationSchema,
@@ -17,14 +15,17 @@ import PwaRegister from "@/components/layout/PwaRegister";
 import PushNotificationPrompt from "@/components/features/pwa/PushNotificationPrompt.jsx";
 import AntiCopasGuard from "@/components/common/AntiCopasGuard.jsx";
 
+import {
+  getEnv,
+  getSiteUrl,
+  getGaId,
+  getGtmId,
+  getOneSignalAppId,
+  getGoogleSiteVerification,
+} from "@/lib/env";
+
 import "@/styles/tailwind.css";
 import "@/styles/globals.css";
-
-const BASE = (import.meta.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
-const oneSignalAppId =
-  import.meta.env.PUBLIC_ONESIGNAL_APP_ID ||
-  import.meta.env.NEXT_PUBLIC_ONESIGNAL_APP_ID ||
-  "";
 
 interface Props {
   title?: string;
@@ -48,25 +49,26 @@ const {
   jsonLd = [],
 } = Astro.props;
 
-const gaId =
-  import.meta.env.PUBLIC_GA_ID ||
-  import.meta.env.NEXT_PUBLIC_GA_ID ||
-  "";
-const gtmId =
-  import.meta.env.PUBLIC_GTM_ID ||
-  import.meta.env.NEXT_PUBLIC_GTM_ID ||
-  "";
+const BASE = getSiteUrl();
+const oneSignalAppId = getOneSignalAppId();
+const gaId = getGaId();
+const gtmId = getGtmId();
+const googleSiteVerification = getGoogleSiteVerification();
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-let criticalCss = "";
-try {
-  criticalCss = fs.readFileSync(
-    path.join(__dirname, "../styles/critical.css"),
-    "utf-8",
-  );
-} catch {
-  criticalCss = "";
-}
+const publicEnv = {
+  NEXT_PUBLIC_SITE_URL: getEnv("NEXT_PUBLIC_SITE_URL", BASE),
+  NEXT_PUBLIC_SUPABASE_URL: getEnv("NEXT_PUBLIC_SUPABASE_URL"),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: getEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: getEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY"),
+  NEXT_PUBLIC_GA_ID: gaId,
+  NEXT_PUBLIC_GTM_ID: gtmId,
+  NEXT_PUBLIC_ONESIGNAL_APP_ID: oneSignalAppId,
+  NEXT_PUBLIC_PUSDATIN_URL: getEnv("NEXT_PUBLIC_PUSDATIN_URL"),
+  NEXT_PUBLIC_SUPABASE_CMS_BUCKET: getEnv("NEXT_PUBLIC_SUPABASE_CMS_BUCKET", "cms-media"),
+  PUBLIC_API_URL: getEnv("PUBLIC_API_URL"),
+};
+
 const pageTitle = title && typeof title === "string" && !title.includes(siteInfo.shortName)
   ? `${title} | ${siteInfo.shortName}`
   : title || siteInfo.shortName;
@@ -79,62 +81,168 @@ const canonicalUrl = canonical.startsWith("http")
 const imageUrl = image.startsWith("http")
   ? image
   : `${BASE}${image.startsWith("/") ? image : "/" + image}`;
+
+const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL");
+let supabaseOrigin = "";
+try {
+  if (supabaseUrl) {
+    supabaseOrigin = new URL(supabaseUrl).origin;
+  }
+} catch {}
+
+const siteDomain = new URL(BASE || "https://baritoutara.kemenag.go.id").hostname;
+const imageMimeType = imageUrl.endsWith(".png")
+  ? "image/png"
+  : imageUrl.endsWith(".webp")
+  ? "image/webp"
+  : imageUrl.endsWith(".svg")
+  ? "image/svg+xml"
+  : "image/jpeg";
 ---
 
 <html lang="id" data-scroll-behavior="smooth">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Dynamic Runtime SSR Public Environment Injection -->
+    <script is:inline define:vars={{ publicEnv }}>
+      window.__PUBLIC_ENV__ = Object.assign({}, window.__PUBLIC_ENV__ || {}, publicEnv);
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#059669" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#047857" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f172a" />
+    <meta name="color-scheme" content="light dark" />
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonicalUrl} />
     <meta name="author" content={author || siteInfo.name} />
 
-    <!-- Open Graph / Facebook / WhatsApp / Telegram -->
-    <meta property="og:site_name" content={siteInfo.shortName} />
+    <!-- Open Graph / Facebook / WhatsApp / Telegram / LinkedIn — Enterprise Grade -->
+    <meta property="og:site_name" content={siteInfo.name} />
     <meta property="og:locale" content="id_ID" />
+    <meta property="og:locale:alternate" content="en_US" />
     <meta property="og:type" content={type} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:secure_url" content={imageUrl} />
     <meta property="og:image:alt" content={pageTitle} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content={imageMimeType} />
     {publishedTime && <meta property="article:published_time" content={publishedTime} />}
+    {publishedTime && <meta property="article:modified_time" content={publishedTime} />}
     {author && <meta property="article:author" content={author} />}
+    {type === "article" && <meta property="article:section" content="Berita & Informasi Publik" />}
+    {type === "article" && <meta property="article:publisher" content={BASE} />}
 
-    <!-- Twitter / X Card -->
+    <!-- Twitter / X Cards -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:domain" content={siteDomain} />
     <meta name="twitter:url" content={canonicalUrl} />
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={imageUrl} />
     <meta name="twitter:image:alt" content={pageTitle} />
+    <meta name="twitter:site" content="@kemenag_ri" />
+    <meta name="twitter:creator" content="@kemenag_ri" />
 
-    <link rel="preconnect" href={BASE} />
+    <!-- PWA & Mobile Web App Standalone Capabilities -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Kemenag Barut" />
+    <meta name="application-name" content="Kemenag Barut" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-TileColor" content="#059669" />
+    <meta name="msapplication-tap-highlight" content="no" />
+
+    <!-- App Icons -->
     <link rel="icon" href="/assets/icons/kemenag-192.png" sizes="192x192" type="image/png" />
     <link rel="icon" href="/assets/branding/kemenag.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/assets/icons/kemenag-192.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="application-name" content="Kemenag Barito Utara" />
-    <meta name="apple-mobile-web-app-title" content="Kemenag Barito Utara" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="google-site-verification" content="3ZH4iRGfl0Jurquu3gczAWNvE_-NQRDlEERr_ZDwJjA" />
+
+    <!-- Verification & Bot Directives -->
+    {googleSiteVerification && <meta name="google-site-verification" content={googleSiteVerification} />}
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+
+    <!-- Resource Hints & Priority Preconnects -->
+    <link rel="preconnect" href={BASE} />
+    {supabaseOrigin && (
+      <>
+        <link rel="preconnect" href={supabaseOrigin} crossorigin />
+        <link rel="dns-prefetch" href={supabaseOrigin} />
+      </>
+    )}
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Typography Priority Load -->
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    />
     <link
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+
     <style is:inline>{criticalCss}</style>
+
+    <!-- Standalone PWA In-App Navigation Interceptor (iOS & Android) -->
+    <script is:inline>
+      (function () {
+        var isStandalone =
+          window.navigator.standalone === true ||
+          window.matchMedia("(display-mode: standalone)").matches ||
+          window.matchMedia("(display-mode: fullscreen)").matches;
+
+        if (isStandalone) {
+          document.documentElement.classList.add("pwa-standalone");
+
+          // Menjaga navigasi internal tetap di dalam jendela aplikasi standalone tanpa membuka browser URL bar
+          document.addEventListener(
+            "click",
+            function (e) {
+              var a = e.target.closest("a");
+              if (!a || !a.href) return;
+              if (
+                a.target === "_blank" ||
+                a.hasAttribute("download") ||
+                a.getAttribute("rel")?.includes("external") ||
+                a.href.startsWith("mailto:") ||
+                a.href.startsWith("tel:") ||
+                a.href.startsWith("javascript:")
+              ) {
+                return;
+              }
+              // Navigasi internal domain sama
+              if (a.origin === window.location.origin) {
+                e.preventDefault();
+                window.location.assign(a.href);
+              }
+            },
+            false
+          );
+        }
+      })();
+    </script>
+
     <JsonLd data={[organizationSchema(), websiteSchema(), navigationSchema(), ...jsonLd]} />
 
-    <!-- Google Analytics (GA4) & Google Tag Manager (GTM) -->
+    <!-- Google Tag Manager & Google Analytics (GA4) Enterprise Data Layer Initialization -->
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        window.dataLayer.push(arguments);
+      }
+      window.gtag = gtag;
+    </script>
+
     {(gtmId || gaId) && (
       <>
         <link rel="preconnect" href="https://www.googletagmanager.com" />
@@ -159,13 +267,13 @@ const imageUrl = image.startsWith("http")
       <>
         <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />
         <script is:inline define:vars={{ gaId }}>
-          window.dataLayer = window.dataLayer || [];
-          function gtag() {
-            window.dataLayer.push(arguments);
-          }
           gtag("js", new Date());
           gtag("config", gaId, {
-            send_page_view: true,
+            send_page_view: false,
+            anonymize_ip: true,
+            cookie_flags: "SameSite=None;Secure",
+            allow_google_signals: true,
+            allow_ad_personalization_signals: false,
           });
         </script>
       </>
@@ -215,11 +323,11 @@ const imageUrl = image.startsWith("http")
       })();
     </script>
     <RealtimeSync client:load />
-    <PageViewTracker client:load />
-    <PwaRegister client:load />
+    <PageViewTracker client:idle />
+    <PwaRegister client:idle />
     <PushNotificationPrompt client:idle />
     <AntiCopasGuard client:load />
-    <ChatWidget client:load />
-    <AccessibilityWidget client:load />
+    <ChatWidget client:idle />
+    <AccessibilityWidget client:idle />
   </body>
 </html>

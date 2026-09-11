@@ -7,17 +7,21 @@
  *   trackDownload("laporan-kinerja-2025.pdf", "laporan");
  *
  * Semua event otomatis di-no-op jika GA belum dimuat (dev mode, bot, dll).
- */
+import {
+  pushAnalyticsEvent,
+  trackDocumentDownload,
+  trackSearchQuery,
+  trackOutboundClick,
+  trackScrollDepth as sendScrollDepth,
+} from "@/lib/analytics";
 
 /**
- * Kirim event GA4 secara aman.
- * @param {string} eventName - nama event GA4
+ * Kirim event GA4 & GTM secara aman.
+ * @param {string} eventName - nama event GA4 / GTM
  * @param {Record<string, any>} params - parameter tambahan
  */
 function sendGAEvent(eventName, params = {}) {
-  if (typeof window === "undefined") return;
-  if (typeof window.gtag !== "function") return;
-  window.gtag("event", eventName, params);
+  pushAnalyticsEvent(eventName, params);
 }
 
 /**

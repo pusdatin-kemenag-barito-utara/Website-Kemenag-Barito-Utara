@@ -18,7 +18,7 @@ const nextShims = {
   "@ai-sdk/react": fileURLToPath(new URL("./src/shims/ai-sdk-react.js", import.meta.url)),
 };
 
-import { loadEnv, createLogger } from "vite";
+import { createLogger } from "vite";
 
 // Filter out benign browser socket cancellations (ECONNRESET/EPIPE) in dev proxy
 const customLogger = createLogger();
@@ -39,14 +39,13 @@ customLogger.error = (msg, options) => {
   originalError(msg, options);
 };
 
-// Load env variables manually from the root directory so we can use them in config
-const env = loadEnv("", fileURLToPath(new URL("..", import.meta.url)), "");
-Object.assign(process.env, env);
+// Environment variables dikelola secara terpusat oleh Infisical Cloud (process.env)
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
 export default defineConfig({
   output: "static",
   adapter: node({ mode: "standalone" }),
-  site: process.env.NEXT_PUBLIC_SITE_URL,
+  site: siteUrl,
   integrations: [
     react(),
     sitemap({
@@ -55,7 +54,6 @@ export default defineConfig({
   ],
   vite: {
     customLogger,
-    envDir: fileURLToPath(new URL("..", import.meta.url)), // .env.local di root monorepo
     envPrefix: ["PUBLIC_", "NEXT_PUBLIC_"],
     plugins: [tailwindcss()],
     resolve: {
@@ -68,6 +66,39 @@ export default defineConfig({
     define: {
       "process.env.NODE_ENV": JSON.stringify(
         process.env.NODE_ENV || "development",
+      ),
+      "process.env.NEXT_PUBLIC_SITE_URL": JSON.stringify(
+        process.env.NEXT_PUBLIC_SITE_URL || "",
+      ),
+      "process.env.PUBLIC_API_URL": JSON.stringify(
+        process.env.PUBLIC_API_URL || "",
+      ),
+      "process.env.NEXT_PUBLIC_SUPABASE_URL": JSON.stringify(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+      ),
+      "process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY": JSON.stringify(
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+      ),
+      "process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "",
+      ),
+      "process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY": JSON.stringify(
+        process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "",
+      ),
+      "process.env.NEXT_PUBLIC_GA_ID": JSON.stringify(
+        process.env.NEXT_PUBLIC_GA_ID || "",
+      ),
+      "process.env.NEXT_PUBLIC_GTM_ID": JSON.stringify(
+        process.env.NEXT_PUBLIC_GTM_ID || "",
+      ),
+      "process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID": JSON.stringify(
+        process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || "",
+      ),
+      "process.env.NEXT_PUBLIC_PUSDATIN_URL": JSON.stringify(
+        process.env.NEXT_PUBLIC_PUSDATIN_URL || "",
+      ),
+      "process.env.NEXT_PUBLIC_SUPABASE_CMS_BUCKET": JSON.stringify(
+        process.env.NEXT_PUBLIC_SUPABASE_CMS_BUCKET || "cms-media",
       ),
     },
     server: {

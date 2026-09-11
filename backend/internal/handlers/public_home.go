@@ -13,7 +13,7 @@ import (
 	"kemenag-backend/internal/db"
 	"kemenag-backend/internal/response"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -42,7 +42,7 @@ func queryHomeBerita(ctx context.Context, pool *pgxpool.Pool, where string, orde
 }
 
 // HomeHandler — GET /api/home (agregat data beranda, paritas beranda/page.js).
-func HomeHandler(c *fiber.Ctx) error {
+func HomeHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 15*time.Second)
 	defer cancel()
 
@@ -311,7 +311,7 @@ func HomeHandler(c *fiber.Ctx) error {
 }
 
 // YoutubePublicHandler — GET /api/youtube (video published untuk halaman video).
-func YoutubePublicHandler(c *fiber.Ctx) error {
+func YoutubePublicHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
 

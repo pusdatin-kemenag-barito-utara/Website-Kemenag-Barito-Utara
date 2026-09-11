@@ -18,11 +18,11 @@ import (
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // AdminLaporanListHandler — GET /api/admin/laporan
-func AdminLaporanListHandler(c *fiber.Ctx) error {
+func AdminLaporanListHandler(c fiber.Ctx) error {
 	if _, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{AllowEditor: true}); err != nil {
 		return err
 	}
@@ -33,80 +33,80 @@ func AdminLaporanListHandler(c *fiber.Ctx) error {
 	// 1. Ambil semua kategori beserta jumlah dokumennya
 	catRows, err := pool.Query(ctx, `
 		SELECT c.id, c.slug, c.title, c.description, c.intro, c.sort_order, c.is_active,
-		       COUNT(d.id) AS document_count
+		       COUNT(d.id) AS doc_count
 		FROM kemenag_website.report_categories c
 		LEFT JOIN kemenag_website.report_documents d ON d.category_id = c.id
-		GROUP BY c.id ORDER BY c.sort_order ASC, c.title ASC`)
+		GROUP BY c.id
+		ORDER BY c.sort_order ASC, c.title ASC`)
 	if err != nil {
-		return response.Error(c, 500, "Gagal mengambil kategori.", "DB_ERROR")
+		return response.Error(c, 500, "Gagal mengambil kategori laporan.", "DB_ERROR")
 	}
 	defer catRows.Close()
 
-	categories := []fiber.Map{}
+	var categories []fiber.Map
 	for catRows.Next() {
-		var id, cSlug, title, description, intro string
+		var id, slug, title, description, intro string
 		var sortOrder int
 		var isActive bool
 		var docCount int64
-		if err := catRows.Scan(&id, &cSlug, &title, &description, &intro, &sortOrder, &isActive, &docCount); err == nil {
-			categories = append(categories, fiber.Map{
-				"id":             id,
-				"slug":           cSlug,
-				"title":          title,
-				"description":    description,
-				"intro":          intro,
-				"sort_order":     sortOrder,
-				"is_active":      isActive,
-				"document_count": docCount,
-			})
+		if err := catRows.Scan(&id, &slug, &title, &description, &intro, &sortOrder, &isActive, &docCount); err != nil {
+			continue
 		}
-	}
-
-	slug := strings.TrimSpace(c.Query("slug"))
-	if slug == "" && len(categories) > 0 {
-		slug = categories[0]["slug"].(string)
-	}
-
-	if slug == "" {
-		return response.OK(c, fiber.Map{
-			"categories":     categories,
-			"activeCategory": nil,
-			"documents":      []any{},
-			"total":          0,
-			"totalPages":     1,
-			"page":           1,
-			"limit":          20,
-			"availableYears": []int{},
+		categories = append(categories, fiber.Map{
+			"id":          id,
+			"slug":        slug,
+			"title":       title,
+			"description": description,
+			"intro":       intro,
+			"sort_order":  sortOrder,
+			"is_active":   isActive,
+			"doc_count":   docCount,
 		})
 	}
 
-	// 2. Ambil detail kategori aktif
-	var activeCat fiber.Map
-	for _, cat := range categories {
-		if cat["slug"] == slug {
-			activeCat = cat
-			break
+	// 2. Kategori aktif yang diminta (default: kategori pertama)
+	activeCategorySlug := strings.TrimSpace(c.Query("category"))
+	var activeCategory fiber.Map
+	if activeCategorySlug != "" {
+		for _, cat := range categories {
+			if cat["slug"] == activeCategorySlug {
+				activeCategory = cat
+				break
+			}
 		}
 	}
+	if activeCategory == nil && len(categories) > 0 {
+		activeCategory = categories[0]
+	}
 
-	var catID string
-	if activeCat != nil {
-		catID = activeCat["id"].(string)
-	} else {
-		err := pool.QueryRow(ctx, `SELECT id FROM kemenag_website.report_categories WHERE slug = $1`, slug).Scan(&catID)
-		if err != nil {
+	if activeCategory == nil {
+		return response.OK(c, fiber.Map{
+			"categories":     categories,
+			"activeCategory": nil,
+			"documents":      []fiber.Map{},
+			"total":          0,
+			"availableYears": []int{},
+			"currentYear":    nil,
+		})
+	}
+
+	catID := activeCategory["id"].(string)
+	if activeCategorySlug != "" && activeCategorySlug != activeCategory["slug"] {
+		var exists bool
+		_ = pool.QueryRow(ctx, `SELECT true FROM kemenag_website.report_categories WHERE id = $1`, catID).Scan(&exists)
+		if !exists {
 			return response.Error(c, 404, "Kategori tidak ditemukan.", "NOT_FOUND")
 		}
 	}
 
 	// 3. Filter query dokumen
-	year := c.QueryInt("year")
+	year := parseIntDefault(c.Query("year"), 0)
 	searchQuery := strings.TrimSpace(c.Query("q"))
-	page := c.QueryInt("page", 1)
+	page := parseIntDefault(c.Query("page"), 1)
 	if page < 1 {
 		page = 1
 	}
-	limit := c.QueryInt("limit", 20)
+	limit := parseIntDefault(c.Query("limit"), 20)
 	if limit < 1 {
 		limit = 20
 	}
@@ -196,7 +196,7 @@ func AdminLaporanListHandler(c *fiber.Ctx) error {
 
 	return response.OK(c, fiber.Map{
 		"categories":     categories,
-		"activeCategory": activeCat,
+		"activeCategory": activeCategory,
 		"documents":      docs,
 		"total":          total,
 		"totalPages":     totalPages,
@@ -222,7 +222,7 @@ func safeBaseFilename(name string) string {
 }
 
 // AdminLaporanUploadHandler — POST /api/admin/laporan/upload (multipart files[])
-func AdminLaporanUploadHandler(c *fiber.Ctx) error {
+func AdminLaporanUploadHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "laporan:manage", AllowEditor: true})
 	if err != nil {
 		return err
@@ -354,7 +354,7 @@ func AdminLaporanUploadHandler(c *fiber.Ctx) error {
 }
 
 // AdminLaporanUpdateHandler — PUT /api/admin/laporan/:id (multipart atau JSON)
-func AdminLaporanUpdateHandler(c *fiber.Ctx) error {
+func AdminLaporanUpdateHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "laporan:manage", AllowEditor: true})
 	if err != nil {
 		return err
@@ -386,7 +386,7 @@ func AdminLaporanUpdateHandler(c *fiber.Ctx) error {
 			return response.Error(c, 400, "Judul wajib diisi.", "VALIDATION_ERROR")
 		}
 		description = c.FormValue("description")
-		year = c.QueryInt("year")
+		year = parseIntDefault(c.Query("year"), 0)
 		if y := c.FormValue("year"); y != "" {
 			year = atoiSafe(y)
 		}
@@ -442,7 +442,7 @@ func AdminLaporanUpdateHandler(c *fiber.Ctx) error {
 	} else {
 		// JSON metadata only
 		var body fiber.Map
-		if err := c.BodyParser(&body); err != nil {
+		if err := c.Bind().Body(&body); err != nil {
 			return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 		}
 		title = lib.CleanString(body["title"], 180)
@@ -514,7 +514,7 @@ func AdminLaporanUpdateHandler(c *fiber.Ctx) error {
 }
 
 // AdminLaporanDeleteHandler — DELETE /api/admin/laporan/:id
-func AdminLaporanDeleteHandler(c *fiber.Ctx) error {
+func AdminLaporanDeleteHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "laporan:manage", AllowEditor: true})
 	if err != nil {
 		return err
@@ -551,11 +551,11 @@ func AdminLaporanDeleteHandler(c *fiber.Ctx) error {
 }
 
 // AdminLaporanViewIncrementHandler — POST /api/admin/laporan/view
-func AdminLaporanViewIncrementHandler(c *fiber.Ctx) error {
+func AdminLaporanViewIncrementHandler(c fiber.Ctx) error {
 	var body struct {
 		ID string `json:"id"`
 	}
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	if body.ID == "" {
@@ -569,7 +569,7 @@ func AdminLaporanViewIncrementHandler(c *fiber.Ctx) error {
 }
 
 // AdminLaporanViewProxyHandler — GET /api/admin/laporan/view/:id
-func AdminLaporanViewProxyHandler(c *fiber.Ctx) error {
+func AdminLaporanViewProxyHandler(c fiber.Ctx) error {
 	id := c.Params("id")
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()

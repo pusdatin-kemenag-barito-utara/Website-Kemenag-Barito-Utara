@@ -3,6 +3,7 @@ import Image from "@/components/common/NextImage";
 import Link from "@/components/common/NextLink";
 import { motion, AnimatePresence } from "framer-motion";
 import Turnstile from "@/components/ui/Turnstile";
+import { getTurnstileSiteKey } from "@/lib/env";
 import { siteInfo } from "@/data/site";
 import { useAdminLogin } from "@/hooks/useAdminLogin";
 import { EyeIcon, inputClassName, LoginLoading } from "./login/LoginUI";
@@ -169,7 +170,7 @@ export default function AdminLoginClient({ initialUnauthorized = false }) {
 
               <div className="pt-2 flex justify-center w-full">
                 <Turnstile
-                  siteKey={import.meta.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                  siteKey={getTurnstileSiteKey()}
                   onVerify={l.setTurnstileToken}
                   resetKey={l.turnstileResetKey}
                   theme="light"

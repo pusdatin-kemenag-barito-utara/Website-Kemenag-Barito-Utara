@@ -21,20 +21,6 @@ RUN npm install --prefix frontend
 COPY frontend/ ./frontend/
 
 # Build Astro standalone bundle
-ARG NEXT_PUBLIC_SITE_URL
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ARG NEXT_PUBLIC_GA_ID
-ARG NEXT_PUBLIC_GTM_ID
-ARG NEXT_PUBLIC_ONESIGNAL_APP_ID
-
-ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
-ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-ENV NEXT_PUBLIC_GA_ID=${NEXT_PUBLIC_GA_ID}
-ENV NEXT_PUBLIC_GTM_ID=${NEXT_PUBLIC_GTM_ID}
-ENV NEXT_PUBLIC_ONESIGNAL_APP_ID=${NEXT_PUBLIC_ONESIGNAL_APP_ID}
-
 RUN npm --prefix frontend run build
 
 # --- Stage 2: Production Runner ---
@@ -61,5 +47,8 @@ COPY --from=builder --chown=astro:nodejs /app/frontend/package.json ./package.js
 USER astro
 
 EXPOSE 3000
+
+HEALTHCHECK --interval=25s --timeout=5s --start-period=30s --retries=3 \
+    CMD wget -q -O - http://127.0.0.1:3000/ || exit 1
 
 CMD ["node", "./dist/server/entry.mjs"]

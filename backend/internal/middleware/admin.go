@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // AdminAuthOpts setara opsi validateAdmin di cms-utils.ts.
@@ -22,7 +22,7 @@ const (
 // RequireAdmin guard API admin — port validateAdmin({permission, allowEditor}).
 // Mengembalikan (*SessionContext, *PermissionContext, error); error non-nil
 // berarti response 401/403 sudah dikirim.
-func RequireAdmin(c *fiber.Ctx, opts AdminAuthOpts) (*SessionContext, *PermissionContext, error) {
+func RequireAdmin(c fiber.Ctx, opts AdminAuthOpts) (*SessionContext, *PermissionContext, error) {
 	session := LoadSession(c)
 
 	if !session.IsAuthenticated {
@@ -88,7 +88,7 @@ func RequireAdmin(c *fiber.Ctx, opts AdminAuthOpts) (*SessionContext, *Permissio
 }
 
 // RequireSuperAdmin: khusus super_admin (403 untuk role lain).
-func RequireSuperAdmin(c *fiber.Ctx) (*SessionContext, error) {
+func RequireSuperAdmin(c fiber.Ctx) (*SessionContext, error) {
 	session := LoadSession(c)
 	if !session.IsAuthenticated {
 		_ = responseJSON(c, 401, fiber.Map{
@@ -109,7 +109,7 @@ func RequireSuperAdmin(c *fiber.Ctx) (*SessionContext, error) {
 }
 
 // GetSession mengambil sesi yang sudah diset RequireAdmin.
-func GetSession(c *fiber.Ctx) *SessionContext {
+func GetSession(c fiber.Ctx) *SessionContext {
 	if v, ok := c.Locals(LocalSession).(*SessionContext); ok {
 		return v
 	}
@@ -117,7 +117,7 @@ func GetSession(c *fiber.Ctx) *SessionContext {
 }
 
 // GetPermCtx mengambil permission context yang sudah diset RequireAdmin.
-func GetPermCtx(c *fiber.Ctx) *PermissionContext {
+func GetPermCtx(c fiber.Ctx) *PermissionContext {
 	if v, ok := c.Locals(LocalPermCtx).(*PermissionContext); ok {
 		return v
 	}

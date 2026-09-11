@@ -6,17 +6,18 @@ import (
 	"sync"
 	"time"
 
+	"kemenag-backend/internal/cache"
 	"kemenag-backend/internal/db"
 	"kemenag-backend/internal/lib"
 	"kemenag-backend/internal/middleware"
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func adminIP(c *fiber.Ctx) any {
+func adminIP(c fiber.Ctx) any {
 	return middleware.GetClientIP(c)
 }
 
@@ -30,26 +31,33 @@ var (
 	adminBeritaCache   *cachedAdminBerita
 )
 
-// InvalidateAdminBeritaCache membersihkan cache daftar berita admin.
+// InvalidateAdminBeritaCache membersihkan cache daftar berita admin & public cache.
 func InvalidateAdminBeritaCache() {
 	adminBeritaCacheMu.Lock()
 	adminBeritaCache = nil
 	adminBeritaCacheMu.Unlock()
 	InvalidateDashboardStatsCache()
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = cache.DelPrefix(ctx, "berita:")
+		_ = cache.Del(ctx, "home:aggregate")
+	}()
 }
 
 // AdminBeritaListHandler — GET /api/admin/berita
-func AdminBeritaListHandler(c *fiber.Ctx) error {
+func AdminBeritaListHandler(c fiber.Ctx) error {
 	_, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "berita:view", AllowEditor: true})
 	if err != nil {
 		return err
 	}
 
-	limit := c.QueryInt("limit", 1000)
+	limit := parseIntDefault(c.Query("limit"), 1000)
 	if limit < 1 {
 		limit = 1000
 	}
-	page := c.QueryInt("page", 1)
+	page := parseIntDefault(c.Query("page"), 1)
 	if page < 1 {
 		page = 1
 	}
@@ -127,7 +135,7 @@ func AdminBeritaListHandler(c *fiber.Ctx) error {
 }
 
 // AdminBeritaGetHandler — GET /api/admin/berita/:id
-func AdminBeritaGetHandler(c *fiber.Ctx) error {
+func AdminBeritaGetHandler(c fiber.Ctx) error {
 	_, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "berita:update", AllowEditor: true})
 	if err != nil {
 		return err
@@ -216,14 +224,14 @@ func (e *validationErr) Error() string {
 }
 
 // AdminBeritaCreateHandler — POST /api/admin/berita
-func AdminBeritaCreateHandler(c *fiber.Ctx) error {
+func AdminBeritaCreateHandler(c fiber.Ctx) error {
 	session, pc, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "berita:create", AllowEditor: true})
 	if err != nil {
 		return err
 	}
 
 	var raw fiber.Map
-	if err := c.BodyParser(&raw); err != nil {
+	if err := c.Bind().Body(&raw); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	data, err := validateBeritaPayload(raw, false)
@@ -345,14 +353,14 @@ func AdminBeritaCreateHandler(c *fiber.Ctx) error {
 }
 
 // AdminBeritaUpdateHandler — PUT /api/admin/berita/:id
-func AdminBeritaUpdateHandler(c *fiber.Ctx) error {
+func AdminBeritaUpdateHandler(c fiber.Ctx) error {
 	session, pc, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "berita:update", AllowEditor: true})
 	if err != nil {
 		return err
 	}
 
 	var raw fiber.Map
-	if err := c.BodyParser(&raw); err != nil {
+	if err := c.Bind().Body(&raw); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	data, err := validateBeritaPayload(raw, true)
@@ -477,7 +485,7 @@ func AdminBeritaUpdateHandler(c *fiber.Ctx) error {
 }
 
 // AdminBeritaDeleteHandler — DELETE /api/admin/berita/:id
-func AdminBeritaDeleteHandler(c *fiber.Ctx) error {
+func AdminBeritaDeleteHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "berita:delete", AllowEditor: true})
 	if err != nil {
 		return err
@@ -515,14 +523,14 @@ func AdminBeritaDeleteHandler(c *fiber.Ctx) error {
 }
 
 // AdminBeritaUploadImageHandler — POST /api/admin/berita/upload-image
-func AdminBeritaUploadImageHandler(c *fiber.Ctx) error {
+func AdminBeritaUploadImageHandler(c fiber.Ctx) error {
 	if _, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{AllowEditor: true}); err != nil {
 		return err
 	}
 	var body struct {
 		ImageBase64 string `json:"image_base64"`
 	}
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	if !strings.HasPrefix(body.ImageBase64, "data:image/") {

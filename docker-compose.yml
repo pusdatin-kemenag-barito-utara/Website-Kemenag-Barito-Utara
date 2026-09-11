@@ -7,11 +7,15 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
-    env_file:
-      - .env.local
     environment:
       - PORT=8080
       - TZ=Asia/Jakarta
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/api/health || exit 1"]
+      interval: 25s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   frontend:
     build:
@@ -21,8 +25,6 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
-    env_file:
-      - .env.local
     environment:
       - PORT=3000
       - HOST=0.0.0.0
@@ -30,4 +32,12 @@ services:
       - BACKEND_INTERNAL_URL=http://backend:8080
       - TZ=Asia/Jakarta
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/ || exit 1"]
+      interval: 25s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+

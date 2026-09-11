@@ -1,10 +1,9 @@
+import { getSupabaseUrl } from "@/lib/env";
+
 function getSupabaseStorageMedia() {
-  const base =
-    (typeof process !== "undefined" && (process.env?.NEXT_PUBLIC_SUPABASE_URL || process.env?.PUBLIC_SUPABASE_URL)) ||
-    (typeof import.meta !== "undefined" && (import.meta.env?.NEXT_PUBLIC_SUPABASE_URL || import.meta.env?.PUBLIC_SUPABASE_URL)) ||
-    "";
+  const base = getSupabaseUrl();
   return base
-    ? `${base.replace(/\/$/, "")}/storage/v1/object/public/cms-media`
+    ? `${base}/storage/v1/object/public/cms-media`
     : "/storage/v1/object/public/cms-media";
 }
 

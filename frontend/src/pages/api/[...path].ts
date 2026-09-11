@@ -28,13 +28,18 @@ export const ALL: APIRoute = async ({ request, params }) => {
 
   try {
     const hasBody = request.method !== "GET" && request.method !== "HEAD";
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
     const response = await fetch(target, {
       method: request.method,
       headers: reqHeaders,
       body: hasBody ? request.body : undefined,
+      signal: controller.signal,
       // @ts-ignore
       duplex: "half",
     });
+    clearTimeout(timeoutId);
 
     const resHeaders = new Headers();
     response.headers.forEach((val, key) => {

@@ -2,16 +2,26 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
+	"strconv"
 	"strings"
 	"time"
 
+	"kemenag-backend/internal/cache"
 	"kemenag-backend/internal/config"
 	"kemenag-backend/internal/db"
 	"kemenag-backend/internal/response"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+func parseIntDefault(s string, def int) int {
+	if v, err := strconv.Atoi(strings.TrimSpace(s)); err == nil && v > 0 {
+		return v
+	}
+	return def
+}
 
 // beritaRow bentuk mentah berita.
 type beritaRow struct {
@@ -66,36 +76,49 @@ func beritaToMap(r *beritaRow, withContent bool) fiber.Map {
 const beritaCols = `id, slug, title, excerpt, category, cover_image, is_published, published_at, created_at, updated_at, views`
 
 // BeritaListHandler — GET /api/berita (list + pagination, cari berita.js)
-func BeritaListHandler(c *fiber.Ctx) error {
+func BeritaListHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 10*time.Second)
 	defer cancel()
+
+	page := parseIntDefault(c.Query("page"), 1)
+	if page < 1 {
+		page = 1
+	}
+	limit := parseIntDefault(c.Query("limit"), 18)
+	if limit < 1 || limit > 100 {
+		limit = 18
+	}
+	category := strings.TrimSpace(c.Query("category"))
+	q := strings.TrimSpace(c.Query("q"))
+	month := strings.TrimSpace(c.Query("month"))
+	sortBy := strings.TrimSpace(c.Query("sort"))
+
+	cacheKey := "berita:list:" + itoa(page) + ":" + itoa(limit) + ":" + category + ":" + q + ":" + month + ":" + sortBy
+	if cached, err := cache.Get(ctx, cacheKey); err == nil && cached != "" {
+		c.Set("Content-Type", "application/json")
+		response.CDNCacheControl(c, 60, 120)
+		return c.SendString(cached)
+	}
+
 	pool := db.Get()
 	if pool == nil {
 		return response.Error(c, 503, "Database tidak tersedia", "DB_UNAVAILABLE")
 	}
 
-	page := c.QueryInt("page", 1)
-	if page < 1 {
-		page = 1
-	}
-	limit := c.QueryInt("limit", 18)
-	if limit < 1 || limit > 100 {
-		limit = 18
-	}
 	offset := (page - 1) * limit
 
 	where := "is_published = true"
 	args := []any{limit, offset}
 
-	if category := strings.TrimSpace(c.Query("category")); category != "" && category != "all" {
+	if category != "" && category != "all" {
 		where += " AND category = $" + itoa(len(args)+1)
 		args = append(args, category)
 	}
-	if q := strings.TrimSpace(c.Query("q")); q != "" {
+	if q != "" {
 		where += " AND (title ILIKE $" + itoa(len(args)+1) + " OR excerpt ILIKE $" + itoa(len(args)+1) + ")"
 		args = append(args, "%"+q+"%")
 	}
-	if month := strings.TrimSpace(c.Query("month")); len(month) == 7 {
+	if len(month) == 7 {
 		where += " AND to_char(published_at AT TIME ZONE 'UTC', 'YYYY-MM') = $" + itoa(len(args)+1)
 		args = append(args, month)
 	}
@@ -104,7 +127,6 @@ func BeritaListHandler(c *fiber.Ctx) error {
 	countQuery := "SELECT COUNT(*) FROM kemenag_website.berita WHERE " + where
 	_ = pool.QueryRow(ctx, countQuery, args[2:]...).Scan(&total)
 
-	sortBy := strings.TrimSpace(c.Query("sort"))
 	var orderBy string
 	switch sortBy {
 	case "oldest":
@@ -132,17 +154,22 @@ func BeritaListHandler(c *fiber.Ctx) error {
 		list = append(list, beritaToMap(r, false))
 	}
 
-	response.CDNCacheControl(c, 60, 120)
-	return c.JSON(fiber.Map{
+	res := fiber.Map{
 		"items": list,
 		"total": total,
 		"page":  page,
 		"limit": limit,
-	})
+	}
+	if b, err := json.Marshal(res); err == nil {
+		_ = cache.Set(ctx, cacheKey, string(b), 60*time.Second)
+	}
+
+	response.CDNCacheControl(c, 60, 120)
+	return c.JSON(res)
 }
 
 // BeritaMonthsHandler — GET /api/berita/months (bulan publikasi berita)
-func BeritaMonthsHandler(c *fiber.Ctx) error {
+func BeritaMonthsHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
 	pool := db.Get()
@@ -190,14 +217,26 @@ func newIntlMonth() func(time.Time) string {
 }
 
 // BeritaDetailHandler — GET /api/berita/:slug (detail + reactions + author)
-func BeritaDetailHandler(c *fiber.Ctx) error {
+func BeritaDetailHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 10*time.Second)
 	defer cancel()
+
+	slug := strings.TrimSpace(c.Params("slug"))
+	if slug == "" {
+		return response.Error(c, 400, "Slug wajib diisi.", "SLUG_REQUIRED")
+	}
+
+	cacheKey := "berita:detail:" + slug
+	if cached, err := cache.Get(ctx, cacheKey); err == nil && cached != "" {
+		c.Set("Content-Type", "application/json")
+		response.CDNCacheControl(c, 120, 300)
+		return c.SendString(cached)
+	}
+
 	pool := db.Get()
 	if pool == nil {
 		return response.Error(c, 503, "Database tidak tersedia", "DB_UNAVAILABLE")
 	}
-	slug := strings.TrimSpace(c.Params("slug"))
 
 	var r beritaRow
 	var reactB, reactI, reactN int64
@@ -232,7 +271,13 @@ func BeritaDetailHandler(c *fiber.Ctx) error {
 	m["prev"] = prev
 	m["next"] = next
 
-	return response.JSON(c, 200, fiber.Map{"berita": m})
+	res := fiber.Map{"berita": m}
+	if b, err := json.Marshal(res); err == nil {
+		_ = cache.Set(ctx, cacheKey, string(b), 5*time.Minute)
+	}
+
+	response.CDNCacheControl(c, 120, 300)
+	return response.JSON(c, 200, res)
 }
 
 func getRelatedBerita(ctx context.Context, pool *pgxpool.Pool, id, category string, limit int) ([]fiber.Map, error) {
@@ -288,7 +333,7 @@ func getAdjacentBerita(ctx context.Context, pool *pgxpool.Pool, publishedAt *tim
 }
 
 // BeritaViewHandler — POST /api/berita/:slug/view
-func BeritaViewHandler(c *fiber.Ctx) error {
+func BeritaViewHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 5*time.Second)
 	defer cancel()
 	pool := db.Get()
@@ -306,7 +351,7 @@ func BeritaViewHandler(c *fiber.Ctx) error {
 }
 
 // BeritaReactGetHandler — GET /api/berita/:slug/react
-func BeritaReactGetHandler(c *fiber.Ctx) error {
+func BeritaReactGetHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 5*time.Second)
 	defer cancel()
 	pool := db.Get()
@@ -328,7 +373,7 @@ func BeritaReactGetHandler(c *fiber.Ctx) error {
 }
 
 // BeritaReactHandler — POST /api/berita/:slug/react
-func BeritaReactHandler(c *fiber.Ctx) error {
+func BeritaReactHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 5*time.Second)
 	defer cancel()
 	pool := db.Get()
@@ -342,7 +387,7 @@ func BeritaReactHandler(c *fiber.Ctx) error {
 		Action       string `json:"action"`
 		PreviousType string `json:"previousType"`
 	}
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	if body.Type != "bermanfaat" && body.Type != "inspiratif" && body.Type != "informatif" {
@@ -354,23 +399,22 @@ func BeritaReactHandler(c *fiber.Ctx) error {
 	if body.Action == "remove" {
 		delta = -1
 	}
-	if body.Action == "switch" && (body.PreviousType == "bermanfaat" || body.PreviousType == "inspiratif" || body.PreviousType == "informatif") {
+	var b, i, inf int
+	var err error
+	if body.Action == "switch" && (body.PreviousType == "bermanfaat" || body.PreviousType == "inspiratif" || body.PreviousType == "informatif") && body.PreviousType != body.Type {
 		prevCol := "reaction_" + body.PreviousType
-		_, _ = pool.Exec(ctx,
-			"UPDATE kemenag_website.berita SET "+prevCol+" = GREATEST(0, "+prevCol+" - 1) WHERE slug = $1", slug)
+		err = pool.QueryRow(ctx,
+			"UPDATE kemenag_website.berita SET "+prevCol+" = GREATEST(0, "+prevCol+" - 1), "+col+" = GREATEST(0, "+col+" + 1) WHERE slug = $1 RETURNING COALESCE(reaction_bermanfaat, 0), COALESCE(reaction_inspiratif, 0), COALESCE(reaction_informatif, 0)",
+			slug).Scan(&b, &i, &inf)
+	} else {
+		err = pool.QueryRow(ctx,
+			"UPDATE kemenag_website.berita SET "+col+" = GREATEST(0, "+col+" + $1) WHERE slug = $2 RETURNING COALESCE(reaction_bermanfaat, 0), COALESCE(reaction_inspiratif, 0), COALESCE(reaction_informatif, 0)",
+			delta, slug).Scan(&b, &i, &inf)
 	}
-
-	_, err := pool.Exec(ctx,
-		"UPDATE kemenag_website.berita SET "+col+" = GREATEST(0, "+col+" + $1) WHERE slug = $2",
-		delta, slug)
 	if err != nil {
 		return response.Error(c, 500, "Gagal memperbarui reaksi", "DB_ERROR")
 	}
 
-	var b, i, inf int
-	_ = pool.QueryRow(ctx, `
-		SELECT COALESCE(reaction_bermanfaat, 0), COALESCE(reaction_inspiratif, 0), COALESCE(reaction_informatif, 0)
-		FROM kemenag_website.berita WHERE slug = $1`, slug).Scan(&b, &i, &inf)
 	return response.OK(c, fiber.Map{
 		"bermanfaat": b, "inspiratif": i, "informatif": inf,
 		"reaction_bermanfaat": b, "reaction_inspiratif": i, "reaction_informatif": inf,
@@ -378,18 +422,18 @@ func BeritaReactHandler(c *fiber.Ctx) error {
 }
 
 // GaleriPublicHandler — GET /api/galeri
-func GaleriPublicHandler(c *fiber.Ctx) error {
+func GaleriPublicHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
 	pool := db.Get()
 	if pool == nil {
 		return response.Error(c, 503, "Database tidak tersedia", "DB_UNAVAILABLE")
 	}
-	page := c.QueryInt("page", 1)
+	page := parseIntDefault(c.Query("page"), 1)
 	if page < 1 {
 		page = 1
 	}
-	limit := c.QueryInt("limit", 24)
+	limit := parseIntDefault(c.Query("limit"), 24)
 	if limit < 1 || limit > 100 {
 		limit = 24
 	}

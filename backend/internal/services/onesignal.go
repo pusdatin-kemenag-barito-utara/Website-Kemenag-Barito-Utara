@@ -49,9 +49,6 @@ func SendNewsPushNotification(title, slug, excerpt, imageURL string) {
 	}
 
 	siteURL := strings.TrimRight(config.Cfg.SiteURL, "/")
-	if siteURL == "" {
-		siteURL = "https://baritoutara.kemenag.go.id"
-	}
 
 	targetURL := siteURL + "/berita/" + strings.TrimPrefix(slug, "/")
 

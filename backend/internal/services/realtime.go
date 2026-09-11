@@ -26,9 +26,14 @@ type RealtimeService struct {
 var Realtime = &RealtimeService{}
 
 func wsURL() string {
+	scheme := "wss://"
+	if strings.HasPrefix(config.Cfg.SupabaseURL, "http://") {
+		scheme = "ws://"
+	}
 	base := strings.TrimPrefix(config.Cfg.SupabaseURL, "https://")
 	base = strings.TrimPrefix(base, "http://")
-	return "wss://" + base + "/realtime/v1/websocket?apikey=" + url.QueryEscape(config.Cfg.SupabaseAnon) + "&vsn=1.0.0"
+	base = strings.TrimRight(base, "/")
+	return scheme + base + "/realtime/v1/websocket?apikey=" + url.QueryEscape(config.Cfg.SupabaseAnon) + "&vsn=1.0.0"
 }
 
 // Start memulai koneksi websocket ke Supabase Realtime (non-blocking).

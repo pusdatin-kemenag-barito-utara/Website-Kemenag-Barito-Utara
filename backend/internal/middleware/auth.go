@@ -15,7 +15,7 @@ import (
 	"kemenag-backend/internal/db"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 const CookieName = "sb-website-auth-token"
@@ -55,7 +55,7 @@ type cachedProfile struct {
 }
 
 // GetAccessTokenFromCookie membaca & decode cookie sesi Supabase (base64 JSON / raw token).
-func GetAccessTokenFromCookie(c *fiber.Ctx) string {
+func GetAccessTokenFromCookie(c fiber.Ctx) string {
 	authHeader := c.Get("Authorization")
 	if strings.HasPrefix(authHeader, "Bearer ") {
 		return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
@@ -142,7 +142,7 @@ type cachedUser struct {
 }
 
 // LoadSession memuat sesi dari cookie (user + profile + role).
-func LoadSession(c *fiber.Ctx) *SessionContext {
+func LoadSession(c fiber.Ctx) *SessionContext {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
 

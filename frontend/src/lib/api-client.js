@@ -1,11 +1,10 @@
 // - SSR (server Astro): fetch ke absolute PUBLIC_API_URL dari environment variable.
 // - Browser (islands): fetch relatif '/api/...' (di-proxy ke BE saat dev).
 
+import { getPublicApiUrl } from "@/lib/env";
+
 const SSR = typeof window === "undefined";
-const API_URL =
-  import.meta.env.PUBLIC_API_URL ||
-  (typeof process !== "undefined" && process.env.PUBLIC_API_URL) ||
-  `http://127.0.0.1:${(typeof process !== "undefined" && process.env.PORT) || "8080"}`;
+const API_URL = getPublicApiUrl();
 
 export function apiUrl(path) {
   const p = path.startsWith("/api") ? path : `/api${path}`;

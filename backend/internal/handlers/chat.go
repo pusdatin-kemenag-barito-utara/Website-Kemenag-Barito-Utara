@@ -11,16 +11,16 @@ import (
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // ChatHandler — POST /api/chat (SSE streaming multi-provider + RAG)
-func ChatHandler(c *fiber.Ctx) error {
+func ChatHandler(c fiber.Ctx) error {
 	var body struct {
 		Messages        []services.AIMessage `json:"messages"`
 		SystemInjection string               `json:"system_injection"`
 	}
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	if len(body.Messages) == 0 {
@@ -35,7 +35,7 @@ func ChatHandler(c *fiber.Ctx) error {
 	c.Set("X-Accel-Buffering", "no")
 	c.Set("Content-Encoding", "identity")
 
-	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
+	return c.SendStreamWriter(func(w *bufio.Writer) {
 		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 		defer cancel()
 
@@ -61,8 +61,6 @@ func ChatHandler(c *fiber.Ctx) error {
 			writeSSE(fmt.Sprintf(`data: {"type":"finish","provider":%s}`+"\n\n", jsonString(providerUsed)))
 		}
 	})
-
-	return nil
 }
 
 func jsonString(s string) string {
@@ -94,7 +92,7 @@ func jsonString(s string) string {
 }
 
 // ChatToolsHandler — GET /api/chat/tools (daftar layanan + lokasi untuk UI)
-func ChatToolsHandler(c *fiber.Ctx) error {
+func ChatToolsHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 6*time.Second)
 	defer cancel()
 	pool := db.Get()

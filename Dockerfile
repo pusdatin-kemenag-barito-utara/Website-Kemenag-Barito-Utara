@@ -20,20 +20,6 @@ COPY frontend/package.json ./frontend/
 RUN npm install --prefix frontend
 COPY frontend/ ./frontend/
 
-ARG NEXT_PUBLIC_SITE_URL
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ARG NEXT_PUBLIC_GA_ID
-ARG NEXT_PUBLIC_GTM_ID
-ARG NEXT_PUBLIC_ONESIGNAL_APP_ID
-
-ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
-ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-ENV NEXT_PUBLIC_GA_ID=${NEXT_PUBLIC_GA_ID}
-ENV NEXT_PUBLIC_GTM_ID=${NEXT_PUBLIC_GTM_ID}
-ENV NEXT_PUBLIC_ONESIGNAL_APP_ID=${NEXT_PUBLIC_ONESIGNAL_APP_ID}
-
 RUN npm --prefix frontend run build
 
 # --- Stage 3: Production Unified Runner ---
@@ -46,8 +32,14 @@ ENV PORT=3000
 ENV BACKEND_PORT=8080
 ENV BACKEND_INTERNAL_URL=http://127.0.0.1:8080
 ENV TZ=Asia/Jakarta
+# Budgeting memori produksi agar hemat dan aman dari OOM killer
+ENV NODE_OPTIONS="--max-old-space-size=384"
+ENV GOMEMLIMIT=384MiB
+ENV GOGC=80
 
-RUN apk add --no-cache ca-certificates tzdata bash curl wget
+RUN apk add --no-cache ca-certificates tzdata bash curl wget && \
+    curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash && \
+    apk add --no-cache infisical
 
 # Create non-root user
 RUN addgroup --system --gid 1001 appgroup && \
@@ -61,21 +53,20 @@ COPY --from=builder-fe --chown=appuser:appgroup /app/frontend/dist /app/frontend
 COPY --from=builder-fe --chown=appuser:appgroup /app/frontend/node_modules /app/frontend/node_modules
 COPY --from=builder-fe --chown=appuser:appgroup /app/frontend/package.json /app/frontend/package.json
 
-# Copy start script
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'PORT=8080 /app/backend/server &' >> /app/start.sh && \
-    echo 'for i in $(seq 1 20); do' >> /app/start.sh && \
-    echo '  if wget -q -O - http://127.0.0.1:8080/api/health >/dev/null 2>&1 || curl -s http://127.0.0.1:8080/api/health >/dev/null 2>&1; then' >> /app/start.sh && \
-    echo '    break' >> /app/start.sh && \
-    echo '  fi' >> /app/start.sh && \
-    echo '  sleep 0.5' >> /app/start.sh && \
-    echo 'done' >> /app/start.sh && \
-    echo 'cd /app/frontend && PORT=3000 HOST=0.0.0.0 exec node ./dist/server/entry.mjs' >> /app/start.sh && \
-    chmod +x /app/start.sh && \
-    chown appuser:appgroup /app/start.sh
+# Copy start script & entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh && chown appuser:appgroup /app/start.sh
 
 USER appuser
 
 EXPOSE 3000 8080
 
+# Native Docker Healthcheck (memvalidasi Frontend + Reverse Proxy + Go Backend)
+HEALTHCHECK --interval=25s --timeout=5s --start-period=60s --retries=3 \
+    CMD wget -q -O - http://127.0.0.1:3000/api/health >/dev/null 2>&1 || exit 1
+
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["/app/start.sh"]

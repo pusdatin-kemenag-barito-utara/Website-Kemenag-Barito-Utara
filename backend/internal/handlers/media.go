@@ -6,6 +6,7 @@ import (
 	"mime"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,18 +14,18 @@ import (
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // allowedProxyHosts allowlist image-proxy.
 func allowedProxyHosts() map[string]bool {
 	hosts := map[string]bool{
-		"drive.google.com":     true,
-		"docs.google.com":      true,
+		"drive.google.com":          true,
+		"docs.google.com":           true,
 		"lh3.googleusercontent.com": true,
 		"cdn.kemenag-baritoutara.com": true,
 		"ptsp.kemenag-baritoutara.com": true,
-		"localhost":            true,
+		"localhost":                 true,
 	}
 	host := ""
 	if u := config.Cfg.SupabaseURL; u != "" {
@@ -50,7 +51,7 @@ func allowedProxyHosts() map[string]bool {
 }
 
 // ImageProxyHandler — GET /api/image-proxy?url= (allowlist, max 10MB)
-func ImageProxyHandler(c *fiber.Ctx) error {
+func ImageProxyHandler(c fiber.Ctx) error {
 	target := strings.TrimSpace(c.Query("url"))
 	if target == "" {
 		return response.Error(c, 400, "Parameter url wajib.", "URL_REQUIRED")
@@ -97,20 +98,24 @@ func ImageProxyHandler(c *fiber.Ctx) error {
 		return response.Error(c, 413, "Ukuran gambar terlalu besar (maks 10MB).", "TOO_LARGE")
 	}
 
-	// batas stream 10MB
-	limited := io.LimitReader(resp.Body, 10*1024*1024+1)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024+1))
+	if err != nil {
+		return response.Error(c, 502, "Gagal membaca upstream gambar.", "UPSTREAM_ERROR")
+	}
+	if len(body) > 10*1024*1024 {
+		return response.Error(c, 413, "Ukuran gambar terlalu besar (maks 10MB).", "TOO_LARGE")
+	}
 
 	c.Set("Content-Type", contentType)
-	c.Set("Cache-Control", "public, max-age=300")
+	c.Set("Content-Length", strconv.Itoa(len(body)))
+	c.Set("Access-Control-Allow-Origin", "*")
+	c.Set("Cache-Control", "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400")
 	c.Status(200)
-	if _, err := io.Copy(c, limited); err != nil {
-		return err
-	}
-	return nil
+	return c.Send(body)
 }
 
 // StorageMediaHandler — GET /api/storage/media/* (proxy Supabase Storage public URL)
-func StorageMediaHandler(c *fiber.Ctx) error {
+func StorageMediaHandler(c fiber.Ctx) error {
 	path := strings.Trim(c.Params("*"), "/")
 	if path == "" {
 		return response.Error(c, 400, "Path kosong.", "PATH_REQUIRED")
@@ -134,6 +139,11 @@ func StorageMediaHandler(c *fiber.Ctx) error {
 		return response.Error(c, resp.StatusCode, "File tidak ditemukan di storage.", "NOT_FOUND")
 	}
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return response.Error(c, 502, "Gagal membaca isi berkas media.", "UPSTREAM_ERROR")
+	}
+
 	contentType := resp.Header.Get("Content-Type")
 	if contentType == "" || strings.HasPrefix(contentType, "text/plain") {
 		ext := strings.ToLower(filepath.Ext(path))
@@ -145,16 +155,14 @@ func StorageMediaHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	// ganti URL gambar di path ke proxy jika perlu
 	c.Set("X-Content-Type-Options", "nosniff")
 	c.Set("Access-Control-Allow-Origin", "*")
+	c.Set("Accept-Ranges", "bytes")
 	c.Set("Content-Type", contentType)
+	c.Set("Content-Length", strconv.Itoa(len(body)))
 	c.Set("Cache-Control", "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400")
 	c.Status(200)
-	if _, err := io.Copy(c, resp.Body); err != nil {
-		return err
-	}
-	return nil
+	return c.Send(body)
 }
 
 var _ = context.Background

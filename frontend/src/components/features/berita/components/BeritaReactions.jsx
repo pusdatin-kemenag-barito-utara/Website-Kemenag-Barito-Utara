@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/context/LanguageContext";
+import { pushAnalyticsEvent } from "@/lib/analytics";
 
 export default function BeritaReactions({ slug, initialReactions }) {
   const { locale } = useLanguage();
@@ -135,6 +136,12 @@ export default function BeritaReactions({ slug, initialReactions }) {
         localStorage.setItem(`react_berita_${slug}`, type);
       } catch {}
     }
+
+    pushAnalyticsEvent("berita_reaction", {
+      reaction_type: type,
+      reaction_action: action,
+      article_slug: slug,
+    });
 
     try {
       const res = await fetch(`/api/berita/${slug}/react`, {

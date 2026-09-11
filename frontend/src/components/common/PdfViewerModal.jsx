@@ -4,11 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   X,
-  Download,
   ExternalLink,
-  ZoomIn,
-  ZoomOut,
-  RotateCw,
   Maximize2,
   Minimize2,
   FileText,
@@ -16,30 +12,49 @@ import {
   AlertCircle,
   PanelLeftClose,
   PanelLeft,
-  ChevronUp,
-  ChevronDown,
-  Maximize,
+  RefreshCw,
 } from "lucide-react";
+import { trackDocumentPreview } from "@/lib/analytics";
 
-const PDFJS_CDN = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
-const PDFJS_WORKER_CDN = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+const CDN_PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
+const CDN_PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
 
 let pdfjsLibPromise = null;
 
 function loadPdfJs() {
   if (typeof window === "undefined") return Promise.reject(new Error("SSR not supported"));
   if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+
   if (!pdfjsLibPromise) {
-    pdfjsLibPromise = import(/* @vite-ignore */ PDFJS_CDN).then((lib) => {
-      lib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_CDN;
-      window.pdfjsLib = lib;
-      return lib;
+    pdfjsLibPromise = new Promise((resolve, reject) => {
+      // Menggunakan new Function agar Vite tidak menganalisis URL folder /public saat build/dev transform
+      try {
+        const dynamicImport = new Function("specifier", "return import(specifier);");
+        dynamicImport("/vendor/pdfjs/pdf.min.mjs")
+          .then((lib) => {
+            lib.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/pdf.worker.min.mjs";
+            window.pdfjsLib = lib;
+            resolve(lib);
+          })
+          .catch((err) => {
+            console.warn("Gagal memuat local PDF.js, beralih ke CDN fallback:", err);
+            dynamicImport(CDN_PDFJS)
+              .then((lib) => {
+                lib.GlobalWorkerOptions.workerSrc = CDN_PDFJS_WORKER;
+                window.pdfjsLib = lib;
+                resolve(lib);
+              })
+              .catch(reject);
+          });
+      } catch (err) {
+        reject(err);
+      }
     });
   }
   return pdfjsLibPromise;
 }
 
-// Subcomponent: Individual Page Canvas in Main Viewport
+// Subkomponen: Lembar Halaman PDF Canvas
 function PdfPageItem({ pageNumber, numPages, pdfDoc, scale, rotation, scrollContainerRef }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
@@ -47,7 +62,7 @@ function PdfPageItem({ pageNumber, numPages, pdfDoc, scale, rotation, scrollCont
   const [isRendered, setIsRendered] = useState(false);
   const [pageDimensions, setPageDimensions] = useState(null);
 
-  // Read actual viewport dimensions from PDF.js
+  // Ambil dimensi asli halaman dari PDF.js
   useEffect(() => {
     let cancelled = false;
     pdfDoc.getPage(pageNumber).then((page) => {
@@ -60,7 +75,7 @@ function PdfPageItem({ pageNumber, numPages, pdfDoc, scale, rotation, scrollCont
     };
   }, [pdfDoc, pageNumber]);
 
-  // High quality canvas render
+  // Render canvas dengan resolusi tajam (Retina / High DPI display)
   const renderCanvas = useCallback(async () => {
     if (!pdfDoc || !canvasRef.current) return;
 
@@ -75,13 +90,13 @@ function PdfPageItem({ pageNumber, numPages, pdfDoc, scale, rotation, scrollCont
 
       const context = canvas.getContext("2d");
       const viewport = page.getViewport({ scale, rotation });
-      const outputScale = window.devicePixelRatio || 1;
+      const outputScale = Math.min(window.devicePixelRatio || 1, 2);
 
-      // Actual internal pixel resolution (Retina display support)
+      // Resolusi internal canvas pixel
       canvas.width = Math.floor(viewport.width * outputScale);
       canvas.height = Math.floor(viewport.height * outputScale);
 
-      // Display style dimensions matching the viewport
+      // Dimensi CSS styling agar pas di layar
       canvas.style.width = `${Math.floor(viewport.width)}px`;
       canvas.style.height = `${Math.floor(viewport.height)}px`;
 
@@ -106,7 +121,7 @@ function PdfPageItem({ pageNumber, numPages, pdfDoc, scale, rotation, scrollCont
     }
   }, [pdfDoc, pageNumber, scale, rotation]);
 
-  // Lazy render using IntersectionObserver with scroll container
+  // Lazy render dengan IntersectionObserver agar dokumen ratusan halaman tetap sangat ringan & hemat memori HP
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -121,7 +136,7 @@ function PdfPageItem({ pageNumber, numPages, pdfDoc, scale, rotation, scrollCont
       },
       {
         root: scrollContainerRef?.current || null,
-        rootMargin: "800px 0px 800px 0px",
+        rootMargin: "900px 0px 900px 0px",
         threshold: 0.01,
       }
     );
@@ -130,7 +145,7 @@ function PdfPageItem({ pageNumber, numPages, pdfDoc, scale, rotation, scrollCont
     return () => observer.disconnect();
   }, [renderCanvas, scrollContainerRef]);
 
-  // Re-render immediately when scale or rotation changes if already rendered
+  // Re-render jika skala berubah (misal saat rotasi layar atau resize layar HP/Desktop)
   useEffect(() => {
     if (isRendered) {
       renderCanvas();
@@ -148,40 +163,40 @@ function PdfPageItem({ pageNumber, numPages, pdfDoc, scale, rotation, scrollCont
       ref={containerRef}
       id={`pdf-page-${pageNumber}`}
       data-page-number={pageNumber}
-      className="pdf-page-container flex flex-col items-center my-3 sm:my-6 shrink-0"
+      className="pdf-page-container flex flex-col items-center my-2.5 sm:my-5 shrink-0 max-w-full"
     >
-      {/* Paper Sheet */}
+      {/* Lembar Halaman Putih */}
       <div
-        className="relative bg-white shadow-[0_6px_25px_rgba(0,0,0,0.5)] border border-slate-700/60 rounded-sm overflow-hidden"
+        className="relative bg-white shadow-[0_8px_30px_rgba(0,0,0,0.45)] border border-slate-700/60 rounded sm:rounded-md overflow-hidden max-w-full"
         style={{
           width: `${viewWidth}px`,
-          height: isRendered ? "auto" : `${viewHeight}px`,
+          minHeight: isRendered ? "auto" : `${viewHeight}px`,
         }}
       >
         <canvas
           ref={canvasRef}
-          className={`block ${!isRendered ? "hidden" : ""}`}
+          className={`block max-w-full h-auto ${!isRendered ? "hidden" : ""}`}
         />
         {!isRendered && (
           <div
             className="flex flex-col items-center justify-center gap-2 bg-slate-900/10 text-slate-400"
             style={{ width: `${viewWidth}px`, height: `${viewHeight}px` }}
           >
-            <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-emerald-500" />
-            <span className="text-[11px] font-mono text-slate-500">Memuat hal {pageNumber}...</span>
+            <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+            <span className="text-[11px] font-mono text-slate-500 font-medium">Memuat Halaman {pageNumber}...</span>
           </div>
         )}
       </div>
 
-      {/* Page Number Pill */}
-      <div className="mt-2.5 text-[11px] sm:text-xs font-mono font-semibold text-slate-400 bg-slate-800/90 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-slate-700/80 shadow-md">
-        Hal {pageNumber} dari {numPages}
+      {/* Pill Nomor Halaman di Bawah Lembar */}
+      <div className="mt-2 text-[10px] sm:text-xs font-mono font-semibold text-slate-400 bg-slate-800/95 px-2.5 sm:px-3 py-0.5 rounded-full border border-slate-700/80 shadow-md">
+        Halaman {pageNumber} dari {numPages}
       </div>
     </div>
   );
 }
 
-// Subcomponent: Thumbnail item in left sidebar
+// Subkomponen: Thumbnail Halaman di Sidebar Navigasi
 function PdfThumbnailItem({ pageNumber, pdfDoc, isActive, onClick }) {
   const canvasRef = useRef(null);
   const [rendered, setRendered] = useState(false);
@@ -195,8 +210,8 @@ function PdfThumbnailItem({ pageNumber, pdfDoc, isActive, onClick }) {
       if (!canvas) return;
 
       const context = canvas.getContext("2d");
-      const viewport = page.getViewport({ scale: 0.2 });
-      const outputScale = window.devicePixelRatio || 1;
+      const viewport = page.getViewport({ scale: 0.22 });
+      const outputScale = Math.min(window.devicePixelRatio || 1, 2);
 
       canvas.width = Math.floor(viewport.width * outputScale);
       canvas.height = Math.floor(viewport.height * outputScale);
@@ -246,11 +261,11 @@ function PdfThumbnailItem({ pageNumber, pdfDoc, isActive, onClick }) {
       onClick={() => onClick(pageNumber)}
       className={`group flex flex-col items-center w-full p-1.5 sm:p-2 rounded-xl transition-all duration-200 text-left ${
         isActive
-          ? "bg-emerald-950/70 border-2 border-emerald-500 shadow-lg shadow-emerald-950/50"
+          ? "bg-emerald-950/80 border-2 border-emerald-500 shadow-lg shadow-emerald-950/50"
           : "border border-slate-800/80 hover:bg-slate-800/60 hover:border-slate-700"
       }`}
     >
-      <div className="relative rounded overflow-hidden shadow-sm bg-slate-900 border border-slate-700/50 flex items-center justify-center min-h-[80px] sm:min-h-[90px] w-full">
+      <div className="relative rounded overflow-hidden shadow-sm bg-slate-900 border border-slate-700/50 flex items-center justify-center min-h-[75px] sm:min-h-[85px] w-full">
         <canvas ref={canvasRef} className="block mx-auto" />
       </div>
       <span
@@ -260,7 +275,7 @@ function PdfThumbnailItem({ pageNumber, pdfDoc, isActive, onClick }) {
             : "text-slate-400 group-hover:text-slate-200"
         }`}
       >
-        {pageNumber}
+        Hal {pageNumber}
       </span>
     </button>
   );
@@ -271,13 +286,12 @@ export default function PdfViewerModal({
   onClose,
   fileUrl,
   title = "Dokumen PDF",
-  subtitle = "Penampil Dokumen Resmi",
+  subtitle = "Kementerian Agama Barito Utara",
 }) {
   const [pdfDoc, setPdfDoc] = useState(null);
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1.0);
-  const [rotation, setRotation] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showSidebar, setShowSidebar] = useState(false);
@@ -287,95 +301,109 @@ export default function PdfViewerModal({
   const modalRef = useRef(null);
   const isUserScrollingRef = useRef(false);
 
-  // Auto-fit document width based on container width
+  // Auto-fit dokumen secara otomatis sesuai lebar layar mobile & desktop
   const adjustScaleForWidth = useCallback(() => {
     if (!mainScrollRef.current) return;
     const containerWidth = mainScrollRef.current.clientWidth;
     const isMobile = containerWidth < 640;
 
-    // Available width accounting for paddings
-    const padding = isMobile ? 24 : 64;
-    const availableWidth = Math.max(260, containerWidth - padding);
+    // Margin padding samping
+    const sidePadding = isMobile ? 24 : 64;
+    const availableWidth = Math.max(260, containerWidth - sidePadding);
 
-    // Standard A4 is 595 points wide
+    // Dokumen A4 standar memiliki lebar 595 point
     const fitScale = availableWidth / 595;
 
     if (isMobile) {
-      // On mobile: strictly fit to width
-      setScale(parseFloat(Math.min(1.2, Math.max(0.45, fitScale)).toFixed(2)));
+      // Pada HP/Mobile: sesuaikan persis dengan lebar layar agar mudah dibaca tanpa terpotong
+      setScale(parseFloat(Math.min(1.25, Math.max(0.42, fitScale)).toFixed(2)));
     } else {
-      // On desktop: default to 1.0 or fit
-      setScale(parseFloat(Math.min(1.5, Math.max(0.7, fitScale)).toFixed(2)));
+      // Pada Desktop: skala proporsional yang nyaman dibaca
+      setScale(parseFloat(Math.min(1.35, Math.max(0.65, fitScale)).toFixed(2)));
     }
   }, []);
 
-  // Initial setup: Desktop opens sidebar, mobile closes sidebar by default
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setShowSidebar(window.innerWidth >= 1024);
-    }
-  }, [isOpen]);
-
-  // Reset & load PDF when modal opens or file changes
+  // Muat berkas PDF via PDF.js Canvas saat modal dibuka
   useEffect(() => {
     if (!isOpen || !fileUrl) {
       setPdfDoc(null);
       setNumPages(0);
       setCurrentPage(1);
-      setRotation(0);
-      setLoading(true);
+      setLoading(false);
       setError(null);
       return;
     }
 
-    let isCancelled = false;
+    let cancelled = false;
     setLoading(true);
     setError(null);
+    setPdfDoc(null);
+    setNumPages(0);
+    setCurrentPage(1);
 
-    // Prevent background scrolling
+    // Kunci scroll background
     document.body.style.overflow = "hidden";
+
+    // Pada desktop default buka sidebar jika halaman > 1, pada mobile default tutup sidebar
+    if (typeof window !== "undefined") {
+      setShowSidebar(window.innerWidth >= 1024);
+    }
 
     loadPdfJs()
       .then((pdfjs) => {
-        const loadingTask = pdfjs.getDocument({
+        if (cancelled) return null;
+        return pdfjs.getDocument({
           url: fileUrl,
           cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/cmaps/",
           cMapPacked: true,
-        });
-        return loadingTask.promise;
+        }).promise;
       })
       .then((doc) => {
-        if (isCancelled) return;
+        if (cancelled || !doc) return;
         setPdfDoc(doc);
         setNumPages(doc.numPages);
         setCurrentPage(1);
         setLoading(false);
+        trackDocumentPreview({ title, url: fileUrl, category: subtitle });
       })
       .catch((err) => {
-        if (isCancelled) return;
-        console.error("Gagal memuat PDF.js:", err);
-        setError("Gagal memuat dokumen PDF. Silakan gunakan tombol unduh atau buka di tab baru.");
+        if (cancelled) return;
+        console.error("Gagal memuat dokumen PDF via PDF.js:", err);
+        setError("Gagal merender dokumen PDF. Silakan coba muat ulang atau buka di tab baru.");
         setLoading(false);
       });
 
     return () => {
-      isCancelled = true;
+      cancelled = true;
       document.body.style.overflow = "";
     };
   }, [isOpen, fileUrl]);
 
-  // Once document is loaded, auto-fit scale to screen
+  // Sesuaikan skala saat dokumen berhasil dimuat atau sidebar dibuka/tutup
   useEffect(() => {
     if (pdfDoc && !loading) {
-      // Delay slightly to let container layout settle
       const t = setTimeout(() => {
         adjustScaleForWidth();
-      }, 50);
+      }, 60);
       return () => clearTimeout(t);
     }
   }, [pdfDoc, loading, adjustScaleForWidth, showSidebar]);
 
-  // Track active page via scroll position of main container
+  // Listener resize dan rotasi layar (portrait <-> landscape di mobile)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleResize = () => {
+      adjustScaleForWidth();
+    };
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
+    };
+  }, [isOpen, adjustScaleForWidth]);
+
+  // Deteksi halaman aktif saat pengguna melakukan scroll
   useEffect(() => {
     const scrollContainer = mainScrollRef.current;
     if (!scrollContainer || !pdfDoc) return;
@@ -412,7 +440,7 @@ export default function PdfViewerModal({
     return () => scrollContainer.removeEventListener("scroll", handleScroll);
   }, [pdfDoc]);
 
-  // Keep sidebar thumbnail in view when currentPage changes
+  // Auto-scroll thumbnail sidebar ke halaman aktif
   useEffect(() => {
     const thumbEl = document.getElementById(`pdf-thumb-${currentPage}`);
     if (thumbEl) {
@@ -420,7 +448,7 @@ export default function PdfViewerModal({
     }
   }, [currentPage]);
 
-  // Jump smoothly to a specific page
+  // Loncat ke halaman tertentu
   const scrollToPage = useCallback((pageNum) => {
     const el = document.getElementById(`pdf-page-${pageNum}`);
     if (el && mainScrollRef.current) {
@@ -428,18 +456,18 @@ export default function PdfViewerModal({
       setCurrentPage(pageNum);
       el.scrollIntoView({ behavior: "smooth", block: "start" });
 
-      // On mobile, auto-close sidebar overlay after selecting a page
+      // Pada perangkat mobile, tutup panel sidebar setelah memilih halaman
       if (typeof window !== "undefined" && window.innerWidth < 1024) {
         setShowSidebar(false);
       }
 
       setTimeout(() => {
         isUserScrollingRef.current = false;
-      }, 600);
+      }, 500);
     }
   }, []);
 
-  // Keyboard navigation
+  // Navigasi Keyboard (Esc untuk tutup, panah untuk pindah halaman)
   useEffect(() => {
     if (!isOpen) return;
 
@@ -454,12 +482,6 @@ export default function PdfViewerModal({
         if (currentPage > 1) {
           scrollToPage(currentPage - 1);
         }
-      } else if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) {
-        e.preventDefault();
-        setScale((s) => Math.min(3.0, parseFloat((s + 0.15).toFixed(2))));
-      } else if ((e.ctrlKey || e.metaKey) && e.key === "-") {
-        e.preventDefault();
-        setScale((s) => Math.max(0.4, parseFloat((s - 0.15).toFixed(2))));
       }
     };
 
@@ -473,7 +495,7 @@ export default function PdfViewerModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-950/90 p-0 sm:p-4 md:p-6 backdrop-blur-md transition-all duration-300"
+      className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-950/90 p-0 sm:p-3 md:p-6 backdrop-blur-md transition-all duration-300"
       onClick={onClose}
     >
       <div
@@ -481,165 +503,111 @@ export default function PdfViewerModal({
         className={`relative flex flex-col overflow-hidden bg-slate-900 text-slate-100 shadow-[0_30px_90px_rgba(0,0,0,0.85)] backdrop-blur-2xl transition-all duration-300 ${
           isFullscreen
             ? "fixed inset-0 rounded-none w-screen h-screen max-w-none max-h-none z-[9999999]"
-            : "w-full sm:max-w-7xl h-full sm:h-[94vh] rounded-none sm:rounded-3xl border-0 sm:border sm:border-slate-700/60"
+            : "w-full sm:max-w-7xl h-full sm:h-[94vh] rounded-none sm:rounded-3xl border-0 sm:border sm:border-slate-800/80"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Top Header Toolbar - Ultra Clean & Responsive */}
-        <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/95 px-3 py-2.5 sm:px-6 sm:py-3 gap-2 shrink-0 z-20">
-          {/* Left: Thumbnail Drawer Toggle + Doc Title */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-            <button
-              onClick={() => setShowSidebar((s) => !s)}
-              className={`p-1.5 sm:p-2 rounded-xl border transition-all duration-200 flex items-center gap-1.5 text-xs font-semibold shrink-0 ${
-                showSidebar
-                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                  : "bg-slate-800 text-slate-400 border-slate-700 hover:text-white"
-              }`}
-              title={showSidebar ? "Sembunyikan Panel Halaman" : "Buka Panel Halaman (Thumbnail)"}
-            >
-              {showSidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
-              <span className="hidden md:inline">Halaman</span>
-            </button>
-
-            <div className="hidden sm:flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+        {/* Top Header Toolbar / Page Banner — Rapi, Elegan & Bebas Elemen yang Dihapus */}
+        <div className="flex items-center justify-between border-b border-slate-800/80 bg-slate-900/98 px-3.5 py-2.5 sm:px-6 sm:py-3.5 gap-2 shrink-0 z-20">
+          {/* Sisi Kiri: Icon Dokumen + Nama Dokumen + Metadata */}
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
+            <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-md shadow-emerald-950/50 border border-emerald-400/30">
               <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
 
-            <div className="min-w-0 pr-1">
-              <h3 className="truncate text-xs sm:text-sm md:text-base font-bold text-white leading-snug">
-                {title}
-              </h3>
-              <p className="hidden sm:block truncate text-[11px] text-slate-400">
-                {subtitle || "Penampil Dokumen Resmi"}
+            <div className="min-w-0 pr-1 flex-1">
+              <div className="flex items-center gap-2">
+                <h3
+                  className="truncate text-xs sm:text-sm md:text-base font-bold text-white tracking-tight leading-snug"
+                  title={title}
+                >
+                  {title}
+                </h3>
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold tracking-wider uppercase">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Resmi
+                </span>
+              </div>
+              <p className="truncate text-[10px] sm:text-[11px] text-slate-400 mt-0.5">
+                {subtitle || "Kementerian Agama Kabupaten Barito Utara"}
               </p>
             </div>
           </div>
 
-          {/* Right: Quick Controls */}
+          {/* Sisi Kanan: Indikator Halaman + Tombol Aksi Bersih */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Current Page Pill (Compact on Mobile) */}
+            {/* Tombol Buka/Tutup Sidebar Daftar Halaman (Muncul jika ada lebih dari 1 halaman) */}
+            {numPages > 1 && (
+              <button
+                onClick={() => setShowSidebar((prev) => !prev)}
+                className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl border transition-all text-xs font-semibold ${
+                  showSidebar
+                    ? "bg-emerald-950/70 border-emerald-500/50 text-emerald-300"
+                    : "bg-slate-800/90 border-slate-700/80 text-slate-300 hover:bg-slate-700 hover:text-white"
+                }`}
+                title={showSidebar ? "Tutup Daftar Halaman" : "Buka Daftar Halaman"}
+              >
+                {showSidebar ? (
+                  <PanelLeftClose className="h-3.5 w-3.5" />
+                ) : (
+                  <PanelLeft className="h-3.5 w-3.5" />
+                )}
+                <span className="hidden md:inline text-[11px]">Halaman</span>
+              </button>
+            )}
+
+            {/* Indikator Halaman Aktif (Hal X dari Y) */}
             {numPages > 0 && (
-              <div className="flex items-center gap-0.5 sm:gap-1 bg-slate-800/90 border border-slate-700/70 rounded-xl px-1.5 sm:px-2 py-1 text-xs">
-                <button
-                  onClick={() => scrollToPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage <= 1}
-                  className="p-0.5 sm:p-1 rounded-lg hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                  title="Halaman Sebelumnya"
-                >
-                  <ChevronUp className="h-3.5 w-3.5" />
-                </button>
-                <span className="font-semibold text-slate-200 px-1 text-[11px] sm:text-xs whitespace-nowrap">
-                  {currentPage}<span className="text-slate-500">/</span>{numPages}
-                </span>
-                <button
-                  onClick={() => scrollToPage(Math.min(numPages, currentPage + 1))}
-                  disabled={currentPage >= numPages}
-                  className="p-0.5 sm:p-1 rounded-lg hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                  title="Halaman Berikutnya"
-                >
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </button>
+              <div className="flex items-center gap-1 bg-slate-800/90 border border-slate-700/80 rounded-xl px-2.5 py-1.5 text-[11px] font-mono font-semibold text-slate-300 shadow-inner">
+                <span className="text-emerald-400 font-bold">{currentPage}</span>
+                <span className="text-slate-500">/</span>
+                <span>{numPages}</span>
               </div>
             )}
 
-            {/* Desktop Zoom & Rotate Controls */}
-            <div className="hidden lg:flex items-center gap-1 bg-slate-800/90 border border-slate-700/70 rounded-xl px-1.5 py-1 text-xs">
-              <button
-                onClick={() => setScale((s) => Math.max(0.4, parseFloat((s - 0.15).toFixed(2))))}
-                className="p-1 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-                title="Perkecil (-)"
-              >
-                <ZoomOut className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={() => setScale(1.0)}
-                className="px-1 py-0.5 rounded text-[11px] font-mono text-slate-300 hover:text-white"
-                title="Reset Ukuran (100%)"
-              >
-                {Math.round(scale * 100)}%
-              </button>
-              <button
-                onClick={() => setScale((s) => Math.min(3.0, parseFloat((s + 0.15).toFixed(2))))}
-                className="p-1 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-                title="Perbesar (+)"
-              >
-                <ZoomIn className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={adjustScaleForWidth}
-                className="p-1 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-                title="Sesuaikan Lebar Layar"
-              >
-                <Maximize className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={() => setRotation((r) => (r + 90) % 360)}
-                className="p-1 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border-l border-slate-700 ml-0.5 pl-1.5"
-                title="Putar Dokumen (90°)"
-              >
-                <RotateCw className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            {/* Action Buttons */}
-            <a
-              href={fileUrl}
-              download
-              className="flex items-center justify-center p-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 transition-all hover:bg-emerald-500/20 active:scale-95"
-              title="Unduh Berkas PDF"
-            >
-              <Download className="h-3.5 w-3.5 sm:mr-1.5" />
-              <span className="hidden sm:inline text-xs font-semibold">Unduh</span>
-            </a>
-
+            {/* Tombol Buka Tab Baru */}
             <a
               href={fileUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-all hover:bg-slate-700 active:scale-95"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700/80 bg-slate-800/90 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold text-slate-200 transition-all hover:bg-slate-700 active:scale-95"
               title="Buka PDF di Tab Baru"
             >
               <ExternalLink className="h-3.5 w-3.5" />
-              <span>Tab Baru</span>
+              <span className="hidden sm:inline">Tab Baru</span>
             </a>
 
+            {/* Tombol Layar Penuh (Fullscreen) */}
             <button
               onClick={() => setIsFullscreen((f) => !f)}
-              className="hidden md:flex items-center justify-center p-1.5 sm:p-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+              className="hidden sm:flex items-center justify-center p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
               title={isFullscreen ? "Keluar Layar Penuh" : "Layar Penuh"}
             >
               {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </button>
 
+            {/* Tombol Tutup Modal */}
             <button
               onClick={onClose}
-              className="flex items-center justify-center p-1.5 sm:p-2 rounded-xl bg-slate-800 text-slate-400 transition-colors hover:bg-rose-500/20 hover:text-rose-400"
-              title="Tutup (Esc)"
+              className="flex items-center justify-center p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 text-slate-400 transition-colors hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/30"
+              title="Tutup Pratinjau (Esc)"
             >
               <X className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
           </div>
         </div>
 
-        {/* Body Area: Split into Left Thumbnail Panel + Main Vertical Scrollable Viewport */}
+        {/* Body Area: Penampil PDF Canvas Multi-Halaman Responsif */}
         <div className="relative flex-1 flex overflow-hidden bg-slate-950">
-          {/* Mobile Overlay Backdrop when Sidebar is Open */}
-          {showSidebar && (
-            <div
-              className="fixed inset-0 z-20 bg-slate-950/70 backdrop-blur-sm lg:hidden"
-              onClick={() => setShowSidebar(false)}
-            />
-          )}
-
-          {/* Left Thumbnail Sidebar (Drawer on mobile, inline on desktop) */}
-          {showSidebar && (
-            <aside className="fixed lg:relative inset-y-0 left-0 z-30 lg:z-10 w-56 sm:w-60 lg:w-56 shrink-0 border-r border-slate-800 bg-slate-900/98 lg:bg-slate-900/90 flex flex-col shadow-2xl lg:shadow-none transition-all duration-300">
+          {/* Sidebar Daftar Thumbnail Halaman */}
+          {showSidebar && numPages > 1 && (
+            <aside className="fixed lg:relative inset-y-0 left-0 z-30 lg:z-10 w-56 sm:w-60 lg:w-56 shrink-0 border-r border-slate-800 bg-slate-900/98 lg:bg-slate-900/95 flex flex-col shadow-2xl lg:shadow-none transition-all duration-300">
               <div className="px-3 py-2.5 border-b border-slate-800/80 flex items-center justify-between text-xs font-bold text-slate-300 uppercase tracking-wider">
                 <span>Daftar Halaman ({numPages})</span>
                 <button
                   onClick={() => setShowSidebar(false)}
                   className="p-1 rounded-lg text-slate-400 hover:text-white lg:hidden"
+                  title="Tutup"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -659,16 +627,16 @@ export default function PdfViewerModal({
             </aside>
           )}
 
-          {/* Main Continuous Vertical Scroll Viewport */}
+          {/* Area Render Canvas Utama (Scroll Vertikal Berkelanjutan) */}
           <main
             ref={mainScrollRef}
-            className="flex-1 overflow-y-auto overflow-x-auto py-4 px-2 sm:py-8 sm:px-6 flex flex-col items-center scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent"
+            className="flex-1 overflow-y-auto overflow-x-auto py-3 px-2 sm:py-6 sm:px-4 flex flex-col items-center scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent"
           >
             {loading && (
               <div className="flex flex-col items-center justify-center gap-3 text-slate-400 py-24 sm:py-32">
                 <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 animate-spin text-emerald-400" />
-                <p className="text-xs sm:text-sm font-semibold text-slate-200">Memuat dokumen PDF...</p>
-                <p className="text-[11px] text-slate-500">Menyiapkan tampilan multi-halaman</p>
+                <p className="text-xs sm:text-sm font-semibold text-slate-200">Memuat penampil PDF Canvas...</p>
+                <p className="text-[11px] text-slate-500">Mempersiapkan seluruh halaman dokumen resmi</p>
               </div>
             )}
 
@@ -681,23 +649,44 @@ export default function PdfViewerModal({
                   <h4 className="text-sm font-bold text-slate-200">Gagal Membuka PDF</h4>
                   <p className="mt-1 text-xs text-slate-400 leading-relaxed">{error}</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    onClick={() => {
+                      setLoading(true);
+                      setError(null);
+                      loadPdfJs()
+                        .then((pdfjs) =>
+                          pdfjs.getDocument({
+                            url: fileUrl,
+                            cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/cmaps/",
+                            cMapPacked: true,
+                          }).promise
+                        )
+                        .then((doc) => {
+                          setPdfDoc(doc);
+                          setNumPages(doc.numPages);
+                          setCurrentPage(1);
+                          setLoading(false);
+                        })
+                        .catch((err) => {
+                          console.error(err);
+                          setError("Gagal memuat ulang berkas.");
+                          setLoading(false);
+                        });
+                    }}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md active:scale-95"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Muat Ulang
+                  </button>
                   <a
                     href={fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all"
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-all"
                   >
-                    <ExternalLink className="h-4 w-4" />
+                    <ExternalLink className="h-3.5 w-3.5" />
                     Buka di Tab Baru
-                  </a>
-                  <a
-                    href={fileUrl}
-                    download
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all"
-                  >
-                    <Download className="h-4 w-4" />
-                    Unduh File
                   </a>
                 </div>
               </div>
@@ -713,7 +702,7 @@ export default function PdfViewerModal({
                   numPages={numPages}
                   pdfDoc={pdfDoc}
                   scale={scale}
-                  rotation={rotation}
+                  rotation={0}
                   scrollContainerRef={mainScrollRef}
                 />
               ))}

@@ -17,26 +17,38 @@ export default function BeritaViewCounter({ slug, initialViews = 0 }) {
 
     async function recordAndFetchView() {
       try {
-        const response = await fetch(`/api/berita/${slug}/view`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-        });
+        const sessionKey = `viewed_berita_${slug}`;
+        const alreadyViewedInSession =
+          typeof sessionStorage !== "undefined" &&
+          sessionStorage.getItem(sessionKey) === "1";
 
-        if (response.ok) {
-          const data = await response.json();
-          const count =
-            typeof data?.views === "number"
-              ? data.views
-              : typeof data?.data?.views === "number"
-              ? data.data.views
-              : null;
-          if (isMounted && count !== null) {
-            setViews(count);
-            setIsUpdating(true);
-            setTimeout(() => {
-              if (isMounted) setIsUpdating(false);
-            }, 800);
+        // Hanya kirim increment jika belum tercatat dalam sesi kunjungan browser ini
+        if (!alreadyViewedInSession) {
+          const response = await fetch(`/api/berita/${slug}/view`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
+          });
+
+          if (response.ok) {
+            try {
+              sessionStorage.setItem(sessionKey, "1");
+            } catch {}
+
+            const data = await response.json();
+            const count =
+              typeof data?.views === "number"
+                ? data.views
+                : typeof data?.data?.views === "number"
+                ? data.data.views
+                : null;
+            if (isMounted && count !== null) {
+              setViews(count);
+              setIsUpdating(true);
+              setTimeout(() => {
+                if (isMounted) setIsUpdating(false);
+              }, 800);
+            }
           }
         }
       } catch (err) {

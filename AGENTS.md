@@ -3,12 +3,12 @@
 ## Stack
 
 - **Astro 7** (SSR via `@astrojs/node` v11), React 19 islands (`@astrojs/react` v6), Tailwind CSS 4, Vite 8 (Rolldown/Oxc engine), Rust Compiler
-- **Go Fiber 2** backend (API) — lihat `../backend/` (bukan Next.js API routes)
+- **Go Fiber 3** backend (API) — lihat `backend/` (bukan Next.js API routes)
 - **Supabase** for Auth & Storage only
 - **Supabase Storage** for file/media storage
 - **Vitest** (unit), **Playwright** (E2E)
 - **Google Gemini / Groq / Mistral / OpenRouter** — multi-model AI chatbot fallback (dipanggil lewat backend Go)
-- Monorepo root: `E:\CODING\project-kantor\kemenag-monorepo` — `npm run dev` menjalankan BE (Fiber, port 3001) + FE (Astro, port 4321) via `concurrently`
+- Monorepo root: `npm run dev` menjalankan BE (Fiber, port 8080) + FE (Astro, port 3000) dengan injeksi Infisical Cloud secara concurrent
 
 ## Penting: Tidak Ada Next.js
 
@@ -20,13 +20,13 @@
 
 | Action     | Command                                       |
 | ---------- | --------------------------------------------- |
-| Dev (root) | `npm run dev` (BE 3001 + FE 4321)             |
-| Dev FE     | `npm run dev:fe` → `ns`                       |
-| Dev BE     | `npm run dev:be` → `ns`                       |
+| Dev (root) | `npm run dev` (BE 8080 + FE 3000 via Infisical) |
+| Dev FE     | `npm run dev:fe` (Astro via Infisical)        |
+| Dev BE     | `npm run dev:be` (Go via Infisical)           |
 | Build      | `npm run build` (BE + FE)                     |
 | Lint       | `npm run lint` (frontend saja)                |
 | Unit tests | `npm test` (Vitest; `tests/**/*.test.{js,jsx}`) |
-| E2E tests  | `npm run test:e2e` (Playwright; `tests/e2e/`, port 4321) |
+| E2E tests  | `npm run test:e2e` (Playwright; `tests/e2e/`, port 3000) |
 
 Tidak ada script `typecheck`, `test:watch`, `test:coverage`, atau `db:push` di workspace FE (sudah dibersihkan dari era Next.js).
 
@@ -35,8 +35,8 @@ Tidak ada script `typecheck`, `test:watch`, `test:coverage`, atau `db:push` di w
 - **Alias**: `@/*` → `./src/*` (jsconfig.json + vitest.config.mjs + astro.config.mjs)
 - **Layout**: `src/layouts/BaseLayout.astro` — 5 island widget (`client:load`): RealtimeSync, PageViewTracker, PwaRegister, ChatWidget, AccessibilityWidget
 - **Pages**: `src/pages/` — Halaman Astro (admin/*, login rahasia `pusdatin/auth.astro`, `404.astro`, home `index`/`beranda`, dll)
-- **Server API**: semua endpoint API dilayani **backend Go** (`../backend/internal/`), prefix `/api/`; FE memanggil via proxy vite (`/api` → `http://localhost:3001`) saat dev, atau reverse-proxy di production
-- **Env**: `.env.local` di ROOT monorepo dibaca oleh Astro (sekolah parser `astro/src/env.d.ts`); jangan buat `.env` lain di `frontend/`
+- **Server API**: semua endpoint API dilayani **backend Go** (`../backend/internal/`), prefix `/api/`; FE memanggil via proxy vite (`/api` → `http://localhost:8080`) saat dev, atau reverse-proxy di production
+- **Env**: Dikelola terpusat di **Infisical Cloud** (folder `/website-kemenag`); tidak ada lagi file `.env` fisik di workspace
 - **SEO structured data**: `src/lib/structured-data.ts` — `organizationSchema()`, `websiteSchema()`, `newsArticleSchema()`, `breadcrumbSchema()`, `contactPageSchema()`, `navigationSchema()`
 
 ## UI / Layout
@@ -59,7 +59,7 @@ Tidak ada script `typecheck`, `test:watch`, `test:coverage`, atau `db:push` di w
 
 - Vitest: happy-dom, `@testing-library/jest-dom/vitest`, `next/navigation` di-mock lewat shim (lihat `vitest.setup.js`)
 - Test files aktif di `tests/`: `date-utils`, `berita-utils`, `cover-image`, `laporan-admin-utils`, `laporan-admin-reducer`, `admin-laporan-manager`, `nav-utils`, `permissions`, `structured-data`, `next-config-security` (pure-logic)
-- 1 E2E spec di `tests/e2e/` (base URL `http://127.0.0.1:4321`)
+- 1 E2E spec di `tests/e2e/` (base URL `http://127.0.0.1:3000`)
 - **STRICT BUILD RULE**: **DO NOT EVER** run `npm run build` atau perintah verifikasi build otomatis. **ONLY** run build saat diminta eksplisit oleh user.
 - **DO NOT** jalankan unit tests otomatis untuk edit rutin (UI/navigasi/konten) kecuali diminta user atau perubahan backend logic kritis.
 

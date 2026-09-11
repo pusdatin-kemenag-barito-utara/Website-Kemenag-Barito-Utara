@@ -10,7 +10,7 @@ import (
 )
 
 // Config menyimpan seluruh konfigurasi runtime backend.
-// Sumber tunggal: .env.local di root monorepo (parent dari backend/).
+// Sumber utama: Infisical Cloud (diinjeksi ke memory proses via Infisical CLI / Universal Auth).
 type Config struct {
 	SiteURL        string
 	SupabaseURL    string
@@ -32,7 +32,7 @@ type Config struct {
 	OneSignalAPIKey string
 	OneSignalAppID  string
 
-	CMSPath  string // root monorepo, dipakai utk lookup .env.local
+	CMSPath  string // root monorepo
 	Port     string
 	CDNBase  string
 	FSMedia  string // fallback local media cache (opsional)
@@ -53,31 +53,26 @@ func boolEnv(key string, def bool) bool {
 	return b
 }
 
-// LookupRootEnv mencari .env.local mulai dari cwd naik ke parent.
+// Load membaca konfigurasi runtime backend dari environment variables (Infisical Cloud).
 func Load() error {
 	dir, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
-	var envPath string
+	// Optional fallback jika ada berkas lokal saat testing offline
 	for d := dir; ; d = filepath.Dir(d) {
 		candidate := filepath.Join(d, ".env.local")
 		if _, err := os.Stat(candidate); err == nil {
-			envPath = candidate
+			_ = godotenv.Load(candidate)
+			Cfg.CMSPath = filepath.Dir(candidate)
 			break
 		}
 		parent := filepath.Dir(d)
 		if parent == d {
+			Cfg.CMSPath = dir
 			break
 		}
-	}
-
-	if envPath != "" {
-		_ = godotenv.Load(envPath)
-		Cfg.CMSPath = filepath.Dir(envPath)
-	} else {
-		Cfg.CMSPath = dir
 	}
 
 	Cfg.SiteURL = strings.TrimSpace(os.Getenv("NEXT_PUBLIC_SITE_URL"))
@@ -96,7 +91,7 @@ func Load() error {
 	Cfg.OpenRouterAPIKey = os.Getenv("OPENROUTER_API_KEY")
 	Cfg.OneSignalAPIKey = os.Getenv("ONESIGNAL_REST_API_KEY")
 	Cfg.OneSignalAppID = firstNonEmpty(os.Getenv("PUBLIC_ONESIGNAL_APP_ID"), os.Getenv("NEXT_PUBLIC_ONESIGNAL_APP_ID"), os.Getenv("ONESIGNAL_APP_ID"))
-	Cfg.Port = firstNonEmpty(os.Getenv("PORT"), "8080")
+	Cfg.Port = firstNonEmpty(os.Getenv("BACKEND_PORT"), os.Getenv("PORT"), "8080")
 	Cfg.CDNBase = strings.TrimSuffix(firstNonEmpty(os.Getenv("CDN_BASE"), Cfg.SiteURL), "/")
 	return nil
 }

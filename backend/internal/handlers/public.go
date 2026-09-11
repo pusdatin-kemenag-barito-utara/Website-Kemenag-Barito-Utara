@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -11,11 +12,11 @@ import (
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // SeksiPublicHandler — GET /api/seksi (urutan organisasi + komposisi kepala)
-func SeksiPublicHandler(c *fiber.Ctx) error {
+func SeksiPublicHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
 	pool := db.Get()
@@ -61,7 +62,7 @@ func SeksiPublicHandler(c *fiber.Ctx) error {
 }
 
 // SeksiDetailPublicHandler — GET /api/seksi/:slug
-func SeksiDetailPublicHandler(c *fiber.Ctx) error {
+func SeksiDetailPublicHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
 	pool := db.Get()
@@ -133,7 +134,7 @@ func SeksiDetailPublicHandler(c *fiber.Ctx) error {
 }
 
 // StaticPagesHandler — GET /api/static-pages (?slug=)
-func StaticPagesHandler(c *fiber.Ctx) error {
+func StaticPagesHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
 	pool := db.Get()
@@ -143,14 +144,12 @@ func StaticPagesHandler(c *fiber.Ctx) error {
 
 	slug := strings.TrimSpace(c.Query("slug"))
 
-	var rows any
-	var err error
 	if slug != "" {
 		var id, pageSlug, title, content string
 		var description any
 		var isPublished bool
 		var updatedAt *time.Time
-		err = pool.QueryRow(ctx, `
+		err := pool.QueryRow(ctx, `
 			SELECT id, slug, title, description, content, is_published, updated_at
 			FROM kemenag_website.static_pages
 			WHERE slug = $1 AND is_published = true LIMIT 1`, slug).
@@ -169,7 +168,6 @@ func StaticPagesHandler(c *fiber.Ctx) error {
 			"updated_at":   fmtTime(updatedAt),
 		})
 	}
-	_ = rows
 
 	cur, err := pool.Query(ctx, `
 		SELECT id, slug, title, description, content, is_published, updated_at
@@ -202,13 +200,13 @@ func StaticPagesHandler(c *fiber.Ctx) error {
 }
 
 // SearchHandler — GET /api/search (full-text ILIKE concurrent 7 tabel)
-func SearchHandler(c *fiber.Ctx) error {
+func SearchHandler(c fiber.Ctx) error {
 	query := strings.TrimSpace(c.Query("q"))
 	if len(query) < 2 {
 		return response.Error(c, 400, "Query minimal 2 karakter.", "QUERY_TOO_SHORT")
 	}
 	limit := 10
-	if v := c.QueryInt("limit"); v > 0 && v <= 50 {
+	if v, err := strconv.Atoi(c.Query("limit")); err == nil && v > 0 && v <= 50 {
 		limit = v
 	}
 
@@ -470,7 +468,7 @@ func SearchHandler(c *fiber.Ctx) error {
 }
 
 // VisitorStatsHandler — GET /api/visitors
-func VisitorStatsHandler(c *fiber.Ctx) error {
+func VisitorStatsHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 6*time.Second)
 	defer cancel()
 	total, today := services.GetVisitorStats(ctx)
@@ -479,13 +477,13 @@ func VisitorStatsHandler(c *fiber.Ctx) error {
 }
 
 // VisitorIncrementHandler — POST /api/visitors
-func VisitorIncrementHandler(c *fiber.Ctx) error {
+func VisitorIncrementHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 6*time.Second)
 	defer cancel()
 
 	path := ""
 	var body fiber.Map
-	if err := c.BodyParser(&body); err == nil {
+	if err := c.Bind().Body(&body); err == nil {
 		if p, ok := body["path"].(string); ok {
 			path = p
 		}
@@ -495,7 +493,7 @@ func VisitorIncrementHandler(c *fiber.Ctx) error {
 }
 
 // MaintenanceStatusHandler — GET /api/maintenance-status
-func MaintenanceStatusHandler(c *fiber.Ctx) error {
+func MaintenanceStatusHandler(c fiber.Ctx) error {
 	c.Set("Cache-Control", "no-store")
 	c.Set("CDN-Cache-Control", "no-store")
 	return c.JSON(fiber.Map{"maintenance": false})

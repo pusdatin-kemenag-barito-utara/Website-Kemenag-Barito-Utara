@@ -13,11 +13,11 @@ import (
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // AdminSlidesListHandler — GET /api/admin/homepage-slides
-func AdminSlidesListHandler(c *fiber.Ctx) error {
+func AdminSlidesListHandler(c fiber.Ctx) error {
 	if _, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{}); err != nil {
 		return err
 	}
@@ -51,11 +51,11 @@ func AdminSlidesListHandler(c *fiber.Ctx) error {
 	_ = pool.QueryRow(ctx, "SELECT COUNT(*) FROM kemenag_website.homepage_slides WHERE is_published = true").Scan(&publishedCount)
 	_ = pool.QueryRow(ctx, "SELECT COUNT(*) FROM kemenag_website.homepage_slides WHERE is_published = false").Scan(&draftCount)
 
-	page := c.QueryInt("page", 1)
+	page := parseIntDefault(c.Query("page"), 1)
 	if page < 1 {
 		page = 1
 	}
-	limit := c.QueryInt("limit", 12)
+	limit := parseIntDefault(c.Query("limit"), 12)
 	if limit < 1 {
 		limit = 12
 	}
@@ -155,13 +155,13 @@ func AdminSlidesListHandler(c *fiber.Ctx) error {
 }
 
 // AdminSlidesCreateHandler — POST /api/admin/homepage-slides
-func AdminSlidesCreateHandler(c *fiber.Ctx) error {
+func AdminSlidesCreateHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{})
 	if err != nil {
 		return err
 	}
 	var body fiber.Map
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	title := lib.CleanString(body["title"], 200)
@@ -222,13 +222,13 @@ func AdminSlidesCreateHandler(c *fiber.Ctx) error {
 }
 
 // AdminSlidesUpdateHandler — PATCH /api/admin/homepage-slides/:id
-func AdminSlidesUpdateHandler(c *fiber.Ctx) error {
+func AdminSlidesUpdateHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{})
 	if err != nil {
 		return err
 	}
 	var body fiber.Map
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	id := c.Params("id")
@@ -240,58 +240,66 @@ func AdminSlidesUpdateHandler(c *fiber.Ctx) error {
 	var oldTitle, oldCaption, oldCategory, oldImage string
 	var oldPublished bool
 	var oldSortOrder int
-	err = pool.QueryRow(ctx, `SELECT title, caption, category, image_url, is_published, sort_order FROM kemenag_website.homepage_slides WHERE id = $1`, id).
+	err = pool.QueryRow(ctx, `
+		SELECT title, caption, category, image_url, is_published, sort_order
+		FROM kemenag_website.homepage_slides WHERE id = $1`, id).
 		Scan(&oldTitle, &oldCaption, &oldCategory, &oldImage, &oldPublished, &oldSortOrder)
 	if err != nil {
 		return response.Error(c, 404, "Slide tidak ditemukan.", "NOT_FOUND")
 	}
 
 	title := oldTitle
-	if v, ok := body["title"].(string); ok && strings.TrimSpace(v) != "" {
-		title = lib.CleanString(v, 200)
+	if v, ok := body["title"]; ok {
+		if s := lib.CleanString(v, 200); s != "" {
+			title = s
+		}
 	}
-
 	caption := oldCaption
-	if v, ok := body["caption"].(string); ok {
+	if v, ok := body["caption"]; ok {
 		caption = lib.CleanString(v, 500)
 	}
-
 	category := oldCategory
-	if v, ok := body["category"].(string); ok && strings.TrimSpace(v) != "" {
-		category = lib.CleanString(v, 50)
+	if v, ok := body["category"]; ok {
+		if s := lib.CleanString(v, 50); s != "" {
+			category = s
+		}
 	}
-
 	isPublished := oldPublished
-	if _, ok := body["is_published"]; ok {
-		isPublished = lib.ToBool(body["is_published"])
+	if v, ok := body["is_published"]; ok {
+		isPublished = lib.ToBool(v)
 	}
-
 	sortOrder := oldSortOrder
-	if _, ok := body["sort_order"]; ok {
-		sortOrder = lib.ToInt(body["sort_order"])
+	if v, ok := body["sort_order"]; ok {
+		sortOrder = lib.ToInt(v)
 	}
 
 	imageURL := oldImage
-	if v := lib.CleanString(body["image_upload_base64"], 20_000_000); strings.HasPrefix(v, "data:image/") {
-		_, publicURL, _, _, err := services.Storage.UploadBase64Image(ctx, v, "homepage-slides", "slide")
-		if err != nil {
-			return response.Error(c, 400, "Gagal upload gambar: "+err.Error(), "UPLOAD_FAILED")
+	if v, ok := body["image_upload_base64"]; ok {
+		raw := lib.CleanString(v, 20_000_000)
+		if strings.HasPrefix(raw, "data:image/") {
+			_, publicURL, _, _, err := services.Storage.UploadBase64Image(ctx, raw, "homepage-slides", "slide")
+			if err != nil {
+				return response.Error(c, 400, "Gagal upload gambar: "+err.Error(), "UPLOAD_FAILED")
+			}
+			imageURL = publicURL
+			if services.IsCMSStorageURL(oldImage) {
+				go services.Storage.RemoveFileByPublicUrl(ctx, oldImage)
+			}
 		}
-		imageURL = publicURL
-		if services.IsCMSStorageURL(oldImage) {
-			go services.Storage.RemoveFileByPublicUrl(ctx, oldImage)
+	} else if v, ok := body["image_url"]; ok {
+		if s := lib.CleanString(v, 2000); s != "" {
+			imageURL = s
 		}
-	} else if v := lib.CleanString(body["image_url"], 2000); v != "" {
-		imageURL = v
 	}
 
 	_, err = pool.Exec(ctx, `
 		UPDATE kemenag_website.homepage_slides SET
-			title = $1, caption = $2, image_url = $3, is_published = $4, sort_order = $5, category = $6,
-			updated_at = now()
-		WHERE id = $7`, title, caption, imageURL, isPublished, sortOrder, category, id)
+			title = $1, caption = $2, category = $3, image_url = $4,
+			is_published = $5, sort_order = $6, updated_at = now()
+		WHERE id = $7`,
+		title, caption, category, imageURL, isPublished, sortOrder, id)
 	if err != nil {
-		return response.Error(c, 500, "Gagal update slide.", "DB_ERROR")
+		return response.Error(c, 500, "Gagal memperbarui slide.", "DB_ERROR")
 	}
 
 	services.Audit.Record(struct {
@@ -304,7 +312,9 @@ func AdminSlidesUpdateHandler(c *fiber.Ctx) error {
 		IP          any
 	}{
 		Action: "update", Entity: "homepage_slides", EntityID: id, PerformedBy: session.UserEmail(),
-		After: fiber.Map{"title": title, "is_published": isPublished}, IP: adminIP(c),
+		Before: fiber.Map{"title": oldTitle, "is_published": oldPublished},
+		After:  fiber.Map{"title": title, "is_published": isPublished},
+		IP:     adminIP(c),
 	})
 	services.CacheBust()
 	InvalidateDashboardStatsCache()
@@ -313,7 +323,7 @@ func AdminSlidesUpdateHandler(c *fiber.Ctx) error {
 }
 
 // AdminSlidesDeleteHandler — DELETE /api/admin/homepage-slides/:id
-func AdminSlidesDeleteHandler(c *fiber.Ctx) error {
+func AdminSlidesDeleteHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{})
 	if err != nil {
 		return err

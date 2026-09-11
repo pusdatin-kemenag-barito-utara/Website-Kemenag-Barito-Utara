@@ -3,39 +3,62 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
+	"kemenag-backend/internal/cache"
 	"kemenag-backend/internal/db"
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // HealthHandler — GET /api/health
-func HealthHandler(c *fiber.Ctx) error {
+func HealthHandler(c fiber.Ctx) error {
 	start := time.Now()
 	dbStatus := "ok"
+	var dbLatencyMs int64
 	ctx, cancel := context.WithTimeout(c.Context(), 2*time.Second)
 	defer cancel()
 	if db.Get() == nil {
 		dbStatus = "unavailable"
-	} else if err := db.Get().Ping(ctx); err != nil {
-		dbStatus = "error"
+	} else {
+		dbStart := time.Now()
+		if err := db.Get().Ping(ctx); err != nil {
+			dbStatus = "error"
+		} else {
+			dbLatencyMs = time.Since(dbStart).Milliseconds()
+		}
 	}
+
+	cacheStatus := "in-memory"
+	var cacheLatencyMs int64
+	if cache.HasRedis() {
+		cacheStatus = "redis"
+		if lat, err := cache.Ping(ctx); err == nil {
+			cacheLatencyMs = lat.Milliseconds()
+		} else {
+			cacheStatus = "redis_error"
+		}
+	}
+
 	c.Set("Cache-Control", "no-cache, no-store")
 	return c.JSON(fiber.Map{
-		"status":  "ok",
-		"service": "kemenag-barito-utara-api",
-		"db":      dbStatus,
-		"timestamp": time.Now().Format(time.RFC3339),
-		"uptime":  int(time.Since(start).Seconds()),
-		"env":     "production",
+		"status":        "ok",
+		"service":       "kemenag-barito-utara-api",
+		"version":       "fiber/v3.5.0",
+		"db":            dbStatus,
+		"db_latency":    fmt.Sprintf("%dms", dbLatencyMs),
+		"cache":         cacheStatus,
+		"cache_latency": fmt.Sprintf("%dms", cacheLatencyMs),
+		"timestamp":     time.Now().Format(time.RFC3339),
+		"uptime_s":      int(time.Since(start).Seconds()),
 	})
 }
 
 // PortalHandler — GET /api/portal (statistik + 5 berita terbaru)
-func PortalHandler(c *fiber.Ctx) error {
+func PortalHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
 	pool := db.Get()
@@ -128,8 +151,7 @@ func fmtTime(t *time.Time) any {
 	return t.Format(time.RFC3339)
 }
 
-
-// CacheVersionHandler � GET /api/cache-version (untuk invalidasi FE)
-func CacheVersionHandler(c *fiber.Ctx) error {
+// CacheVersionHandler — GET /api/cache-version (untuk invalidasi FE)
+func CacheVersionHandler(c fiber.Ctx) error {
 	return c.JSON(fiber.Map{"version": services.CacheVersion()})
 }

@@ -11,11 +11,11 @@ import (
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // AdminSeksiListHandler — GET /api/admin/seksi
-func AdminSeksiListHandler(c *fiber.Ctx) error {
+func AdminSeksiListHandler(c fiber.Ctx) error {
 	if _, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{AllowEditor: true}); err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func AdminSeksiListHandler(c *fiber.Ctx) error {
 }
 
 // AdminSeksiGetHandler — GET /api/admin/seksi/:id
-func AdminSeksiGetHandler(c *fiber.Ctx) error {
+func AdminSeksiGetHandler(c fiber.Ctx) error {
 	if _, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{AllowEditor: true}); err != nil {
 		return err
 	}
@@ -105,13 +105,13 @@ func AdminSeksiGetHandler(c *fiber.Ctx) error {
 }
 
 // AdminSeksiUpdateHandler — PUT /api/admin/seksi/:id
-func AdminSeksiUpdateHandler(c *fiber.Ctx) error {
+func AdminSeksiUpdateHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "seksi:manage"})
 	if err != nil {
 		return err
 	}
 	var body fiber.Map
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	id := c.Params("id")
@@ -221,7 +221,7 @@ func AdminSeksiUpdateHandler(c *fiber.Ctx) error {
 }
 
 // AdminSeksiDeleteHandler — DELETE /api/admin/seksi/:id
-func AdminSeksiDeleteHandler(c *fiber.Ctx) error {
+func AdminSeksiDeleteHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "seksi:manage"})
 	if err != nil {
 		return err
@@ -276,13 +276,13 @@ func AdminSeksiDeleteHandler(c *fiber.Ctx) error {
 }
 
 // AdminSeksiAddPegawaiHandler — POST /api/admin/seksi/:id/pegawai
-func AdminSeksiAddPegawaiHandler(c *fiber.Ctx) error {
+func AdminSeksiAddPegawaiHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "seksi:manage"})
 	if err != nil {
 		return err
 	}
 	var body fiber.Map
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	seksiID := c.Params("id")
@@ -364,13 +364,13 @@ func AdminSeksiAddPegawaiHandler(c *fiber.Ctx) error {
 }
 
 // AdminSeksiUpdatePegawaiHandler — PUT /api/admin/seksi/:id/pegawai/:pegawaiId
-func AdminSeksiUpdatePegawaiHandler(c *fiber.Ctx) error {
+func AdminSeksiUpdatePegawaiHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "seksi:manage"})
 	if err != nil {
 		return err
 	}
 	var body fiber.Map
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	seksiID := c.Params("id")
@@ -456,7 +456,7 @@ func AdminSeksiUpdatePegawaiHandler(c *fiber.Ctx) error {
 }
 
 // AdminSeksiDeletePegawaiHandler — DELETE /api/admin/seksi/:id/pegawai/:pegawaiId
-func AdminSeksiDeletePegawaiHandler(c *fiber.Ctx) error {
+func AdminSeksiDeletePegawaiHandler(c fiber.Ctx) error {
 	session, _, err := middleware.RequireAdmin(c, middleware.AdminAuthOpts{Permission: "seksi:manage"})
 	if err != nil {
 		return err

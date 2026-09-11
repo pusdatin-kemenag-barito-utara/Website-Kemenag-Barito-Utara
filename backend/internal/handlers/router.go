@@ -3,11 +3,11 @@ package handlers
 import (
 	"kemenag-backend/internal/middleware"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // RegisterRoutes mendaftarkan seluruh endpoint (paritas /api Next.js).
-func RegisterRoutes(app *fiber.App) {
+func RegisterRoutes(app fiber.Router) {
 	api := app.Group("/api")
 
 	// ── Pusdatin Auth & Admin Auth (Protected by Brute Force Rate Limiter) ──
