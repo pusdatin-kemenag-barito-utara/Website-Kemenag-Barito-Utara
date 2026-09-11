@@ -49,11 +49,11 @@ export default function RealtimeSync() {
     }
 
     return () => {
-      if (channel) {
+      if (channel && supabase) {
         supabase.removeChannel(channel).catch(() => {});
       }
     };
-  }, [supabase, router]);
+  }, [router]);
 
   return null;
 }
