@@ -14,14 +14,13 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /app/serv
 
 # --- Stage 2: Build Astro Frontend ---
 FROM node:22-alpine AS builder-fe
-WORKDIR /app
+WORKDIR /app/frontend
 RUN apk add --no-cache libc6-compat
-COPY package.json package-lock.json ./
-COPY frontend/package.json ./frontend/
-RUN npm install --prefix frontend
-COPY frontend/ ./frontend/
+COPY frontend/package*.json ./
+RUN npm ci || npm install
+COPY frontend/ ./
 
-RUN npm --prefix frontend run build
+RUN npm run build
 
 # --- Stage 3: Production Unified Runner ---
 FROM node:22-alpine AS runner

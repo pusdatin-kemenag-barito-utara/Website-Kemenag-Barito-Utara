@@ -5,23 +5,22 @@
 # --- Stage 1: Build Frontend ---
 FROM node:22-alpine AS builder
 
-WORKDIR /app
+WORKDIR /app/frontend
 
 # Enable build tools if needed
 RUN apk add --no-cache libc6-compat
 
 # Copy package configurations
-COPY package.json package-lock.json ./
-COPY frontend/package.json ./frontend/
+COPY frontend/package*.json ./
 
-# Install dependencies (root & workspace)
-RUN npm install --prefix frontend
+# Install dependencies
+RUN npm ci || npm install
 
-# Copy frontend source code and root context
-COPY frontend/ ./frontend/
+# Copy frontend source code
+COPY frontend/ ./
 
 # Build Astro standalone bundle
-RUN npm --prefix frontend run build
+RUN npm run build
 
 # --- Stage 2: Production Runner ---
 FROM node:22-alpine AS runner
