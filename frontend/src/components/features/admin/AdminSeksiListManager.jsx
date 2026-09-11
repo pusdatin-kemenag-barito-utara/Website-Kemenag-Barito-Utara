@@ -13,31 +13,42 @@ import {
 } from "lucide-react";
 import { FloatingFeedback, DeleteConfirmModal } from "./slides/SlidesUI";
 import { logWarn, logError } from "@/lib/logger";
-import { normalizeCoverImageUrl, isImageCached, markImageCached, preloadImages } from "@/lib/cover-image";
+import { normalizeCoverImageUrl, isImageCached, markImageCached, preloadImages, getAlternativeStorageUrl } from "@/lib/cover-image";
 
 function SeksiAvatarThumb({ src, alt, objectPositionY = 50 }) {
   const normalized = normalizeCoverImageUrl(src);
+  const [currentSrc, setCurrentSrc] = useState(normalized);
   const [loaded, setLoaded] = useState(() => isImageCached(normalized));
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    if (!normalized) return;
-    if (isImageCached(normalized)) {
+    setCurrentSrc(normalized);
+    setHasError(false);
+  }, [normalized]);
+
+  useEffect(() => {
+    if (!currentSrc) return;
+    if (isImageCached(currentSrc)) {
       setLoaded(true);
       return;
     }
     const img = new window.Image();
-    img.src = normalized;
+    img.src = currentSrc;
     img.onload = () => {
-      markImageCached(normalized);
+      markImageCached(currentSrc);
       setLoaded(true);
     };
     img.onerror = () => {
-      setHasError(true);
+      const altSrc = getAlternativeStorageUrl(currentSrc);
+      if (altSrc && altSrc !== currentSrc) {
+        setCurrentSrc(altSrc);
+      } else {
+        setHasError(true);
+      }
     };
-  }, [normalized]);
+  }, [currentSrc]);
 
-  if (!normalized || hasError) {
+  if (!currentSrc || hasError) {
     return (
       <div className="flex h-8 w-8 items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-400">
         <User className="h-4 w-4" />
@@ -47,15 +58,22 @@ function SeksiAvatarThumb({ src, alt, objectPositionY = 50 }) {
 
   return (
     <img
-      src={normalized}
+      src={currentSrc}
       alt={alt || "Kepala Seksi"}
       loading="lazy"
       decoding="async"
       onLoad={() => {
-        markImageCached(normalized);
+        markImageCached(currentSrc);
         setLoaded(true);
       }}
-      onError={() => setHasError(true)}
+      onError={() => {
+        const altSrc = getAlternativeStorageUrl(currentSrc);
+        if (altSrc && altSrc !== currentSrc) {
+          setCurrentSrc(altSrc);
+        } else {
+          setHasError(true);
+        }
+      }}
       style={{
         objectPosition: `50% ${objectPositionY ?? 50}%`,
       }}

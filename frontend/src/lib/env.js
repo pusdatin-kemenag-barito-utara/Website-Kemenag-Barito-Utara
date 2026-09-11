@@ -44,21 +44,32 @@ export function getSiteUrl() {
 }
 
 export function getPublicApiUrl() {
-  return getEnv(
+  const raw = getEnv(
     "PUBLIC_API_URL",
     `http://127.0.0.1:${getEnv("BACKEND_PORT", getEnv("PORT", "8080"))}`
   ).replace(/\/$/, "");
+
+  // In browser, ensure we don't attempt calling loopback address if accessed externally
+  if (typeof window !== "undefined") {
+    if (!raw || raw.includes("127.0.0.1") || raw.includes("localhost")) {
+      return window.location.origin;
+    }
+  }
+  return raw;
 }
 
 export function getSupabaseUrl() {
-  return getEnv("NEXT_PUBLIC_SUPABASE_URL", "").replace(/\/$/, "");
+  const url = getEnv("NEXT_PUBLIC_SUPABASE_URL", "").replace(/\/$/, "");
+  if (url.includes("placeholder")) return "";
+  return url;
 }
 
 export function getSupabaseAnonKey() {
-  return (
+  const key =
     getEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") ||
-    getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
-  );
+    getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  if (key && key.includes("placeholder")) return "";
+  return key;
 }
 
 export function getTurnstileSiteKey() {

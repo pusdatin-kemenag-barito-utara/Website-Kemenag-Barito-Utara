@@ -2,34 +2,45 @@ import React from "react";
 import { StatusPill, ActionIconButton } from "./BeritaUI";
 import { IconPencil, IconTrash, IconGallery } from "./BeritaIcons";
 import { formatDate, getItemBaseDate, getItemPublishedState } from "@/lib/berita-utils";
-import { normalizeCoverImageUrl } from "@/lib/cover-image";
+import { normalizeCoverImageUrl, getAlternativeStorageUrl } from "@/lib/cover-image";
 import Image from "@/components/common/NextImage";
 
 // In-memory set of loaded image URLs to guarantee instant 0ms rendering on pagination
 const preloadedUrls = new Set();
 
 function NewsCoverThumb({ src, title }) {
+  const [currentSrc, setCurrentSrc] = React.useState(src);
   const [loaded, setLoaded] = React.useState(() => (src ? preloadedUrls.has(src) : false));
   const [hasError, setHasError] = React.useState(false);
 
   React.useEffect(() => {
-    if (!src) return;
-    if (preloadedUrls.has(src)) {
+    setCurrentSrc(src);
+    setHasError(false);
+  }, [src]);
+
+  React.useEffect(() => {
+    if (!currentSrc) return;
+    if (preloadedUrls.has(currentSrc)) {
       setLoaded(true);
       return;
     }
     const img = new window.Image();
-    img.src = src;
+    img.src = currentSrc;
     img.onload = () => {
-      preloadedUrls.add(src);
+      preloadedUrls.add(currentSrc);
       setLoaded(true);
     };
     img.onerror = () => {
-      setHasError(true);
+      const alt = getAlternativeStorageUrl(currentSrc);
+      if (alt && alt !== currentSrc) {
+        setCurrentSrc(alt);
+      } else {
+        setHasError(true);
+      }
     };
-  }, [src]);
+  }, [currentSrc]);
 
-  if (!src || hasError) {
+  if (!currentSrc || hasError) {
     return (
       <div className="relative flex h-13 w-18 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-100/80 text-slate-400 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-500">
         <IconGallery className="h-5 w-5 opacity-60" />
@@ -45,15 +56,22 @@ function NewsCoverThumb({ src, title }) {
         </div>
       )}
       <img
-        src={src}
+        src={currentSrc}
         alt={title || "Cover"}
         loading="lazy"
         decoding="async"
         onLoad={() => {
-          preloadedUrls.add(src);
+          preloadedUrls.add(currentSrc);
           setLoaded(true);
         }}
-        onError={() => setHasError(true)}
+        onError={() => {
+          const alt = getAlternativeStorageUrl(currentSrc);
+          if (alt && alt !== currentSrc) {
+            setCurrentSrc(alt);
+          } else {
+            setHasError(true);
+          }
+        }}
         className={`h-full w-full object-cover transition-opacity duration-200 group-hover:scale-105 ${
           loaded ? "opacity-100" : "opacity-0"
         }`}

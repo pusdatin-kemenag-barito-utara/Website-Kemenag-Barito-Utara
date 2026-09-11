@@ -2,14 +2,24 @@ import { getSupabaseUrl } from "@/lib/env";
 
 function getSupabaseStorageMedia() {
   const base = getSupabaseUrl();
-  return base
+  return base && !base.includes("placeholder")
     ? `${base}/storage/v1/object/public/cms-media`
     : "/storage/v1/object/public/cms-media";
 }
 
 export function normalizeCoverImageUrl(value = "") {
-  const raw = String(value || "").trim();
+  let raw = String(value || "").trim();
   if (!raw) return "";
+
+  // Self-healing: if an old/cached placeholder domain was stored, extract clean media path
+  if (raw.includes("placeholder.supabase.co")) {
+    const marker = "/storage/v1/object/public/cms-media/";
+    const markerIdx = raw.indexOf(marker);
+    if (markerIdx !== -1) {
+      const clean = raw.slice(markerIdx + marker.length).replace(/^\/+/, "");
+      return `${getSupabaseStorageMedia()}/${clean}`;
+    }
+  }
 
   if (
     raw.startsWith("/assets/") ||
@@ -81,3 +91,19 @@ export function preloadImages(urls = [], delay = 100) {
     });
   }, delay);
 }
+
+export function getAlternativeStorageUrl(url = "") {
+  if (!url || typeof url !== "string") return "";
+  const marker = "/storage/v1/object/public/cms-media/";
+  const markerIdx = url.indexOf(marker);
+  if (markerIdx !== -1) {
+    const clean = url.slice(markerIdx + marker.length).replace(/^\/+/, "");
+    return `/api/storage/media/${clean}`;
+  }
+  if (url.startsWith("/storage/")) {
+    const clean = url.replace(/^\/storage\/?/, "");
+    return `/api/storage/media/${clean}`;
+  }
+  return "";
+}
+

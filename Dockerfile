@@ -20,8 +20,6 @@ COPY frontend/package*.json ./
 RUN npm ci || npm install
 COPY frontend/ ./
 
-ENV NEXT_PUBLIC_SUPABASE_URL="https://placeholder.supabase.co"
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY="placeholder-anon-key"
 ENV NODE_ENV=production
 
 RUN npm run build

@@ -17,7 +17,10 @@ import NotFoundView from "@/components/common/NotFoundView";
 
 // Pengganti halaman-halaman App Router admin (layout + page) + proxy guard.
 // Prop `page` memilih konten; guard menampilkan 404 bila tidak terautentikasi.
-export default function AdminApp({ page, id }) {
+/**
+ * @param {{ page: string; id?: any; [key: string]: any }} props
+ */
+export default function AdminApp({ page, id = null }) {
   return (
     <ThemeProvider>
       <Guard page={page} id={id} />
@@ -25,7 +28,7 @@ export default function AdminApp({ page, id }) {
   );
 }
 
-function Guard({ page, id }) {
+function Guard({ page, id = null }) {
   const a = useAdminShell();
 
   if (a.loading) {

@@ -1,30 +1,41 @@
 import React, { useState, useEffect } from "react";
 import { StatusPill, ActionIconButton, ToggleSwitch } from "./SlidesUI";
-import { normalizeCoverImageUrl, isImageCached, markImageCached } from "@/lib/cover-image";
+import { normalizeCoverImageUrl, isImageCached, markImageCached, getAlternativeStorageUrl } from "@/lib/cover-image";
 
 function SlideImageThumb({ src, alt }) {
   const normalized = normalizeCoverImageUrl(src);
+  const [currentSrc, setCurrentSrc] = useState(normalized);
   const [loaded, setLoaded] = useState(() => isImageCached(normalized));
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    if (!normalized) return;
-    if (isImageCached(normalized)) {
+    setCurrentSrc(normalized);
+    setHasError(false);
+  }, [normalized]);
+
+  useEffect(() => {
+    if (!currentSrc) return;
+    if (isImageCached(currentSrc)) {
       setLoaded(true);
       return;
     }
     const img = new window.Image();
-    img.src = normalized;
+    img.src = currentSrc;
     img.onload = () => {
-      markImageCached(normalized);
+      markImageCached(currentSrc);
       setLoaded(true);
     };
     img.onerror = () => {
-      setHasError(true);
+      const altSrc = getAlternativeStorageUrl(currentSrc);
+      if (altSrc && altSrc !== currentSrc) {
+        setCurrentSrc(altSrc);
+      } else {
+        setHasError(true);
+      }
     };
-  }, [normalized]);
+  }, [currentSrc]);
 
-  if (!normalized || hasError) {
+  if (!currentSrc || hasError) {
     return (
       <div className="absolute inset-0 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-400">
         <svg viewBox="0 0 24 24" className="h-8 w-8 opacity-50" fill="none" stroke="currentColor" strokeWidth="2">
@@ -42,15 +53,22 @@ function SlideImageThumb({ src, alt }) {
         <div className="absolute inset-0 flex items-center justify-center bg-slate-200 dark:bg-slate-800 animate-pulse text-slate-400" />
       )}
       <img
-        src={normalized}
+        src={currentSrc}
         alt={alt || "Infografis Banner"}
         loading="lazy"
         decoding="async"
         onLoad={() => {
-          markImageCached(normalized);
+          markImageCached(currentSrc);
           setLoaded(true);
         }}
-        onError={() => setHasError(true)}
+        onError={() => {
+          const altSrc = getAlternativeStorageUrl(currentSrc);
+          if (altSrc && altSrc !== currentSrc) {
+            setCurrentSrc(altSrc);
+          } else {
+            setHasError(true);
+          }
+        }}
         className={`absolute inset-0 h-full w-full object-cover transition-all duration-300 group-hover:scale-105 ${
           loaded ? "opacity-100" : "opacity-0"
         }`}

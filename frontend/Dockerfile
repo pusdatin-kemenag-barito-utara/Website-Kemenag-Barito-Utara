@@ -19,8 +19,6 @@ RUN npm ci || npm install
 # Copy frontend source code
 COPY frontend/ ./
 
-ENV NEXT_PUBLIC_SUPABASE_URL="https://placeholder.supabase.co"
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY="placeholder-anon-key"
 ENV NODE_ENV=production
 
 # Build Astro standalone bundle

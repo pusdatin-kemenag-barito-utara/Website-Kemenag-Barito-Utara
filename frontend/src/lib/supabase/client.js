@@ -3,14 +3,13 @@ import { getSupabaseUrl, getSupabaseAnonKey } from "@/lib/env";
 
 
 export function createClient() {
-  const url = getSupabaseUrl() || (typeof window === "undefined" ? "https://placeholder.supabase.co" : "");
-  const key = getSupabaseAnonKey() || (typeof window === "undefined" ? "placeholder-anon-key" : "");
+  const url = getSupabaseUrl();
+  const key = getSupabaseAnonKey();
 
-  if (!url || !key) {
-    if (typeof window === "undefined") {
-      return createSupabaseClient("https://placeholder.supabase.co", "placeholder-anon-key");
+  if (!url || !key || url.includes("placeholder") || key.includes("placeholder")) {
+    if (typeof window !== "undefined") {
+      console.warn("Supabase client: NEXT_PUBLIC_SUPABASE_URL atau ANON_KEY belum aktif di sesi ini.");
     }
-    console.warn("NEXT_PUBLIC_SUPABASE_URL belum dikonfigurasi di environment");
     return null;
   }
 
