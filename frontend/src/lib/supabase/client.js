@@ -1,18 +1,17 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseUrl, getSupabaseAnonKey } from "@/lib/env";
 
+
 export function createClient() {
-  const url = getSupabaseUrl();
-  const key = getSupabaseAnonKey();
+  const url = getSupabaseUrl() || (typeof window === "undefined" ? "https://placeholder.supabase.co" : "");
+  const key = getSupabaseAnonKey() || (typeof window === "undefined" ? "placeholder-anon-key" : "");
 
-  if (!url) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL belum dikonfigurasi di Infisical Cloud (URL is empty)");
-  }
-
-  if (!key) {
-    throw new Error(
-      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY atau NEXT_PUBLIC_SUPABASE_ANON_KEY belum dikonfigurasi di Infisical Cloud"
-    );
+  if (!url || !key) {
+    if (typeof window === "undefined") {
+      return createSupabaseClient("https://placeholder.supabase.co", "placeholder-anon-key");
+    }
+    console.warn("NEXT_PUBLIC_SUPABASE_URL belum dikonfigurasi di environment");
+    return null;
   }
 
   return createSupabaseClient(url, key);

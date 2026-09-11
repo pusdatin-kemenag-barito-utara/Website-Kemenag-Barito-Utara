@@ -12,9 +12,11 @@ import { logInfo } from "@/lib/logger";
  */
 export default function RealtimeSync() {
   const router = useRouter();
-  const supabase = createClient();
 
   useEffect(() => {
+    const supabase = createClient();
+    if (!supabase) return;
+
     let channel;
     try {
       // Subscribe to a global broadcast channel
