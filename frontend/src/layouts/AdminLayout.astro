@@ -1,7 +1,5 @@
 ---
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import criticalCss from "@/styles/critical.css?raw";
 import { siteInfo } from "@/data/site";
 import {
   getEnv,
@@ -32,17 +30,6 @@ const publicEnv = {
   NEXT_PUBLIC_PUSDATIN_URL: getEnv("NEXT_PUBLIC_PUSDATIN_URL"),
   NEXT_PUBLIC_SUPABASE_CMS_BUCKET: getEnv("NEXT_PUBLIC_SUPABASE_CMS_BUCKET", "cms-media"),
 };
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-let criticalCss = "";
-try {
-  criticalCss = fs.readFileSync(
-    path.join(__dirname, "../styles/critical.css"),
-    "utf-8",
-  );
-} catch {
-  criticalCss = "";
-}
 const pageTitle = title && typeof title === "string" && !title.includes(siteInfo.shortName)
   ? `${title} | ${siteInfo.shortName}`
   : title || `Admin ${siteInfo.name}`;
