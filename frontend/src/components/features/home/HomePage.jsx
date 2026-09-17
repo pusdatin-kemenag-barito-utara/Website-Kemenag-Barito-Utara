@@ -60,9 +60,12 @@ export default function HomePage({ homeData = {}, youtubeVideos = [], initialSet
 
   return (
     <Providers initialSettings={initialSettings}>
-      <Header />
+      <Header isHomePage={true} initialPathname="/beranda" />
       <main id="konten-utama" tabIndex={-1} className="theme-page min-h-screen">
-        <HomeHeroSection totalBerita={d.totalBerita || d.stats?.totalBerita} />
+        <HomeHeroSection
+          totalBerita={d.totalBerita || d.stats?.totalBerita}
+          totalPtsp={d.totalPtsp || d.stats?.totalPtsp || ptspServices?.length}
+        />
 
         <ScrollReveal delay={0.1}>
           <div className="pt-8 lg:pt-10">

@@ -19,24 +19,43 @@ const staticRouter = {
 export const useRouter = () => staticRouter;
 
 export const usePathname = () => {
-  const [pathname, setPathname] = useState('');
+  const [pathname, setPathname] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.location.pathname;
+    }
+    return '';
+  });
   
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return;
+    const handleLocationChange = () => {
+      setPathname(window.location.pathname);
+    };
+    if (window.location.pathname !== pathname) {
       setPathname(window.location.pathname);
     }
+    window.addEventListener('popstate', handleLocationChange);
+    return () => window.removeEventListener('popstate', handleLocationChange);
   }, []);
 
   return pathname;
 };
 
 export const useSearchParams = () => {
-  const [searchParams, setSearchParams] = useState(null);
+  const [searchParams, setSearchParams] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return new URLSearchParams(window.location.search);
+    }
+    return null;
+  });
   
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return;
+    const handleLocationChange = () => {
       setSearchParams(new URLSearchParams(window.location.search));
-    }
+    };
+    window.addEventListener('popstate', handleLocationChange);
+    return () => window.removeEventListener('popstate', handleLocationChange);
   }, []);
 
   return searchParams || (typeof URLSearchParams !== 'undefined' ? new URLSearchParams() : null);

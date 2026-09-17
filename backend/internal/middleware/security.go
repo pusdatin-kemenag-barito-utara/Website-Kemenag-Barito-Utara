@@ -1,8 +1,24 @@
 package middleware
 
 import (
+	"strings"
+
 	"github.com/gofiber/fiber/v3"
 )
+
+// CanonicalDomainRedirect mengalihkan trafik dari domain lama (kemenag-baritoutara.com / www)
+// secara permanen (HTTP 301) ke subdomain resmi Kemenag Pusat (baritoutara.kemenag.go.id).
+// Subdomain aplikasi lain (*.kemenag-baritoutara.com) TIDAK terpengaruh.
+func CanonicalDomainRedirect() fiber.Handler {
+	return func(c fiber.Ctx) error {
+		host := strings.ToLower(strings.Split(c.Hostname(), ":")[0])
+		if host == "kemenag-baritoutara.com" || host == "www.kemenag-baritoutara.com" {
+			target := "https://baritoutara.kemenag.go.id" + c.OriginalURL()
+			return c.Redirect().Status(fiber.StatusMovedPermanently).To(target)
+		}
+		return c.Next()
+	}
+}
 
 // SecurityHeaders menyisipkan header keamanan standar industri untuk proteksi XSS, Clickjacking, MIME sniffing,
 // serta Alt-Svc untuk mengaktifkan negosiasi protokol HTTP/3 (QUIC) pada port 443 dan HSTS enterprise.

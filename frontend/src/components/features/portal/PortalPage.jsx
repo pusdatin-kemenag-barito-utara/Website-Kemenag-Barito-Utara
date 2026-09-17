@@ -143,28 +143,28 @@ const INFORMASI_MENUS = [
   {
     title: "Berita & Artikel",
     desc: "Kabar dan liputan kegiatan terkini instansi",
-    href: "https://baritoutara.kemenag.go.id/berita",
+    href: "/berita",
     icon: <Newspaper className="w-5 h-5 text-amber-600" strokeWidth={2} />,
     iconBg: "bg-amber-50 text-amber-600 border-amber-200/80",
   },
   {
     title: "Galeri Foto",
     desc: "Dokumentasi visual rangkaian acara dan agenda",
-    href: "https://baritoutara.kemenag.go.id/galeri",
+    href: "/galeri",
     icon: <ImageIcon className="w-5 h-5 text-fuchsia-600" strokeWidth={2} />,
     iconBg: "bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200/80",
   },
   {
     title: "Dokumen & Laporan",
     desc: "Transparansi laporan kinerja dan akuntabilitas dinas",
-    href: "https://baritoutara.kemenag.go.id/laporan",
+    href: "/laporan",
     icon: <FileText className="w-5 h-5 text-cyan-600" strokeWidth={2} />,
     iconBg: "bg-cyan-50 text-cyan-600 border-cyan-200/80",
   },
   {
     title: "Video YouTube",
     desc: "Tayangan multimedia dan edukasi keagamaan",
-    href: "https://baritoutara.kemenag.go.id/video",
+    href: "/video",
     icon: <PlaySquare className="w-5 h-5 text-rose-600" strokeWidth={2} />,
     iconBg: "bg-rose-50 text-rose-600 border-rose-200/80",
   },
@@ -199,21 +199,21 @@ const ZONA_MENUS = [
   {
     title: "Area Perubahan - ZI",
     desc: "6 pilar manajemen perubahan & penguatan akuntabilitas",
-    href: "https://baritoutara.kemenag.go.id/zona-integritas/area-perubahan-zi",
+    href: "/zona-integritas/area-perubahan-zi",
     icon: <Map className="w-5 h-5 text-blue-600" strokeWidth={2} />,
     iconBg: "bg-blue-50 text-blue-600 border-blue-200/80",
   },
   {
     title: "Berita Zona Integritas",
     desc: "Kabar progres pembangunan ZI menuju WBK & WBBM",
-    href: "https://baritoutara.kemenag.go.id/zona-integritas/berita-zona-integritas",
+    href: "/zona-integritas/berita-zona-integritas",
     icon: <Newspaper className="w-5 h-5 text-amber-600" strokeWidth={2} />,
     iconBg: "bg-amber-50 text-amber-600 border-amber-200/80",
   },
   {
     title: "Video Pembangunan - ZI",
     desc: "Dokumentasi visual komitmen integritas aparatur",
-    href: "https://baritoutara.kemenag.go.id/zona-integritas/video-pembangunan-zi",
+    href: "/zona-integritas/video-pembangunan-zi",
     icon: <PlaySquare className="w-5 h-5 text-rose-600" strokeWidth={2} />,
     iconBg: "bg-rose-50 text-rose-600 border-rose-200/80",
   },
@@ -643,8 +643,8 @@ export default function PortalPage({ initialData }) {
                           setIsPengaduanModalOpen(true);
                         }
                       }}
-                      target={link.id === "website_utama" || link.href.startsWith("http") ? "_blank" : undefined}
-                      rel={link.id === "website_utama" || link.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                      target={link.href.startsWith("http") ? "_blank" : undefined}
+                      rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
                       className={`group relative p-5 lg:p-6 rounded-[2rem] transition-all duration-500 flex flex-col items-start text-left h-full hover:-translate-y-1.5 overflow-hidden ${
                         link.primary
                           ? "bg-gradient-to-br from-emerald-700 via-emerald-800 to-teal-900 text-white border border-emerald-600/50 shadow-[0_8px_24px_rgba(6,78,59,0.18)] hover:shadow-[0_12px_28px_rgba(6,78,59,0.28)]"
@@ -913,8 +913,8 @@ export default function PortalPage({ initialData }) {
                           setIsPengaduanModalOpen(true);
                         }
                       }}
-                      target={link.id === "website_utama" || link.href.startsWith("http") ? "_blank" : undefined}
-                      rel={link.id === "website_utama" || link.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                      target={link.href.startsWith("http") ? "_blank" : undefined}
+                      rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
                       className={`group relative p-4 sm:p-5 rounded-3xl transition-all duration-300 flex flex-col items-center text-center w-full h-full hover:scale-[1.02] active:scale-[0.98] overflow-hidden ${
                         link.primary
                           ? "bg-gradient-to-br from-emerald-700 via-emerald-800 to-teal-900 text-white border border-emerald-600/50 shadow-md"
@@ -1309,8 +1309,8 @@ export default function PortalPage({ initialData }) {
                     <Link
                       key={idx}
                       href={menu.href}
-                      target={menu.href === "#" ? undefined : "_blank"}
-                      rel={menu.href === "#" ? undefined : "noopener noreferrer"}
+                      target={menu.href.startsWith("http") ? "_blank" : undefined}
+                      rel={menu.href.startsWith("http") ? "noopener noreferrer" : undefined}
                       onClick={(e) => {
                         if (menu.href === "#") e.preventDefault();
                         setIsZonaModalOpen(false);

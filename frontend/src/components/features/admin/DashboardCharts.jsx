@@ -1,4 +1,5 @@
 // Chart & Visual Analytics Dashboard Kemenag Barito Utara
+import React, { useState } from "react";
 
 function TrendBarChart({ trend = [] }) {
   if (!trend || trend.length === 0) {
@@ -119,12 +120,26 @@ export default function DashboardCharts({
   redisActive = false,
   responseTimeMs = 42,
 }) {
+  const [showAllCategories, setShowAllCategories] = useState(false);
+
   const categoryColors = [
-    { bar: "bg-emerald-500", text: "text-emerald-600 font-black" },
-    { bar: "bg-teal-500", text: "text-teal-600 font-black" },
-    { bar: "bg-blue-500", text: "text-blue-600 font-black" },
-    { bar: "bg-indigo-500", text: "text-indigo-600 font-black" },
+    { bar: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400 font-black" },
+    { bar: "bg-teal-500", text: "text-teal-600 dark:text-teal-400 font-black" },
+    { bar: "bg-cyan-500", text: "text-cyan-600 dark:text-cyan-400 font-black" },
+    { bar: "bg-blue-500", text: "text-blue-600 dark:text-blue-400 font-black" },
+    { bar: "bg-indigo-500", text: "text-indigo-600 dark:text-indigo-400 font-black" },
+    { bar: "bg-violet-500", text: "text-violet-600 dark:text-violet-400 font-black" },
+    { bar: "bg-purple-500", text: "text-purple-600 dark:text-purple-400 font-black" },
+    { bar: "bg-fuchsia-500", text: "text-fuchsia-600 dark:text-fuchsia-400 font-black" },
+    { bar: "bg-pink-500", text: "text-pink-600 dark:text-pink-400 font-black" },
+    { bar: "bg-rose-500", text: "text-rose-600 dark:text-rose-400 font-black" },
+    { bar: "bg-amber-500", text: "text-amber-600 dark:text-amber-400 font-black" },
+    { bar: "bg-slate-500", text: "text-slate-600 dark:text-slate-400 font-black" },
   ];
+
+  const displayedCategories = showAllCategories
+    ? categoryDistribution
+    : (categoryDistribution || []).slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -180,52 +195,79 @@ export default function DashboardCharts({
       {/* Row 2: Kartu Analisis Tambahan & Status Performa Sistem */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Kartu Distribusi Konten & Kategori (DATABASE REAL) */}
-        <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/80">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-                </svg>
+        <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/80">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                    Distribusi Kategori Konten
+                  </h2>
+                  <p className="text-xs font-medium text-slate-400">Rilis Berita per Bidang & Unit Kerja</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                  Distribusi Kategori Konten
-                </h2>
-                <p className="text-xs font-medium text-slate-400">Persentase Rilis dari Database PostgreSQL</p>
-              </div>
+              <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 border border-emerald-200/40">
+                {categoryDistribution.length} Unit & Kategori
+              </span>
             </div>
-            <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 border border-emerald-200/40">
-              Live DB
-            </span>
+
+            <div className="mt-5 space-y-3.5 max-h-[380px] overflow-y-auto pr-1">
+              {displayedCategories && displayedCategories.length > 0 ? (
+                displayedCategories.map((cat, idx) => {
+                  const color = categoryColors[idx % categoryColors.length];
+                  return (
+                    <div key={cat.name} className="group">
+                      <div className="flex justify-between text-xs font-bold mb-1">
+                        <span className="text-slate-700 dark:text-slate-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                          {cat.name} <span className="text-slate-400 font-medium text-[11px]">({cat.count} berita)</span>
+                        </span>
+                        <span className={color.text}>{cat.percentage}%</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                        <div
+                          className={`h-full ${color.bar} rounded-full transition-all duration-500`}
+                          style={{ width: `${Math.max(cat.percentage, 2)}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-xs text-slate-400">Belum ada data kategori terdeteksi.</p>
+              )}
+            </div>
           </div>
 
-          <div className="mt-5 space-y-4">
-            {categoryDistribution && categoryDistribution.length > 0 ? (
-              categoryDistribution.map((cat, idx) => {
-                const color = categoryColors[idx % categoryColors.length];
-                return (
-                  <div key={cat.name}>
-                    <div className="flex justify-between text-xs font-bold mb-1">
-                      <span className="text-slate-700 dark:text-slate-300">
-                        {cat.name} <span className="text-slate-400 font-medium">({cat.count} berita)</span>
-                      </span>
-                      <span className={color.text}>{cat.percentage}%</span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                      <div
-                        className={`h-full ${color.bar} rounded-full transition-all duration-500`}
-                        style={{ width: `${cat.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-xs text-slate-400">Belum ada data kategori terdeteksi.</p>
-            )}
-          </div>
+          {categoryDistribution.length > 5 && (
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setShowAllCategories(!showAllCategories)}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline transition-all"
+              >
+                <span>
+                  {showAllCategories
+                    ? "Tampilkan 5 Teratas Saja"
+                    : `Lihat Semua (${categoryDistribution.length} Bidang & Unit Kerja)`}
+                </span>
+                <svg
+                  className={`w-3.5 h-3.5 transition-transform ${showAllCategories ? "rotate-180" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Kartu Status Performa & Keamanan Server (SYSTEM DYNAMIC) */}

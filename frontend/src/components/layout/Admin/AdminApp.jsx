@@ -12,6 +12,7 @@ import AdminLaporanPageClient from "@/components/features/admin/AdminLaporanPage
 import AdminSeksiListManager from "@/components/features/admin/AdminSeksiListManager";
 import AdminSeksiDetailManager from "@/components/features/admin/AdminSeksiDetailManager";
 import YoutubeManager from "@/components/features/admin/youtube/YoutubeManager";
+import AdminUsersManager from "@/components/features/admin/users/AdminUsersManager";
 import PengaturanForm from "@/components/features/admin/pengaturan/PengaturanForm";
 import NotFoundView from "@/components/common/NotFoundView";
 
@@ -47,7 +48,10 @@ function Guard({ page, id = null }) {
     !!a.sessionData?.permissions?.isEditor;
 
   if (!hasAccess) {
-    return <NotFoundView />;
+    if (typeof window !== "undefined") {
+      window.location.replace("/pusdatin/auth");
+    }
+    return null;
   }
 
   let content = null;
@@ -80,6 +84,9 @@ function Guard({ page, id = null }) {
           <YoutubeManager />
         </div>
       );
+      break;
+    case "users":
+      content = <AdminUsersManager />;
       break;
     case "pengaturan":
       content = <PengaturanForm initialSettings={null} />;

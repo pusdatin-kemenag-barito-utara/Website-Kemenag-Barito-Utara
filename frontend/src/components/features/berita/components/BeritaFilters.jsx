@@ -280,10 +280,6 @@ export default function BeritaFilters({
 
   return (
     <section className="relative mb-8 rounded-[24px] border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
-
-      {/* Top accent line */}
-      <div className="h-[3px] w-full rounded-t-[24px] bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-500" />
-
       <div className="p-5 sm:p-6">
 
         {/* ── Header row ── */}

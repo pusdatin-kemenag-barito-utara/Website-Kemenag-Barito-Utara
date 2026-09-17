@@ -54,6 +54,27 @@ type cachedProfile struct {
 	expires time.Time
 }
 
+// InvalidateProfileCache menghapus cache profil in-memory saat ada perubahan data pengguna.
+func InvalidateProfileCache(userID string) {
+	profileCacheMu.Lock()
+	defer profileCacheMu.Unlock()
+	if userID == "" {
+		profileCache = map[string]cachedProfile{}
+	} else {
+		delete(profileCache, userID)
+	}
+}
+
+// InvalidateUserSession menghapus cache sesi user saat logout.
+func InvalidateUserSession(accessToken string) {
+	if accessToken == "" {
+		return
+	}
+	userCacheMu.Lock()
+	delete(userCache, accessToken)
+	userCacheMu.Unlock()
+}
+
 // GetAccessTokenFromCookie membaca & decode cookie sesi Supabase (base64 JSON / raw token).
 func GetAccessTokenFromCookie(c fiber.Ctx) string {
 	authHeader := c.Get("Authorization")
@@ -204,7 +225,7 @@ func BuildSessionFromUser(ctx context.Context, user *services.SupabaseUser) *Ses
 	}
 }
 
-// getProfileAndRole: profil dari kemenag_pusdatin.profiles, fallback kemenag_website.admin_users.
+// getProfileAndRole: profil pengguna mandiri langsung dari kemenag_website.admin_users.
 func getProfileAndRole(ctx context.Context, userID string) (map[string]any, string) {
 	profileCacheMu.Lock()
 	if cached, ok := profileCache[userID]; ok && time.Now().Before(cached.expires) {
@@ -218,31 +239,36 @@ func getProfileAndRole(ctx context.Context, userID string) (map[string]any, stri
 	role := ""
 
 	if pool != nil {
-		var id, email, dbRole, status, name, avatar string
+		var uid string
+		var fullName, dbRole, status string
+		var email, avatarURL *string
+		var permissionsJSON []byte
+
 		err := pool.QueryRow(ctx,
-			`SELECT id, email, role, status, name, avatar_url
-			 FROM kemenag_pusdatin.profiles WHERE id = $1 LIMIT 1`, userID).
-			Scan(&id, &email, &dbRole, &status, &name, &avatar)
+			`SELECT user_id, COALESCE(full_name, ''), COALESCE(role, 'editor'), 
+			        COALESCE(status, 'active'), email, avatar_url, COALESCE(permissions, '[]'::jsonb)
+			 FROM kemenag_website.admin_users WHERE user_id = $1 LIMIT 1`, userID).
+			Scan(&uid, &fullName, &dbRole, &status, &email, &avatarURL, &permissionsJSON)
+
 		if err == nil {
-			profile["id"] = id
-			profile["email"] = email
+			profile["id"] = uid
+			profile["name"] = fullName
+			profile["full_name"] = fullName
 			profile["role"] = dbRole
 			profile["status"] = status
-			profile["name"] = name
-			profile["avatar_url"] = avatar
-			role = dbRole
-		} else {
-			var adminRole string
-			var fullName string
-			err2 := pool.QueryRow(ctx,
-				`SELECT role, full_name FROM kemenag_website.admin_users WHERE user_id = $1 LIMIT 1`, userID).
-				Scan(&adminRole, &fullName)
-			if err2 == nil {
-				profile["id"] = userID
-				profile["role"] = adminRole
-				profile["name"] = fullName
-				role = adminRole
+			if email != nil {
+				profile["email"] = *email
 			}
+			if avatarURL != nil {
+				profile["avatar_url"] = *avatarURL
+			}
+			if len(permissionsJSON) > 0 {
+				var perms []string
+				if json.Unmarshal(permissionsJSON, &perms) == nil {
+					profile["permissions"] = perms
+				}
+			}
+			role = dbRole
 		}
 	}
 
@@ -252,7 +278,7 @@ func getProfileAndRole(ctx context.Context, userID string) (map[string]any, stri
 	return profile, role
 }
 
-// GetPermissionContext setara getUserPermissionContext (user-permissions.ts).
+// GetPermissionContext membaca status, role, dan izin mandiri dari kemenag_website.admin_users.
 func GetPermissionContext(ctx context.Context, session *SessionContext) *PermissionContext {
 	pc := &PermissionContext{
 		Role:         normalizeRole(session.Role),
@@ -269,51 +295,33 @@ func GetPermissionContext(ctx context.Context, session *SessionContext) *Permiss
 	pool := db.Get()
 	if pool != nil {
 		var status, dbRole string
+		var permissionsJSON []byte
 		err := pool.QueryRow(ctx,
-			`SELECT status, role FROM kemenag_pusdatin.profiles WHERE id = $1 LIMIT 1`,
-			session.User.ID).Scan(&status, &dbRole)
+			`SELECT COALESCE(status, 'active'), COALESCE(role, 'editor'), COALESCE(permissions, '[]'::jsonb)
+			 FROM kemenag_website.admin_users WHERE user_id = $1 LIMIT 1`,
+			session.User.ID).Scan(&status, &dbRole, &permissionsJSON)
+
 		if err == nil {
 			pc.IsActive = status == "active"
-			if dbRole == "super_admin" {
-				pc.Role = "super_admin"
-				pc.IsSuperAdmin = true
-				pc.IsAdmin = true
-				pc.IsEditor = true
-				pc.Approved = true
-			} else {
-				var appRole string
-				var featuresJSON []byte
-				err2 := pool.QueryRow(ctx,
-					`SELECT role, features FROM kemenag_pusdatin.app_permissions
-					 WHERE user_id = $1 AND app_id = 'website-kemenag' LIMIT 1`,
-					session.User.ID).Scan(&appRole, &featuresJSON)
-				if err2 == nil {
-					pc.Role = normalizeRole(appRole)
-					pc.Approved = true
-					if len(featuresJSON) > 0 {
-						var features []map[string]any
-						if err := json.Unmarshal(featuresJSON, &features); err == nil {
-							for _, f := range features {
-								if id, ok := f["id"].(string); ok && id != "" {
-									pc.Permissions = append(pc.Permissions, id)
-								}
-							}
-						} else {
-							var flat []string
-							if err := json.Unmarshal(featuresJSON, &flat); err == nil {
-								pc.Permissions = append(pc.Permissions, flat...)
-							}
-						}
-					}
+			pc.Role = normalizeRole(dbRole)
+			pc.Approved = pc.IsActive
+
+			if len(permissionsJSON) > 0 {
+				var perms []string
+				if json.Unmarshal(permissionsJSON, &perms) == nil {
+					pc.Permissions = append(pc.Permissions, perms...)
 				}
 			}
 		}
 	}
 
 	base := RolePermissions(pc.Role)
-	merged := make([]string, 0, len(base)+len(pc.Permissions))
+	allRaw := append(base, pc.Permissions...)
+	expanded := expandModulePermissions(allRaw)
+
+	merged := make([]string, 0, len(expanded))
 	seen := map[string]bool{}
-	for _, p := range append(base, pc.Permissions...) {
+	for _, p := range expanded {
 		if p != "" && !seen[p] {
 			seen[p] = true
 			merged = append(merged, p)
@@ -332,6 +340,7 @@ func GetPermissionContext(ctx context.Context, session *SessionContext) *Permiss
 	case "editor":
 		pc.IsEditor = true
 	}
+
 	return pc
 }
 
@@ -343,12 +352,67 @@ func HasPermission(pc *PermissionContext, permission string) bool {
 	if pc.IsSuperAdmin {
 		return true
 	}
+	permPrefix := permission
+	if parts := strings.Split(permission, ":"); len(parts) > 0 {
+		permPrefix = parts[0]
+	}
+
 	for _, p := range pc.Permissions {
-		if p == permission {
+		if p == permission || p == permPrefix || strings.HasPrefix(permission, p+":") {
 			return true
 		}
 	}
 	return false
+}
+
+// expandModulePermissions memetakan nama modul simpel ("seksi", "youtube", dll) ke daftar izin granularnya.
+func expandModulePermissions(perms []string) []string {
+	var out []string
+	seen := map[string]bool{}
+
+	add := func(p string) {
+		if p != "" && !seen[p] {
+			seen[p] = true
+			out = append(out, p)
+		}
+	}
+
+	for _, p := range perms {
+		add(p)
+		switch p {
+		case "berita":
+			add("berita:view")
+			add("berita:create")
+			add("berita:update")
+			add("berita:delete")
+			add("berita:publish")
+		case "seksi":
+			add("seksi:manage")
+		case "galeri":
+			add("galeri:view")
+			add("galeri:manage")
+		case "laporan":
+			add("laporan:view")
+			add("laporan:manage")
+		case "slides":
+			add("homepage_slides:view")
+			add("homepage_slides:manage")
+		case "youtube":
+			add("youtube:manage")
+			add("homepage_slides:view")
+		case "pengaturan":
+			add("settings:manage")
+			add("pengaturan:manage")
+		case "sync_ai":
+			add("ai:manage")
+		case "users":
+			add("user:view")
+			add("user:invite")
+			add("user:update_role")
+			add("user:delete")
+		}
+	}
+	return out
 }
 
 // RolePermissions setara getRolePermissions (permissions.ts).
@@ -361,7 +425,7 @@ func RolePermissions(role string) []string {
 			"dashboard:view", "berita:view", "berita:create", "berita:update",
 			"berita:delete", "berita:publish", "galeri:view", "galeri:manage",
 			"kontak:manage", "laporan:view", "laporan:manage", "homepage_slides:view",
-			"homepage_slides:manage", "seksi:manage",
+			"homepage_slides:manage", "seksi:manage", "youtube:manage",
 		}
 	case "editor":
 		return []string{

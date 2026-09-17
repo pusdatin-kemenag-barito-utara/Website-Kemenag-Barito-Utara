@@ -256,8 +256,8 @@ func BeritaDetailHandler(c fiber.Ctx) error {
 	// author name
 	var authorName any
 	_ = pool.QueryRow(ctx, `
-		SELECT p.name FROM kemenag_website.berita b
-		LEFT JOIN kemenag_pusdatin.profiles p ON p.id = b.author_id
+		SELECT COALESCE(p.full_name, 'Admin') FROM kemenag_website.berita b
+		LEFT JOIN kemenag_website.admin_users p ON p.user_id = b.author_id
 		WHERE b.id = $1`, r.ID).Scan(&authorName)
 
 	m := beritaToMap(&r, true)

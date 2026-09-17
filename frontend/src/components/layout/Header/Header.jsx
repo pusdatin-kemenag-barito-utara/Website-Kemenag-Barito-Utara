@@ -8,8 +8,8 @@ import { DesktopNav, HeaderControls } from "./DesktopNav";
 import { MobileNav } from "./MobileNav";
 import { HeaderLogo, MobileMenuToggle } from "./HeaderUI";
 
-export default function Header() {
-  const h = useHeader();
+export default function Header({ isHomePage = false, initialPathname = "" }) {
+  const h = useHeader({ isHomePage, initialPathname });
 
   return (
     <header

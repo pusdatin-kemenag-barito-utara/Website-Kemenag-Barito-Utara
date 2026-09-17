@@ -60,6 +60,7 @@ func main() {
 	app.Use(recover.New())
 	app.Use(helmet.New())
 	app.Use(middleware.SecurityHeaders())
+	app.Use(middleware.CanonicalDomainRedirect())
 	app.Use(compress.New(compress.Config{Level: compress.LevelBestSpeed}))
 	app.Use(logger.New(logger.Config{
 		Format:      "${cyan}${time}${reset} | ${status} | ${latency} | ${method} ${path} | ${bytesSent} | ${ip}\n",

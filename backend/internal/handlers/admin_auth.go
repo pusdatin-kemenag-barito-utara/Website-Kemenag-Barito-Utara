@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"strings"
 	"sync"
@@ -54,6 +55,7 @@ func AdminSummaryHandler(c fiber.Ctx) error {
 		return err
 	}
 	return response.OK(c, fiber.Map{
+		"ok":   true,
 		"user": sessionPublic(session),
 		"permissions": fiber.Map{
 			"isAdmin":  pc.IsAdmin || pc.IsSuperAdmin,
@@ -70,16 +72,21 @@ func AdminSessionHandler(c fiber.Ctx) error {
 
 	user := fiber.Map(nil)
 	if session.IsAuthenticated {
+		fullName := profileStr(session.Profile, "full_name")
+		if fullName == "" {
+			fullName = profileStr(session.Profile, "name")
+		}
 		user = fiber.Map{
 			"id":         session.ProfileID(),
 			"email":      session.UserEmail(),
-			"full_name":  profileStr(session.Profile, "name"),
+			"full_name":  fullName,
 			"role":       session.Role,
 			"avatar_url": profileStr(session.Profile, "avatar_url"),
 		}
 	}
 
 	return response.OK(c, fiber.Map{
+		"ok":            true,
 		"authenticated": session.IsAuthenticated,
 		"user":          user,
 		"permissions": fiber.Map{
@@ -213,12 +220,25 @@ func AdminLoginHandler(c fiber.Ctx) error {
 func AdminLogoutHandler(c fiber.Ctx) error {
 	accessToken := middleware.GetAccessTokenFromCookie(c)
 	if accessToken != "" {
+		middleware.InvalidateUserSession(accessToken)
 		ctx, cancel := context.WithTimeout(c.Context(), 5*time.Second)
 		defer cancel()
 		_ = services.Supabase.SignOut(ctx, accessToken)
 	}
+
+	// Hapus cookie sesi HTTP-Only secara menyeluruh
+	c.Cookie(&fiber.Cookie{
+		Name:     middleware.CookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		Expires:  time.Unix(0, 0),
+		HTTPOnly: true,
+		SameSite: "Lax",
+	})
 	c.ClearCookie(middleware.CookieName)
-	return response.OK(c, fiber.Map{"ok": true})
+
+	return response.OK(c, fiber.Map{"ok": true, "message": "Sesi berhasil diakhiri."})
 }
 
 // AdminUpdateProfileHandler — POST /api/admin/update-profile
@@ -229,15 +249,21 @@ func AdminUpdateProfileHandler(c fiber.Ctx) error {
 	}
 
 	var body struct {
-		AccessToken string `json:"accessToken"`
-		FullName    string `json:"fullName"`
-		AvatarBase64 string `json:"avatar"` // data URL
+		AccessToken  string `json:"accessToken"`
+		FullName     string `json:"fullName"`
+		Avatar       string `json:"avatar"`
+		AvatarBase64 string `json:"avatarBase64"`
 	}
 	if err := c.Bind().Body(&body); err != nil {
 		return response.Error(c, 400, "Body tidak valid.", "INVALID_BODY")
 	}
 	if body.AccessToken == "" {
 		return response.Error(c, 401, "Unauthorized.", "AUTH_REQUIRED")
+	}
+
+	body.FullName = strings.TrimSpace(body.FullName)
+	if body.FullName == "" {
+		return response.Error(c, 400, "Nama lengkap tidak boleh kosong.", "VALIDATION_ERROR")
 	}
 
 	ctx, cancel := context.WithTimeout(c.Context(), 15*time.Second)
@@ -249,9 +275,14 @@ func AdminUpdateProfileHandler(c fiber.Ctx) error {
 	}
 
 	// avatar upload
+	rawAvatar := body.AvatarBase64
+	if rawAvatar == "" {
+		rawAvatar = body.Avatar
+	}
+
 	avatarURL := ""
-	if strings.HasPrefix(body.AvatarBase64, "data:image/") {
-		_, avatarURL, _, _, err = services.Storage.UploadBase64Image(ctx, body.AvatarBase64, "avatars", "avatar")
+	if strings.HasPrefix(rawAvatar, "data:image/") {
+		_, avatarURL, _, _, err = services.Storage.UploadBase64Image(ctx, rawAvatar, "avatars", "avatar")
 		if err != nil {
 			return response.Error(c, 400, "Gagal upload avatar: "+err.Error(), "UPLOAD_FAILED")
 		}
@@ -272,18 +303,65 @@ func AdminUpdateProfileHandler(c fiber.Ctx) error {
 
 	if len(attrs) > 0 {
 		if _, err := services.Supabase.AdminUpdateUser(ctx, user.ID, attrs); err != nil {
-			return response.Error(c, 500, "Gagal update profil.", "UPDATE_FAILED")
+			log.Printf("[warn] AdminUpdateUser Supabase metadata gagal: %v", err)
 		}
 	}
 
 	pool := db.Get()
-	if pool != nil && body.FullName != "" {
-		_, _ = pool.Exec(ctx,
-			`UPDATE kemenag_website.admin_users SET full_name = $1, updated_at = now() WHERE user_id = $2`,
-			body.FullName, user.ID)
+	if pool != nil {
+		if avatarURL != "" {
+			_, err = pool.Exec(ctx,
+				`INSERT INTO kemenag_website.admin_users (user_id, email, full_name, avatar_url, updated_at)
+				 VALUES ($1, $2, $3, $4, now())
+				 ON CONFLICT (user_id) DO UPDATE SET
+				   full_name = EXCLUDED.full_name,
+				   avatar_url = EXCLUDED.avatar_url,
+				   updated_at = now()`,
+				user.ID, user.Email, body.FullName, avatarURL)
+		} else if body.FullName != "" {
+			_, err = pool.Exec(ctx,
+				`INSERT INTO kemenag_website.admin_users (user_id, email, full_name, updated_at)
+				 VALUES ($1, $2, $3, now())
+				 ON CONFLICT (user_id) DO UPDATE SET
+				   full_name = EXCLUDED.full_name,
+				   updated_at = now()`,
+				user.ID, user.Email, body.FullName)
+		}
+		if err != nil {
+			log.Printf("[error] update admin_users profile gagal: %v", err)
+		}
 	}
 
-	return response.OK(c, fiber.Map{"ok": true, "avatar_url": avatarURL})
+	// Invalidate in-memory cache so subsequent requests get fresh data immediately
+	middleware.InvalidateProfileCache(user.ID)
+
+	// Audit Log
+	services.Audit.Record(struct {
+		Action      string
+		Entity      string
+		EntityID    string
+		PerformedBy string
+		Before      any
+		After       any
+		IP          any
+	}{
+		Action:      "UPDATE_PROFILE",
+		Entity:      "admin_users",
+		EntityID:    user.ID,
+		PerformedBy: user.Email,
+		After: map[string]any{
+			"full_name":      body.FullName,
+			"avatar_updated": avatarURL != "",
+		},
+		IP: ip,
+	})
+
+	return response.OK(c, fiber.Map{
+		"ok":         true,
+		"avatar_url": avatarURL,
+		"full_name":  body.FullName,
+		"message":    "Profil berhasil diperbarui.",
+	})
 }
 
 // AdminUpdatePasswordHandler — POST /api/admin/update-password (OTP Redis)
@@ -469,15 +547,14 @@ func AdminDashboardStatsHandler(c fiber.Ctx) error {
 		trend = trendList
 	}()
 
-	// Query 4: Distribusi Kategori (Top 4)
+	// Query 4: Distribusi Seluruh Kategori & Bidang Unit Kerja (Semua Kategori Aktif)
 	go func() {
 		defer wg.Done()
 		rows, err := pool.Query(ctx, `
 			SELECT COALESCE(NULLIF(TRIM(category), ''), 'Umum') AS name, COUNT(*) AS count
 			FROM kemenag_website.berita
 			GROUP BY name
-			ORDER BY count DESC
-			LIMIT 4`)
+			ORDER BY count DESC`)
 		if err == nil {
 			defer rows.Close()
 			var list []fiber.Map
@@ -500,6 +577,9 @@ func AdminDashboardStatsHandler(c fiber.Ctx) error {
 		pct := 0
 		if totalBerita > 0 {
 			pct = int(math.Round(float64(count) / float64(totalBerita) * 100))
+			if pct == 0 && count > 0 {
+				pct = 1
+			}
 		}
 		categoryDistribution[i]["percentage"] = pct
 	}
@@ -527,6 +607,7 @@ func AdminDashboardStatsHandler(c fiber.Ctx) error {
 		"topBerita":            topBerita,
 		"recentActivity":       []fiber.Map{},
 		"responseTimeMs":       responseTimeMs,
+		"redisActive":          cache.HasRedis(),
 	}
 
 	// Cache result for 45 seconds

@@ -40,7 +40,7 @@ ENV GOMEMLIMIT=384MiB
 ENV GOGC=80
 
 RUN apk add --no-cache ca-certificates tzdata bash curl wget && \
-    curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash && \
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.alpine.sh' | bash && \
     apk add --no-cache infisical
 
 # Create non-root user

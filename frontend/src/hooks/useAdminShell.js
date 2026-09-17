@@ -44,6 +44,9 @@ export function useAdminShell() {
           setSessionData(null);
           setPermissionContext(null);
           setLoading(false);
+          if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) {
+            window.location.replace("/pusdatin/auth");
+          }
           return;
         }
 
@@ -61,6 +64,9 @@ export function useAdminShell() {
           setSessionData(null);
           setPermissionContext(null);
           setLoading(false);
+          if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) {
+            window.location.replace("/pusdatin/auth");
+          }
           return;
         }
 
@@ -101,6 +107,35 @@ export function useAdminShell() {
       document.body.style.overflow = prev;
     };
   }, [sidebarOpen]);
+
+  useEffect(() => {
+    function handleProfileUpdated(e) {
+      const { full_name, avatar_url } = e.detail || {};
+      setSessionData((prev) => {
+        if (!prev || !prev.user) return prev;
+        const updatedUser = {
+          ...prev.user,
+          ...(full_name ? { full_name } : {}),
+          ...(avatar_url !== undefined ? { avatar_url } : {}),
+        };
+        const updated = { ...prev, user: updatedUser };
+        try {
+          const raw = sessionStorage.getItem(SHELL_CACHE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed?.session?.user) {
+              parsed.session.user = updatedUser;
+              sessionStorage.setItem(SHELL_CACHE_KEY, JSON.stringify(parsed));
+            }
+          }
+        } catch (_) {}
+        return updated;
+      });
+    }
+
+    window.addEventListener("admin_profile_updated", handleProfileUpdated);
+    return () => window.removeEventListener("admin_profile_updated", handleProfileUpdated);
+  }, []);
 
   const compactName = useMemo(() => {
     const name = String(sessionData?.user?.full_name || "").trim();

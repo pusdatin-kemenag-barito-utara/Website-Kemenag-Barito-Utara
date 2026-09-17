@@ -70,8 +70,23 @@ export default function AdminUserMenu({
   async function handleLogout() {
     try {
       setLoading(true);
-      await fetch("/api/admin/logout", { method: "POST" });
-      window.location.href = "/pusdatin/auth";
+      await fetch("/api/admin/logout", { method: "POST" }).catch(() => {});
+
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
+        await supabase.auth.signOut().catch(() => {});
+      } catch (_) {}
+
+      try {
+        sessionStorage.clear();
+        localStorage.removeItem("kemenag_admin_shell_session");
+        localStorage.removeItem("sb-website-auth-token");
+      } catch (_) {}
+
+      window.location.replace("/pusdatin/auth");
+    } catch (_) {
+      window.location.replace("/pusdatin/auth");
     } finally {
       setLoading(false);
     }
@@ -90,7 +105,11 @@ export default function AdminUserMenu({
             width={32}
             height={32}
             unoptimized
-            className="h-8 w-8 rounded-xl object-cover shadow-sm"
+            className={`h-8 w-8 rounded-xl shadow-xs transition-transform ${
+              currentProfile.avatar_url.endsWith(".svg") || currentProfile.avatar_url.includes("kemenag.svg")
+                ? "object-contain p-0.5 bg-white border border-slate-200 dark:border-slate-700"
+                : "object-cover"
+            }`}
           />
         ) : (
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">

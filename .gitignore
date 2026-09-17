@@ -1,8 +1,11 @@
 # ================================================================
-# KEMENAG BARITO UTARA — MONOREPO .GITIGNORE
+# KEMENAG BARITO UTARA — UNIFIED MONOREPO .GITIGNORE
+# Mengakomodir Root, Frontend (Astro 7 + React 19), & Backend (Go Fiber 3)
 # ================================================================
 
-# 1. Environment & Secrets (Dikelola terpusat di Infisical Cloud)
+# ----------------------------------------------------------------
+# 1. Environment Variables & Secrets (Dikelola Terpusat di Infisical)
+# ----------------------------------------------------------------
 .env
 .env.*
 .env.local
@@ -16,75 +19,134 @@
 *.pfx
 *.p12
 
-# 2. Node & Package Dependencies
+# ----------------------------------------------------------------
+# 2. Node.js & Dependencies (Root & Frontend)
+# ----------------------------------------------------------------
 node_modules/
-*/node_modules/
-frontend/node_modules/
+**/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 .pnpm-store/
 package-lock.json.bak
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# 3. Astro & Vite Build Outputs
-.astro/
-frontend/.astro/
+# ----------------------------------------------------------------
+# 3. Frontend Build Outputs & Caches (Astro, Vite, Tailwind)
+# ----------------------------------------------------------------
 dist/
-frontend/dist/
+**/dist/
+.astro/
+**/.astro/
 .vite/
-frontend/.vite/
+**/.vite/
+.cache/
+**/.cache/
 .turbo/
+**/.turbo/
 
-# 4. Go & Air Hot-Reloading Binaries
+# Legacy Next.js Caches & Builds (Shims only, no build output)
+.next/
+**/.next/
+out/
+build/
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+next-env.d.ts
+.vercel
+.netlify
+
+# ----------------------------------------------------------------
+# 4. Backend (Go Fiber 3, Air Live Reload & Compilers)
+# ----------------------------------------------------------------
+# Go Binaries & Executables
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-*.test
-*.out
 bin/
-backend/bin/
+**/bin/
+
+# Air Hot-Reload & Temporary Runtime Folders
 tmp/
-backend/tmp/
+**/tmp/
+.air/
 backend/.air/
 
-# 5. Testing, Coverage & Audit Reports
+# Delve Debugger & Go Crash Dumps
+__debug_bin*
+core
+
+# ----------------------------------------------------------------
+# 5. Testing, Reports, & Coverage (Vitest, Playwright, Go Test)
+# ----------------------------------------------------------------
+coverage/
+**/coverage/
+*.lcov
+*.out
+c.out
+coverage.txt
+profile.out
+*.test
 test-results/
 playwright-report/
-coverage/
+blob-report/
 .nyc_output/
-*.lcov
 lighthouse-report*
 
-# 6. Legacy / Transpiler Caches
-.next/
-next-env.d.ts
-tsconfig.tsbuildinfo
-
-# 7. Logs & Temporary Scratch Files
-*.log
-devlog*.txt
-scratch/
-
-# 8. OS & Editor Artifacts
+# ----------------------------------------------------------------
+# 6. Operating System Artifacts (Windows, macOS, Linux)
+# ----------------------------------------------------------------
+# macOS
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
-ehthumbs.db
+
+# Windows
 Thumbs.db
+ehthumbs.db
 desktop.ini
 $RECYCLE.BIN/
 
-# IDE files (Keep .vscode/settings.json, ignore workspace/user state)
+# Linux
+*~
+
+# ----------------------------------------------------------------
+# 7. IDEs, Editors & Developer Settings
+# ----------------------------------------------------------------
 .idea/
 *.sublime-project
 *.sublime-workspace
 *.swp
 *.swo
-*~
-.agents/
+
+# VS Code (Pertahankan konfigurasi shared jika ada, abaikan sesi user)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# ----------------------------------------------------------------
+# 8. AI Assistants & Temporary Scratchpads
+# ----------------------------------------------------------------
 .gemini/
+.agents/
+.claude/
+.opencode/
+.antigravitycli/
+scratch/
+**/scratch/
+devlog*.txt
+*.log

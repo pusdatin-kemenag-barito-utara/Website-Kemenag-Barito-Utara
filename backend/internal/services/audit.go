@@ -12,7 +12,7 @@ import (
 	"kemenag-backend/internal/db"
 )
 
-// AuditService — buffer batch ke kemenag_pusdatin.audit_logs (pola audit.ts).
+// AuditService — buffer batch ke kemenag_website.audit_logs.
 type AuditService struct {
 	mu      sync.Mutex
 	buffer  []AuditRecord
@@ -167,7 +167,7 @@ func (a *AuditService) Flush() {
 				ipArg = fmt.Sprintf("%v", ipVal)
 			}
 			_, err2 := tx.Exec(ctx, `
-				INSERT INTO kemenag_pusdatin.audit_logs
+				INSERT INTO kemenag_website.audit_logs
 					(action, target, target_schema, performed_by, before_state, after_state, ip)
 				VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 				rec.Action, rec.Target, rec.TargetSchema, rec.PerformedBy,

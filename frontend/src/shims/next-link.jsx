@@ -20,9 +20,31 @@ function resolveHref(href) {
 }
 
 export default function Link({ href, children, className, onClick, target, rel, ...rest }) {
+  const resolved = resolveHref(href);
+
+  const handleClick = (e) => {
+    if (onClick) onClick(e);
+    if (e.defaultPrevented) return;
+
+    // Pastikan iOS Standalone PWA tidak mental ke browser Safari
+    if (
+      !target &&
+      typeof window !== "undefined" &&
+      window.navigator &&
+      window.navigator.standalone &&
+      resolved &&
+      !resolved.startsWith("http") &&
+      !resolved.startsWith("//") &&
+      !resolved.startsWith("#")
+    ) {
+      e.preventDefault();
+      window.location.href = resolved;
+    }
+  };
+
   return React.createElement(
     "a",
-    { href: resolveHref(href), className, onClick, target, rel, ...rest },
+    { href: resolved, className, onClick: handleClick, target, rel, ...rest },
     children
   );
 }

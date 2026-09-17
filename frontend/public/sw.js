@@ -12,7 +12,7 @@ importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
 // - Static asset (/_astro/*, images): cache-first dengan revalidate.
 // - API: network-first tanpa fallback cache (kecuali offline sederhana).
 
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -23,7 +23,9 @@ const PRECACHE_URLS = [
   "/manifest.webmanifest",
   "/assets/branding/kemenag.svg",
   "/assets/icons/kemenag-192.png",
+  "/assets/icons/kemenag-maskable-192.png",
   "/assets/icons/kemenag-512.png",
+  "/assets/icons/kemenag-maskable-512.png",
 ];
 
 self.addEventListener("install", (event) => {

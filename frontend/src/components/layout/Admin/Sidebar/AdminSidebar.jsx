@@ -9,7 +9,10 @@ import { DashboardIcon, NewsIcon, FolderIcon, SliderIcon, UsersIcon, AuditIcon, 
 function hasAccess(context, permission) {
   if (!context) return false;
   if (context.isSuperAdmin) return true;
-  return Array.isArray(context.permissions) ? context.permissions.includes(permission) : false;
+  if (!Array.isArray(context.permissions)) return false;
+  if (context.permissions.includes(permission)) return true;
+  const prefix = permission.split(":")[0];
+  return context.permissions.includes(prefix);
 }
 
 export default function AdminSidebar({ profile, role, permissionContext, onNavigate, onClose, isCollapsed = false, setIsCollapsed }) {
@@ -24,6 +27,7 @@ export default function AdminSidebar({ profile, role, permissionContext, onNavig
     { href: "/admin/laporan", label: "Dokumen Laporan", icon: <FolderIcon />, active: pathname === "/admin/laporan" || pathname.startsWith("/admin/laporan/"), show: hasAccess(ctx, PERMISSIONS.LAPORAN_VIEW) },
     { href: "/admin/homepage-slides", label: "Infografis", icon: <SliderIcon />, active: pathname.startsWith("/admin/homepage-slides"), show: hasAccess(ctx, PERMISSIONS.HOMEPAGE_SLIDES_VIEW) },
     { href: "/admin/youtube", label: "Dokumentasi YouTube", icon: <YoutubeIcon />, active: pathname.startsWith("/admin/youtube"), show: hasAccess(ctx, PERMISSIONS.HOMEPAGE_SLIDES_VIEW) },
+    { href: "/admin/users", label: "Kelola Pengguna", icon: <UsersIcon />, active: pathname.startsWith("/admin/users"), show: role === "super_admin" || hasAccess(ctx, PERMISSIONS.USER_VIEW) },
 
     { href: "/admin/pengaturan", label: "Pengaturan Identitas", icon: <SettingsIcon />, active: pathname.startsWith("/admin/pengaturan"), show: role === "super_admin" },
 

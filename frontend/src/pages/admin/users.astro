@@ -1,0 +1,9 @@
+---
+export const prerender = false;
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import AdminApp from "@/components/layout/Admin/AdminApp";
+---
+
+<AdminLayout title={`Manajemen Pengguna - Admin Kemenag Barito Utara`}>
+  <AdminApp page="users" client:load />
+</AdminLayout>

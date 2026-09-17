@@ -9,8 +9,23 @@ export default function AdminLogoutButton() {
   async function handleLogout() {
     try {
       setLoading(true);
-      await fetch("/api/admin/logout", { method: "POST" });
-      window.location.href = "/pusdatin/auth";
+      await fetch("/api/admin/logout", { method: "POST" }).catch(() => {});
+
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
+        await supabase.auth.signOut().catch(() => {});
+      } catch (_) {}
+
+      try {
+        sessionStorage.clear();
+        localStorage.removeItem("kemenag_admin_shell_session");
+        localStorage.removeItem("sb-website-auth-token");
+      } catch (_) {}
+
+      window.location.replace("/pusdatin/auth");
+    } catch (_) {
+      window.location.replace("/pusdatin/auth");
     } finally {
       setLoading(false);
     }

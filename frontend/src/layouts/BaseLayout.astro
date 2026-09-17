@@ -50,6 +50,12 @@ const {
 } = Astro.props;
 
 const BASE = getSiteUrl();
+
+// Canonical domain redirect: kemenag-baritoutara.com & www -> baritoutara.kemenag.go.id (301 Permanent)
+const reqHost = (Astro.request.headers.get("x-forwarded-host") || Astro.request.headers.get("host") || Astro.url.host || "").split(":")[0].trim().toLowerCase();
+if (reqHost === "kemenag-baritoutara.com" || reqHost === "www.kemenag-baritoutara.com") {
+  return Astro.redirect(`https://baritoutara.kemenag.go.id${Astro.url.pathname}${Astro.url.search}`, 301);
+}
 const oneSignalAppId = getOneSignalAppId();
 const gaId = getGaId();
 const gtmId = getGtmId();
@@ -103,6 +109,12 @@ const imageMimeType = imageUrl.endsWith(".png")
 <html lang="id" data-scroll-behavior="smooth">
   <head>
     <meta charset="utf-8" />
+    <!-- Canonical Domain Redirect Instant Fallback -->
+    <script is:inline>
+      if (window.location.hostname === 'kemenag-baritoutara.com' || window.location.hostname === 'www.kemenag-baritoutara.com') {
+        window.location.replace('https://baritoutara.kemenag.go.id' + window.location.pathname + window.location.search + window.location.hash);
+      }
+    </script>
     <!-- Dynamic Runtime SSR Public Environment Injection -->
     <script is:inline define:vars={{ publicEnv }}>
       window.__PUBLIC_ENV__ = Object.assign({}, window.__PUBLIC_ENV__ || {}, publicEnv);
@@ -161,7 +173,7 @@ const imageMimeType = imageUrl.endsWith(".png")
     <!-- App Icons -->
     <link rel="icon" href="/assets/icons/kemenag-192.png" sizes="192x192" type="image/png" />
     <link rel="icon" href="/assets/branding/kemenag.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/assets/icons/kemenag-192.png" />
+    <link rel="apple-touch-icon" href="/assets/icons/kemenag-maskable-192.png" />
 
     <!-- Verification & Bot Directives -->
     {googleSiteVerification && <meta name="google-site-verification" content={googleSiteVerification} />}

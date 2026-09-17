@@ -5,8 +5,9 @@ import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { searchSite } from "../lib/search";
 
-export function useHeader() {
-  const pathname = usePathname();
+export function useHeader(options = {}) {
+  const currentPathname = usePathname();
+  const pathname = currentPathname || options.initialPathname || "";
   const router = useRouter();
   const { locale, setLocale, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
@@ -37,7 +38,7 @@ export function useHeader() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const isHome = pathname === "/" || pathname === "/beranda";
+  const isHome = Boolean(options.isHomePage || pathname === "/" || pathname === "/beranda");
   const isTransparent = isHome && !isScrolled && !isMobileMenuOpen;
 
   useEffect(() => {

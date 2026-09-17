@@ -132,6 +132,22 @@ func (s *SupabaseClient) AdminUpdateUser(ctx context.Context, id string, attrs m
 	return parseSupabaseUser(raw)
 }
 
+// AdminCreateUser buat user baru via service role.
+func (s *SupabaseClient) AdminCreateUser(ctx context.Context, attrs map[string]any) (*SupabaseUser, error) {
+	body, _ := json.Marshal(attrs)
+	var raw json.RawMessage
+	err := s.doJSON(ctx, http.MethodPost, "/auth/v1/admin/users", body, &raw, s.adminHeaders())
+	if err != nil {
+		return nil, err
+	}
+	return parseSupabaseUser(raw)
+}
+
+// AdminDeleteUser hapus user via service role.
+func (s *SupabaseClient) AdminDeleteUser(ctx context.Context, id string) error {
+	return s.doJSON(ctx, http.MethodDelete, "/auth/v1/admin/users/"+id, nil, nil, s.adminHeaders())
+}
+
 // AdminListUsers daftar user (per_page 1000).
 func (s *SupabaseClient) AdminListUsers(ctx context.Context) ([]SupabaseUser, error) {
 	var out struct {

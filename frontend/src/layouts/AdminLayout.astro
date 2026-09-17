@@ -34,6 +34,11 @@ const publicEnv = {
 const pageTitle = title && typeof title === "string" && !title.includes(siteInfo.shortName)
   ? `${title} | ${siteInfo.shortName}`
   : title || `Admin ${siteInfo.name}`;
+
+Astro.response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+Astro.response.headers.set("Pragma", "no-cache");
+Astro.response.headers.set("Expires", "0");
+Astro.response.headers.set("Surrogate-Control", "no-store");
 ---
 
 <html lang="id">
@@ -48,7 +53,7 @@ const pageTitle = title && typeof title === "string" && !title.includes(siteInfo
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" href="/assets/icons/kemenag-192.png" sizes="192x192" type="image/png" />
     <link rel="icon" href="/assets/branding/kemenag.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/assets/icons/kemenag-192.png" />
+    <link rel="apple-touch-icon" href="/assets/icons/kemenag-maskable-192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -72,6 +77,19 @@ const pageTitle = title && typeof title === "string" && !title.includes(siteInfo
           t.style.colorScheme = r;
         } catch (e) {}
       })();
+
+      // Anti-bfcache: Jika pengguna menekan tombol Back/Forward browser setelah logout,
+      // deteksi event 'pageshow' dari cache lalu paksa reload agar server me-redirect ke login.
+      window.addEventListener("pageshow", function (event) {
+        if (
+          event.persisted ||
+          (window.performance &&
+            window.performance.getEntriesByType &&
+            window.performance.getEntriesByType("navigation")[0]?.type === "back_forward")
+        ) {
+          window.location.reload();
+        }
+      });
     </script>
   </body>
 </html>

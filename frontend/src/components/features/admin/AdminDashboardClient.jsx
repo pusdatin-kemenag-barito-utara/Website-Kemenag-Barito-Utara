@@ -11,7 +11,7 @@ function numberFmt(n) {
   return new Intl.NumberFormat("id-ID").format(Number(n || 0));
 }
 
-const CACHE_KEY = "kemenag_dashboard_stats_v2";
+const CACHE_KEY = "kemenag_dashboard_stats_v4";
 
 function getCachedData() {
   if (typeof window === "undefined") return null;
@@ -64,6 +64,7 @@ export default function AdminDashboardClient() {
           topBerita: stats?.topBerita || [],
           categoryDistribution: stats?.categoryDistribution || [],
           responseTimeMs: stats?.responseTimeMs || 0,
+          redisActive: stats?.redisActive === true,
         };
 
         const newVisitors =
@@ -200,7 +201,7 @@ export default function AdminDashboardClient() {
           trend={data?.trend}
           topBerita={data?.topBerita}
           categoryDistribution={data?.categoryDistribution}
-          redisActive={false}
+          redisActive={data?.redisActive === true}
           responseTimeMs={data?.responseTimeMs}
         />
       </div>

@@ -73,17 +73,17 @@ export function FeaturedNewsCard({ item, searchQuery }) {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent" />
           </Link>
-          <div className="absolute left-4 top-4 lg:left-8 lg:top-8 z-10 pointer-events-auto">
-            <Link href={`/berita?category=${encodeURIComponent(item.category)}`} className="rounded-full bg-emerald-600 px-3 py-1 lg:px-6 lg:py-2 text-[8px] lg:text-[10px] font-black uppercase tracking-[0.2em] text-white shadow-xl hover:bg-emerald-500 transition-colors">
+          <div className="absolute left-3 top-3 sm:left-4 sm:top-4 lg:left-8 lg:top-8 z-10 pointer-events-auto">
+            <Link href={`/berita?category=${encodeURIComponent(item.category)}`} className="rounded-full bg-emerald-600 px-2.5 py-0.5 sm:px-3 sm:py-1 lg:px-6 lg:py-2 text-[7px] sm:text-[8px] lg:text-[10px] font-bold sm:font-black uppercase tracking-normal sm:tracking-[0.2em] text-white shadow-xl hover:bg-emerald-500 transition-colors">
               {displayCategory}
             </Link>
           </div>
         </div>
 
         <div className="flex flex-col justify-center p-6 md:p-12 xl:p-16">
-          <div className="flex items-center gap-3 text-xs font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
-            <span className="h-1 w-8 lg:w-10 rounded-full bg-emerald-500/20" />
-            {displayDate}
+          <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs font-bold sm:font-black uppercase tracking-normal sm:tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
+            <span className="h-0.5 sm:h-1 w-5 sm:w-8 lg:w-10 rounded-full bg-emerald-500/30 shrink-0" />
+            <span>{displayDate}</span>
           </div>
 
           <h2 className="mt-4 lg:mt-6 text-xl font-black leading-tight tracking-tight text-slate-900 dark:text-white lg:text-4xl">
@@ -146,20 +146,23 @@ export function NewsCard({ item, searchQuery }) {
 
           {/* Category Badge */}
           {item.category && (
-            <div className="absolute left-4 top-4 z-20 pointer-events-auto">
-              <Link href={`/berita?category=${encodeURIComponent(item.category)}`} className="inline-block rounded-full bg-emerald-600/90 backdrop-blur-md px-2 py-0.5 md:px-2.5 md:py-1 text-[7px] md:text-[8px] font-black uppercase tracking-widest text-white shadow-lg hover:bg-emerald-500 transition-colors">
+            <div className="absolute left-2.5 top-2.5 sm:left-4 sm:top-4 z-20 pointer-events-auto">
+              <Link
+                href={`/berita?category=${encodeURIComponent(item.category)}`}
+                className="inline-block rounded-full bg-emerald-600/90 backdrop-blur-md px-2 py-0.5 sm:px-2.5 sm:py-1 text-[7px] sm:text-[8px] font-bold sm:font-black uppercase tracking-normal sm:tracking-widest text-white shadow-md hover:bg-emerald-500 transition-colors max-w-[130px] sm:max-w-none truncate"
+              >
                 {displayCategory}
               </Link>
             </div>
           )}
 
           {/* Date Overlay */}
-          <div className="absolute bottom-4 left-4 right-4 z-10">
-            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-400">
-              <span className="h-0.5 w-3 lg:w-4 rounded-full bg-emerald-500/50" />
-              {displayDate}
+          <div className="absolute bottom-2.5 left-2.5 right-2.5 sm:bottom-4 sm:left-4 sm:right-4 z-10">
+            <div className="flex items-center gap-1.5 text-[8.5px] sm:text-[10px] md:text-xs font-bold sm:font-black uppercase tracking-normal sm:tracking-widest text-emerald-300 dark:text-emerald-400">
+              <span className="h-0.5 w-2 sm:w-3 lg:w-4 rounded-full bg-emerald-400/60 shrink-0" />
+              <span className="truncate">{displayDate}</span>
             </div>
-            <h3 className="mt-1 lg:mt-2 line-clamp-2 text-xs lg:text-sm font-black leading-tight text-white transition-colors group-hover:text-emerald-50">
+            <h3 className="mt-0.5 sm:mt-1 lg:mt-2 line-clamp-2 text-[11px] sm:text-xs lg:text-sm font-black leading-tight sm:leading-snug text-white transition-colors group-hover:text-emerald-50">
               <HighlightText text={item.title} keyword={searchQuery} />
             </h3>
           </div>

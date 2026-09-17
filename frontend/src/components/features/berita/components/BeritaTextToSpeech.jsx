@@ -48,6 +48,42 @@ const normalizeTextForSpeech = (text) => {
   return result;
 };
 
+// Memainkan denting lonceng chime (ding-dong) lembut khas loket antrean / teller bank via Web Audio API
+const playTellerChime = () => {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+
+    // Nada 1: E5 (659.25 Hz)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(659.25, ctx.currentTime);
+    gain1.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.38);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(ctx.currentTime);
+    osc1.stop(ctx.currentTime + 0.38);
+
+    // Nada 2: A5 (880 Hz) - denting kedua khas pengumuman loket bank
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.16);
+    gain2.gain.setValueAtTime(0.08, ctx.currentTime + 0.16);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.6);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(ctx.currentTime + 0.16);
+    osc2.stop(ctx.currentTime + 0.6);
+  } catch {
+    // Abaikan jika Web Audio tidak diizinkan browser
+  }
+};
+
 export default function BeritaTextToSpeech({ title, content }) {
   const { locale } = useLanguage();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -102,6 +138,9 @@ export default function BeritaTextToSpeech({ title, content }) {
     shouldPlay.current = true;
     window.speechSynthesis.cancel(); // Bersihkan antrian
     
+    // Bunyikan nada lonceng pengumuman teller bank sebelum membaca
+    playTellerChime();
+    
     // Ekstraksi teks dari HTML
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = content;
@@ -113,8 +152,6 @@ export default function BeritaTextToSpeech({ title, content }) {
     const fullText = `${normalizedTitle}... ${normalizedContent}`; 
     
     // Pecah teks menjadi kalimat-kalimat kecil untuk menghindari bug browser 
-    // HANYA memecah berdasarkan titik, tanda seru/tanya, dan enter. 
-    // Koma (,) TIDAK lagi dipakai memecah agar tidak tersendat-sendat.
     const chunks = fullText.match(/[^.!?\n]+[.!?\n]+|\s*[^.!?\n]+$/g) || [fullText];
     let currentIndex = 0;
     setProgressData({ current: 0, total: chunks.length });
@@ -138,39 +175,46 @@ export default function BeritaTextToSpeech({ title, content }) {
 
       const utterance = new SpeechSynthesisUtterance(chunk);
       utterance.lang = locale === "en" ? "en-US" : "id-ID";
-      utterance.rate = 0.9; // Sedikit turun agar artikulasi jelas
-      utterance.pitch = 1.15; // Pitch dinaikkan agar terdengar lebih tinggi/feminin, mengantisipasi jika browser hanya punya suara pria
+      utterance.rate = 0.94; // Kecepatan teratur dan jelas khas teller bank / penyiar
+      utterance.pitch = 1.04; // Nada hangat, ramah, dan sopan (tidak cempreng)
       
-      // Cari suara "Wanita" / Penyiar berita perempuan
+      // Cari suara Teller / CS perempuan yang jernih, sopan, dan berwibawa
       const voices = window.speechSynthesis.getVoices();
       const targetLang = locale === "en" ? "en" : "id";
-      const availableVoices = voices.filter(v => v.lang.toLowerCase().includes(targetLang));
+      const availableVoices = voices.filter(v => v.lang.toLowerCase().replace("_", "-").includes(targetLang));
       
-      // Prioritas 1: Suara yang pasti perempuan
-      let femaleVoice = availableVoices.find(v => 
-        v.name.includes("Siti") || // Suara perempuan natural MS Edge
-        v.name.includes("Gadis") ||
-        v.name.includes("Female") || 
-        v.name.includes("Wanita") ||
-        (v.name.includes("Google") && !v.name.includes("Male")) || // Google Bahasa Indonesia biasanya perempuan
-        (v.name.includes("Natural") && !v.name.includes("Ardi") && !v.name.includes("Andi") && !v.name.includes("Male"))
+      // Prioritas 1: Suara Teller Natural perempuan (Gadis, Siti, Damayanti, Google Bahasa Indonesia)
+      let tellerVoice = availableVoices.find(v => 
+        v.name.includes("Gadis") || // MS Edge / Windows Natural Voice - suara teller Indonesia
+        v.name.includes("Siti") ||  // MS Natural Voice
+        v.name.includes("Damayanti") || // Apple iOS / macOS Siri Indonesian Female
+        (v.name.includes("Google") && !v.name.includes("Male")) || // Google ID Female
+        (v.name.toLowerCase().includes("indonesia") && (v.name.includes("Natural") || v.name.includes("Neural")) && !v.name.includes("Male"))
       );
       
-      // Prioritas 2: Jika tidak ada, ambil suara APA SAJA yang BUKAN laki-laki
-      if (!femaleVoice) {
-        femaleVoice = availableVoices.find(v => 
+      // Prioritas 2: Suara yang berlabel Female / Wanita
+      if (!tellerVoice) {
+        tellerVoice = availableVoices.find(v => 
+          v.name.toLowerCase().includes("female") || 
+          v.name.toLowerCase().includes("wanita") ||
+          v.name.toLowerCase().includes("gadis")
+        );
+      }
+      
+      // Prioritas 3: Hindari suara pria berat/robot
+      if (!tellerVoice) {
+        tellerVoice = availableVoices.find(v => 
+          !v.name.includes("Andika") && 
           !v.name.includes("Ardi") && 
           !v.name.includes("Andi") && 
-          !v.name.includes("Andika") && // Windows Andika adalah laki-laki
           !v.name.includes("Male") &&
           !v.name.includes("Pria")
         );
       }
       
-      if (femaleVoice) {
-        utterance.voice = femaleVoice;
+      if (tellerVoice) {
+        utterance.voice = tellerVoice;
       } else if (availableVoices.length > 0) {
-        // Fallback terakhir
         utterance.voice = availableVoices[0];
       }
 
@@ -181,7 +225,6 @@ export default function BeritaTextToSpeech({ title, content }) {
       };
       
       utterance.onerror = (e) => {
-        // Abaikan error "interrupted" atau "canceled" karena itu terjadi saat ganti antrian
         if (e.error !== "interrupted" && e.error !== "canceled") {
           console.error("Speech synthesis error", e);
           setIsPlaying(false);
@@ -190,7 +233,15 @@ export default function BeritaTextToSpeech({ title, content }) {
         }
       };
 
-      window.speechSynthesis.speak(utterance);
+      if (currentIndex === 0) {
+        setTimeout(() => {
+          if (shouldPlay.current) {
+            window.speechSynthesis.speak(utterance);
+          }
+        }, 350);
+      } else {
+        window.speechSynthesis.speak(utterance);
+      }
     };
 
     setIsPlaying(true);

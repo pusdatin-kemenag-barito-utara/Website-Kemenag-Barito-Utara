@@ -20,7 +20,7 @@ export default function LayananPtspSection({ services = [] }) {
   if (!services || services.length === 0) return null;
 
   return (
-    <section className="py-8 lg:py-12 bg-white dark:bg-slate-950 overflow-hidden relative">
+    <section id="katalog-ptsp" className="py-8 lg:py-12 bg-white dark:bg-slate-950 overflow-hidden relative">
       {/* Background Decor */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl opacity-50 dark:opacity-20" />

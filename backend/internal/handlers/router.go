@@ -24,6 +24,11 @@ func RegisterRoutes(app fiber.Router) {
 	// ── Admin Subroutes ─────────────────────────────────────
 	admin := api.Group("/admin")
 
+	admin.Get("/users", AdminUsersListHandler)
+	admin.Post("/users", AdminUsersCreateHandler)
+	admin.Put("/users/:id", AdminUsersUpdateHandler)
+	admin.Delete("/users/:id", AdminUsersDeleteHandler)
+
 	admin.Get("/berita", AdminBeritaListHandler)
 	admin.Post("/berita", AdminBeritaCreateHandler)
 	admin.Get("/berita/:id", AdminBeritaGetHandler)

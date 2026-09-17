@@ -261,7 +261,7 @@ export function DeleteConfirmModal({ open, onConfirm, onCancel, title, descripti
               type="button"
               onClick={onCancel}
               disabled={loading}
-              className="flex h-14 items-center justify-center rounded-2xl bg-rose-600 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-rose-600/20 transition-all hover:bg-rose-700 active:scale-95 disabled:opacity-50"
+              className="flex h-14 items-center justify-center rounded-2xl border-2 border-slate-100 bg-slate-50 text-[11px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900 active:scale-95 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
             >
               Batalkan
             </button>
