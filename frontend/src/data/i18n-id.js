@@ -109,7 +109,7 @@ export const messagesId = {
       badge: "Kemenag Barito Utara",
       title: "Layanan Informasi Keagamaan Berlandaskan Semangat HAPAKAT.",
       description:
-        "Hadir memberikan pelayanan prima yang Harmonis, Amanah, Profesional, Akuntabel, Kreatif, Adil dan Transparan untuk seluruh masyarakat Kabupaten Barito Utara.",
+        "Pelayanan publik keagamaan yang prima, transparan, dan akuntabel untuk masyarakat Kabupaten Barito Utara.",
       ctaLayanan: "Akses Layanan PTSP",
       ctaBerita: "Lihat Berita",
     },

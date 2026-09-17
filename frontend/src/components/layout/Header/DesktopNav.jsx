@@ -21,12 +21,13 @@ export function DesktopNav({
   suggestions,
   showSuggestions,
   handleSuggestionSelect,
-  activeSuggestionIndex
+  activeSuggestionIndex,
+  isTransparent = false,
 }) {
   return (
-    <nav className="hidden border-t border-slate-100/50 py-2.5 dark:border-white/5 lg:block">
-      <div className="flex items-center justify-end">
-        <ul className="flex flex-nowrap items-center justify-start gap-3 xl:gap-6 mr-6" ref={desktopDropdownRef}>
+    <nav className={`hidden py-2.5 lg:block transition-all duration-500 ${isTransparent ? "border-t border-white/10" : "border-t border-slate-100/50 dark:border-white/5"}`}>
+      <div className="relative flex items-center justify-center w-full">
+        <ul className="flex flex-nowrap items-center justify-center gap-2.5 xl:gap-5" ref={desktopDropdownRef}>
           {navigationItems.map((item, idx) => {
             const hasChildren = item.children && item.children.length > 0;
             const isOpen = openDesktopDropdown === item.label;
@@ -42,16 +43,16 @@ export function DesktopNav({
                 {hasChildren ? (
                   <div
                     className={`group inline-flex cursor-default flex-shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-black uppercase tracking-tight transition-all duration-300 ${active
-                      ? "text-emerald-700 dark:text-emerald-400"
-                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                      ? (isTransparent ? "text-emerald-300 drop-shadow-sm" : "text-emerald-700 dark:text-emerald-400")
+                      : (isTransparent ? "text-slate-100 hover:text-white drop-shadow-sm" : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100")
                       }`}
                   >
                     {item.label}
-                    <ChevronDownIcon className={`h-3 w-3 transition-transform duration-500 ${isOpen ? "rotate-180 text-emerald-500" : "text-slate-400"}`} />
+                    <ChevronDownIcon className={`h-3 w-3 transition-transform duration-500 ${isOpen ? "rotate-180 text-emerald-400" : (isTransparent ? "text-slate-200" : "text-slate-400")}`} />
 
                     {/* Active Indicator Underline */}
                     {active && (
-                      <div className="absolute bottom-0 left-4 right-8 h-0.5 rounded-full bg-emerald-500/50" />
+                      <div className="absolute bottom-0 left-4 right-8 h-0.5 rounded-full bg-emerald-400" />
                     )}
                   </div>
                 ) : (
@@ -59,13 +60,13 @@ export function DesktopNav({
                     href={item.href}
                     {...(item.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                     className={`relative inline-flex flex-shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-black uppercase tracking-tight transition-all duration-300 ${active
-                      ? "text-emerald-700 dark:text-emerald-400"
-                      : "text-slate-500 hover:bg-emerald-500/5 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400"
+                      ? (isTransparent ? "text-emerald-300 drop-shadow-sm" : "text-emerald-700 dark:text-emerald-400")
+                      : (isTransparent ? "text-slate-100 hover:bg-white/10 hover:text-white drop-shadow-sm" : "text-slate-500 hover:bg-emerald-500/5 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400")
                       }`}
                   >
                     {item.label}
                     {active && (
-                      <div className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-emerald-500" />
+                      <div className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-emerald-400" />
                     )}
                   </Link>
                 )}
@@ -146,7 +147,7 @@ export function DesktopNav({
           })}
         </ul>
 
-        <div className="flex items-center pl-4 border-l border-slate-200/50 dark:border-white/5">
+        <div className={`absolute right-0 flex items-center pl-3 xl:pl-4 border-l transition-colors duration-300 ${isTransparent ? "border-white/15" : "border-slate-200/50 dark:border-white/5"}`}>
           <HeaderSearchForm
             value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
             onSubmit={handleSearchSubmit} onKeyDown={handleSearchKeyDown}
@@ -155,6 +156,7 @@ export function DesktopNav({
             showSuggestions={showSuggestions} onSelectSuggestion={handleSuggestionSelect}
             listboxId="desktop-nav-search-listbox" activeIndex={activeSuggestionIndex}
             collapsible={true}
+            isTransparent={isTransparent}
           />
         </div>
       </div>
@@ -162,13 +164,13 @@ export function DesktopNav({
   );
 }
 
-export function HeaderControls({ locale, setLocale, theme, setLightTheme, setDarkTheme, adminState }) {
+export function HeaderControls({ locale, setLocale, theme, setLightTheme, setDarkTheme, adminState, isTransparent = false }) {
   return (
     <div className="hidden lg:flex items-center gap-4">
       {/* Controls Group */}
-      <div className="flex items-center gap-4 border-r border-slate-200/50 pr-4 dark:border-white/5">
+      <div className={`flex items-center gap-4 border-r pr-4 transition-colors duration-300 ${isTransparent ? "border-white/15" : "border-slate-200/50 dark:border-white/5"}`}>
         {/* Language Switcher */}
-        <div className="flex items-center gap-1 rounded-full bg-slate-100/50 p-1 ring-1 ring-slate-200/50 dark:bg-white/5 dark:ring-white/10">
+        <div className={`flex items-center gap-1 rounded-full p-1 transition-all duration-300 ${isTransparent ? "bg-white/10 ring-1 ring-white/20 backdrop-blur-md" : "bg-slate-100/50 ring-1 ring-slate-200/50 dark:bg-white/5 dark:ring-white/10"}`}>
           {[
             { id: "id", label: "ID", flag: (
               <svg className="w-3.5 h-3.5 rounded-full overflow-hidden shadow-sm shrink-0" viewBox="0 0 640 480">
@@ -191,7 +193,7 @@ export function HeaderControls({ locale, setLocale, theme, setLightTheme, setDar
             <button
               key={item.id}
               onClick={() => setLocale(item.id)}
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase transition-all duration-300 ${locale === item.id ? "bg-emerald-700 text-white shadow-md shadow-emerald-700/20 dark:bg-emerald-600" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"}`}
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase transition-all duration-300 ${locale === item.id ? "bg-emerald-700 text-white shadow-md shadow-emerald-700/20 dark:bg-emerald-600" : (isTransparent ? "text-slate-200 hover:bg-white/15 hover:text-white" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200")}`}
             >
               {item.flag}
               <span>{item.label}</span>
@@ -200,19 +202,17 @@ export function HeaderControls({ locale, setLocale, theme, setLightTheme, setDar
         </div>
 
         {/* Theme Switcher */}
-        <div className="flex items-center gap-1 rounded-full bg-slate-100/50 p-1 ring-1 ring-slate-200/50 dark:bg-white/5 dark:ring-white/10">
+        <div className={`flex items-center gap-1 rounded-full p-1 transition-all duration-300 ${isTransparent ? "bg-white/10 ring-1 ring-white/20 backdrop-blur-md" : "bg-slate-100/50 ring-1 ring-slate-200/50 dark:bg-white/5 dark:ring-white/10"}`}>
           <button
             onClick={setLightTheme}
-            className={`rounded-full p-1.5 transition-all duration-300 ${theme === "light" ? "bg-white text-amber-500 shadow-sm" : "text-slate-400 hover:text-slate-600"
-              }`}
+            className={`rounded-full p-1.5 transition-all duration-300 ${theme === "light" ? "bg-white text-amber-500 shadow-sm" : (isTransparent ? "text-slate-300 hover:text-white" : "text-slate-400 hover:text-slate-600")}`}
             aria-label="Light Mode"
           >
             <SunIcon className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={setDarkTheme}
-            className={`rounded-full p-1.5 transition-all duration-300 ${theme === "dark" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
-              }`}
+            className={`rounded-full p-1.5 transition-all duration-300 ${theme === "dark" ? "bg-indigo-600 text-white shadow-sm" : (isTransparent ? "text-slate-300 hover:text-white" : "text-slate-400 hover:text-slate-600")}`}
             aria-label="Dark Mode"
           >
             <MoonIcon className="h-3.5 w-3.5" />

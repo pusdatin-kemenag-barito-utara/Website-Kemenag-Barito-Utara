@@ -109,7 +109,7 @@ export const messagesEn = {
         badge: "Kemenag Barito Utara",
         title: "Religious Information Services Based on the Spirit of HAPAKAT.",
         description:
-          "Providing excellent services that are Harmonious, Trustworthy (Amanah), Professional, Accountable, Creative, Fair (Adil), and Transparent for all people of Barito Utara.",
+          "Prime, transparent, and accountable religious public services for the people of Barito Utara.",
         ctaLayanan: "Access PTSP Services",
         ctaBerita: "View News",
       },

@@ -12,40 +12,86 @@ export default function Header() {
   const h = useHeader();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-100 w-full border-b border-slate-200/50 bg-white/70 backdrop-blur-xl transition-all duration-300 dark:border-white/5 dark:bg-slate-950/70">
+    <header
+      className={`fixed top-0 left-0 right-0 z-100 w-full transition-all duration-500 ${
+        h.isTransparent
+          ? "border-b border-white/10 bg-gradient-to-b from-slate-950/85 via-slate-950/40 to-transparent"
+          : "border-b border-slate-200/50 bg-white/70 backdrop-blur-xl dark:border-white/5 dark:bg-slate-950/70 shadow-xs"
+      }`}
+    >
       <div className="mx-auto w-full max-w-[1600px] px-6 sm:px-10 lg:px-16 xl:px-20">
         {/* Top Header Bar */}
         <div className="flex items-center justify-between py-2.5 lg:py-4">
-          <HeaderLogo />
-
-
+          <HeaderLogo isTransparent={h.isTransparent} />
 
           <div className="flex items-center gap-4">
-            <div className="hidden lg:flex items-center gap-2 mr-2 border-r border-slate-200 dark:border-slate-800 pr-6">
-              <Image src="/assets/branding/hapakat.webp" alt="Hapakat" width={60} height={20} className="h-4 w-auto object-contain opacity-90" style={{ width: "auto" }} />
-              <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 leading-tight">
-                <span className="text-amber-500">H</span>armonis, <span className="text-amber-500">A</span>manah, <span className="text-amber-500">P</span>rofesional, <span className="text-amber-500">A</span>kuntabel, <span className="text-amber-500">K</span>reatif, <span className="text-amber-500">A</span>dil dan <span className="text-amber-500">T</span>ransparan
+            <div
+              className={`hidden lg:flex items-center gap-2 mr-2 border-r pr-6 transition-colors duration-300 ${
+                h.isTransparent
+                  ? "border-white/15"
+                  : "border-slate-200 dark:border-slate-800"
+              }`}
+            >
+              <Image
+                src="/assets/branding/hapakat.webp"
+                alt="Hapakat"
+                width={60}
+                height={20}
+                className="h-4 w-auto object-contain opacity-90"
+                style={{ width: "auto" }}
+              />
+              <p
+                className={`text-[10px] font-bold leading-tight transition-colors duration-300 ${
+                  h.isTransparent
+                    ? "text-emerald-300 drop-shadow-sm"
+                    : "text-emerald-700 dark:text-emerald-400"
+                }`}
+              >
+                <span className="text-amber-500">H</span>armonis,{" "}
+                <span className="text-amber-500">A</span>manah,{" "}
+                <span className="text-amber-500">P</span>rofesional,{" "}
+                <span className="text-amber-500">A</span>kuntabel,{" "}
+                <span className="text-amber-500">K</span>reatif,{" "}
+                <span className="text-amber-500">A</span>dil dan{" "}
+                <span className="text-amber-500">T</span>ransparan
               </p>
             </div>
-            <HeaderControls 
-              locale={h.locale} setLocale={h.setLocale} 
-              theme={h.theme} setLightTheme={h.setLightTheme} setDarkTheme={h.setDarkTheme} 
-              adminState={h.adminState} 
+            <HeaderControls
+              locale={h.locale}
+              setLocale={h.setLocale}
+              theme={h.theme}
+              setLightTheme={h.setLightTheme}
+              setDarkTheme={h.setDarkTheme}
+              adminState={h.adminState}
+              isTransparent={h.isTransparent}
             />
-            <MobileMenuToggle isOpen={h.isMobileMenuOpen} onToggle={h.toggleMobileMenu} />
+            <MobileMenuToggle
+              isOpen={h.isMobileMenuOpen}
+              onToggle={h.toggleMobileMenu}
+              isTransparent={h.isTransparent}
+            />
           </div>
         </div>
 
         {/* Desktop Navigation Row */}
         <DesktopNav
-          navigationItems={h.navigationItems} pathname={h.pathname}
-          openDesktopDropdown={h.openDesktopDropdown} toggleDesktopDropdown={h.toggleDesktopDropdown}
-          setOpenDesktopDropdown={h.setOpenDesktopDropdown} desktopDropdownRef={h.desktopDropdownRef}
-          searchQuery={h.searchQuery} setSearchQuery={h.setSearchQuery}
-          handleSearchSubmit={h.handleSearchSubmit} handleSearchKeyDown={h.handleSearchKeyDown}
-          handleSearchBlur={h.handleSearchBlur} t={h.t}
-          suggestions={h.suggestions} showSuggestions={h.showSuggestions}
-          handleSuggestionSelect={h.handleSuggestionSelect} activeSuggestionIndex={h.activeSuggestionIndex}
+          navigationItems={h.navigationItems}
+          pathname={h.pathname}
+          openDesktopDropdown={h.openDesktopDropdown}
+          toggleDesktopDropdown={h.toggleDesktopDropdown}
+          setOpenDesktopDropdown={h.setOpenDesktopDropdown}
+          desktopDropdownRef={h.desktopDropdownRef}
+          searchQuery={h.searchQuery}
+          setSearchQuery={h.setSearchQuery}
+          handleSearchSubmit={h.handleSearchSubmit}
+          handleSearchKeyDown={h.handleSearchKeyDown}
+          handleSearchBlur={h.handleSearchBlur}
+          t={h.t}
+          suggestions={h.suggestions}
+          showSuggestions={h.showSuggestions}
+          handleSuggestionSelect={h.handleSuggestionSelect}
+          activeSuggestionIndex={h.activeSuggestionIndex}
+          isTransparent={h.isTransparent}
         />
       </div>
 

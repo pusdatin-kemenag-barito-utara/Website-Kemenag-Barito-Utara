@@ -23,9 +23,22 @@ export function useHeader() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const [liveSuggestions, setLiveSuggestions] = useState([]);
+  const [isScrolled, setIsScrolled] = useState(false);
   const deferredQuery = useDeferredValue(searchQuery);
 
   const desktopDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 40);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const isHome = pathname === "/" || pathname === "/beranda";
+  const isTransparent = isHome && !isScrolled && !isMobileMenuOpen;
 
   useEffect(() => {
     const query = deferredQuery.trim();
@@ -247,6 +260,9 @@ export function useHeader() {
 
   return {
     pathname,
+    isHome,
+    isScrolled,
+    isTransparent,
     locale,
     setLocale,
     t,

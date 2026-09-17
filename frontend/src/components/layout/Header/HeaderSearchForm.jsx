@@ -18,6 +18,7 @@ export function HeaderSearchForm({
   listboxId = "search-listbox",
   activeIndex = -1,
   collapsible = false,
+  isTransparent = false,
 }) {
   const { t } = useLanguage();
   const pathname = usePathname();
@@ -221,7 +222,11 @@ export function HeaderSearchForm({
             transition={{ duration: 0.12 }}
             type="button"
             onClick={() => setIsExpanded(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-emerald-400"
+            className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 ${
+              isTransparent
+                ? "text-slate-100 hover:bg-white/15 hover:text-white"
+                : "text-slate-500 hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-emerald-400"
+            }`}
             aria-label="Open Search"
           >
             <SearchIcon className="h-5 w-5" />

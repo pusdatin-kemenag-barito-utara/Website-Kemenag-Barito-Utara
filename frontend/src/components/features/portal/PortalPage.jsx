@@ -43,156 +43,204 @@ import {
 const PTSP_MENUS = [
   {
     title: "Masuk PTSP Si ATAK",
+    desc: "Portal login pemohon & petugas layanan administrasi",
     href: "https://ptsp.kemenag-baritoutara.com/",
-    icon: <LogIn className="w-5 h-5 text-blue-400" strokeWidth={2} />,
+    icon: <LogIn className="w-5 h-5 text-blue-600" strokeWidth={2} />,
+    iconBg: "bg-blue-50 text-blue-600 border-blue-200/80",
+    badge: "Utama",
   },
   {
     title: "Buat Akun Pemohon",
+    desc: "Registrasi akun baru untuk pengajuan permohonan berkas",
     href: "https://ptsp.kemenag-baritoutara.com/login/pemohon",
-    icon: <UserPlus className="w-5 h-5 text-emerald-400" strokeWidth={2} />,
+    icon: <UserPlus className="w-5 h-5 text-emerald-600" strokeWidth={2} />,
+    iconBg: "bg-emerald-50 text-emerald-600 border-emerald-200/80",
   },
   {
-    title: "Katalog Layanan PTSP Si ATAK",
+    title: "Katalog Layanan",
+    desc: "Daftar persyaratan, SOP, dan standar operasional layanan",
     href: "https://ptsp.kemenag-baritoutara.com/layanan",
-    icon: <FileSearch className="w-5 h-5 text-amber-400" strokeWidth={2} />,
+    icon: <FileSearch className="w-5 h-5 text-amber-600" strokeWidth={2} />,
+    iconBg: "bg-amber-50 text-amber-600 border-amber-200/80",
   },
   {
     title: "Lacak Layanan",
+    desc: "Pantau status & progres berkas permohonan real-time",
     href: "https://ptsp.kemenag-baritoutara.com/track",
-    icon: <Navigation className="w-5 h-5 text-purple-400" strokeWidth={2} />,
+    icon: <Navigation className="w-5 h-5 text-purple-600" strokeWidth={2} />,
+    iconBg: "bg-purple-50 text-purple-600 border-purple-200/80",
+    badge: "Realtime",
   },
   {
-    title: "Buku Tamu",
+    title: "Buku Tamu Digital",
+    desc: "Pencatatan kunjungan tatap muka terintegrasi",
     href: "https://ptsp.kemenag-baritoutara.com/buku-tamu",
-    icon: <BookOpen className="w-5 h-5 text-rose-400" strokeWidth={2} />,
+    icon: <BookOpen className="w-5 h-5 text-rose-600" strokeWidth={2} />,
+    iconBg: "bg-rose-50 text-rose-600 border-rose-200/80",
   },
   {
     title: "Janji Temu",
+    desc: "Reservasi jadwal konsultasi bersama petugas PTSP",
     href: "https://ptsp.kemenag-baritoutara.com/janji-temu",
-    icon: <CalendarDays className="w-5 h-5 text-cyan-400" strokeWidth={2} />,
+    icon: <CalendarDays className="w-5 h-5 text-teal-600" strokeWidth={2} />,
+    iconBg: "bg-teal-50 text-teal-600 border-teal-200/80",
   },
 ];
 
 const INOVASI_MENUS = [
   {
     title: "Pusat Layanan Inklusif",
+    desc: "Aksesibilitas layanan ramah penyandang disabilitas",
     href: "https://inklusi.kemenag-baritoutara.com/",
-    icon: <Users className="w-5 h-5 text-blue-400" strokeWidth={2} />,
+    icon: <Users className="w-5 h-5 text-blue-600" strokeWidth={2} />,
+    iconBg: "bg-blue-50 text-blue-600 border-blue-200/80",
   },
   {
     title: "Layanan PTSP Si ATAK",
+    desc: "Pelayanan terpadu satu pintu serbaguna",
     href: "https://ptsp.kemenag-baritoutara.com/",
-    icon: <FolderOpen className="w-5 h-5 text-blue-400" strokeWidth={2} />,
+    icon: <FolderOpen className="w-5 h-5 text-emerald-600" strokeWidth={2} />,
+    iconBg: "bg-emerald-50 text-emerald-600 border-emerald-200/80",
   },
   {
     title: "SI BETANG",
+    desc: "Sistem digitalisasi pengelolaan arsip dinas",
     href: "https://arsip.kemenag-baritoutara.com/login",
-    icon: <Archive className="w-5 h-5 text-amber-400" strokeWidth={2} />,
+    icon: <Archive className="w-5 h-5 text-amber-600" strokeWidth={2} />,
+    iconBg: "bg-amber-50 text-amber-600 border-amber-200/80",
   },
   {
     title: "SI MANDAU",
+    desc: "Manajemen tata kelola persuratan dinas",
     href: "https://surat.kemenag-baritoutara.com/login",
-    icon: <MailOpen className="w-5 h-5 text-emerald-400" strokeWidth={2} />,
+    icon: <MailOpen className="w-5 h-5 text-teal-600" strokeWidth={2} />,
+    iconBg: "bg-teal-50 text-teal-600 border-teal-200/80",
   },
   {
     title: "E-SOP Digital",
+    desc: "Dokumentasi standar operasional prosedur instansi",
     href: "https://sop.kemenag-baritoutara.com/",
-    icon: <FileCheck className="w-5 h-5 text-cyan-400" strokeWidth={2} />,
+    icon: <FileCheck className="w-5 h-5 text-cyan-600" strokeWidth={2} />,
+    iconBg: "bg-cyan-50 text-cyan-600 border-cyan-200/80",
   },
   {
     title: "PUSDATIN",
+    desc: "Pusat data informasi & statistik keagamaan",
     href: "https://pusdatin.kemenag-baritoutara.com/",
-    icon: <Database className="w-5 h-5 text-purple-400" strokeWidth={2} />,
+    icon: <Database className="w-5 h-5 text-purple-600" strokeWidth={2} />,
+    iconBg: "bg-purple-50 text-purple-600 border-purple-200/80",
   },
   {
     title: "Kalkulator Zakat & Waris",
+    desc: "Simulasi perhitungan zakat dan pembagian waris",
     href: "/layanan/kalkulator",
-    icon: <Calculator className="w-5 h-5 text-emerald-500" strokeWidth={2} />,
+    icon: <Calculator className="w-5 h-5 text-rose-600" strokeWidth={2} />,
+    iconBg: "bg-rose-50 text-rose-600 border-rose-200/80",
   },
 ];
 
 const INFORMASI_MENUS = [
   {
-    title: "Berita",
+    title: "Berita & Artikel",
+    desc: "Kabar dan liputan kegiatan terkini instansi",
     href: "https://baritoutara.kemenag.go.id/berita",
-    icon: <Newspaper className="w-5 h-5 text-amber-400" strokeWidth={2} />,
+    icon: <Newspaper className="w-5 h-5 text-amber-600" strokeWidth={2} />,
+    iconBg: "bg-amber-50 text-amber-600 border-amber-200/80",
   },
   {
-    title: "Galeri",
+    title: "Galeri Foto",
+    desc: "Dokumentasi visual rangkaian acara dan agenda",
     href: "https://baritoutara.kemenag.go.id/galeri",
-    icon: <ImageIcon className="w-5 h-5 text-fuchsia-400" strokeWidth={2} />,
+    icon: <ImageIcon className="w-5 h-5 text-fuchsia-600" strokeWidth={2} />,
+    iconBg: "bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200/80",
   },
   {
-    title: "Dokumen Laporan",
+    title: "Dokumen & Laporan",
+    desc: "Transparansi laporan kinerja dan akuntabilitas dinas",
     href: "https://baritoutara.kemenag.go.id/laporan",
-    icon: <FileText className="w-5 h-5 text-cyan-400" strokeWidth={2} />,
+    icon: <FileText className="w-5 h-5 text-cyan-600" strokeWidth={2} />,
+    iconBg: "bg-cyan-50 text-cyan-600 border-cyan-200/80",
   },
   {
     title: "Video YouTube",
+    desc: "Tayangan multimedia dan edukasi keagamaan",
     href: "https://baritoutara.kemenag.go.id/video",
-    icon: <PlaySquare className="w-5 h-5 text-rose-400" strokeWidth={2} />,
+    icon: <PlaySquare className="w-5 h-5 text-rose-600" strokeWidth={2} />,
+    iconBg: "bg-rose-50 text-rose-600 border-rose-200/80",
   },
 ];
 
 const SURVEY_MENUS = [
   {
     title: "SKM KEMENPAN RB",
+    desc: "Survei Kepuasan Masyarakat resmi nasional Kemenpan RB",
     href: "https://skm.go.id/share/instansi/a461fae7-6b20-40f2-b82d-238c5adf4c01/2",
-    icon: (
-      <ClipboardCheck className="w-5 h-5 text-emerald-400" strokeWidth={2} />
-    ),
+    icon: <ClipboardCheck className="w-5 h-5 text-emerald-600" strokeWidth={2} />,
+    iconBg: "bg-emerald-50 text-emerald-600 border-emerald-200/80",
+    badge: "Nasional",
   },
   {
     title: "SI ARUS",
+    desc: "Aplikasi survei internal kepuasan layanan daerah",
     href: "https://survei.kemenag-baritoutara.com",
-    icon: <LineChart className="w-5 h-5 text-blue-400" strokeWidth={2} />,
+    icon: <LineChart className="w-5 h-5 text-blue-600" strokeWidth={2} />,
+    iconBg: "bg-blue-50 text-blue-600 border-blue-200/80",
   },
   {
     title: "SIPPN MENPAN",
+    desc: "Sistem Informasi Pelayanan Publik Nasional",
     href: "https://sippn.menpan.go.id/",
-    icon: <Globe className="w-5 h-5 text-cyan-400" strokeWidth={2} />,
+    icon: <Globe className="w-5 h-5 text-cyan-600" strokeWidth={2} />,
+    iconBg: "bg-cyan-50 text-cyan-600 border-cyan-200/80",
   },
 ];
 
 const ZONA_MENUS = [
   {
     title: "Area Perubahan - ZI",
+    desc: "6 pilar manajemen perubahan & penguatan akuntabilitas",
     href: "https://baritoutara.kemenag.go.id/zona-integritas/area-perubahan-zi",
-    icon: <Map className="w-5 h-5 text-blue-400" strokeWidth={2} />,
+    icon: <Map className="w-5 h-5 text-blue-600" strokeWidth={2} />,
+    iconBg: "bg-blue-50 text-blue-600 border-blue-200/80",
   },
   {
     title: "Berita Zona Integritas",
+    desc: "Kabar progres pembangunan ZI menuju WBK & WBBM",
     href: "https://baritoutara.kemenag.go.id/zona-integritas/berita-zona-integritas",
-    icon: <Newspaper className="w-5 h-5 text-amber-400" strokeWidth={2} />,
+    icon: <Newspaper className="w-5 h-5 text-amber-600" strokeWidth={2} />,
+    iconBg: "bg-amber-50 text-amber-600 border-amber-200/80",
   },
   {
     title: "Video Pembangunan - ZI",
+    desc: "Dokumentasi visual komitmen integritas aparatur",
     href: "https://baritoutara.kemenag.go.id/zona-integritas/video-pembangunan-zi",
-    icon: <PlaySquare className="w-5 h-5 text-rose-400" strokeWidth={2} />,
+    icon: <PlaySquare className="w-5 h-5 text-rose-600" strokeWidth={2} />,
+    iconBg: "bg-rose-50 text-rose-600 border-rose-200/80",
   },
 ];
 
 const PENGADUAN_MENUS = [
   {
     title: "SI-GESIT",
-    description:
-      "Sistem Informasi Gagasan, Evaluasi, Saran, Informasi dan Tanggapan",
+    desc: "Gagasan, Evaluasi, Saran, Informasi dan Tanggapan langsung",
     href: "https://pengaduan.kemenag-baritoutara.com",
-    icon: (
-      <MessageSquareWarning className="w-5 h-5 text-blue-400" strokeWidth={2} />
-    ),
+    icon: <MessageSquareWarning className="w-5 h-5 text-blue-600" strokeWidth={2} />,
+    iconBg: "bg-blue-50 text-blue-600 border-blue-200/80",
   },
   {
     title: "SP4N-LAPOR!",
-    description: "Sistem Pengelolaan Pengaduan Pelayanan Publik Nasional",
+    desc: "Sistem Pengelolaan Pengaduan Pelayanan Publik Nasional",
     href: "https://www.lapor.go.id/",
-    icon: <Megaphone className="w-5 h-5 text-red-400" strokeWidth={2} />,
+    icon: <Megaphone className="w-5 h-5 text-rose-600" strokeWidth={2} />,
+    iconBg: "bg-rose-50 text-rose-600 border-rose-200/80",
+    badge: "Nasional",
   },
   {
     title: "Whistle Blower System",
-    description: "Sistem Informasi Manajemen Pengaduan Masyarakat",
+    desc: "Sistem Pengaduan Pelanggaran Rahasia & Aman (WBS Kemenag)",
     href: "https://simdumas.kemenag.go.id/",
-    icon: <Siren className="w-5 h-5 text-emerald-400" strokeWidth={2} />,
+    icon: <Siren className="w-5 h-5 text-emerald-600" strokeWidth={2} />,
+    iconBg: "bg-emerald-50 text-emerald-600 border-emerald-200/80",
   },
 ];
 
@@ -212,6 +260,7 @@ const PORTAL_LINKS = [
       "Pusat Layanan Terpadu Satu Pintu untuk segala urusan administrasi.",
     href: "#",
     icon: <FolderOpen className="w-7 h-7" strokeWidth={1.5} />,
+    iconBg: "bg-blue-50/90 text-blue-700 border-blue-200/80 group-hover:bg-blue-100 group-hover:border-blue-300",
   },
   {
     id: "inovasi",
@@ -220,6 +269,7 @@ const PORTAL_LINKS = [
       "Kumpulan aplikasi dan inovasi layanan digital Kemenag Barito Utara.",
     href: "#",
     icon: <Lightbulb className="w-7 h-7" strokeWidth={1.5} />,
+    iconBg: "bg-amber-50/90 text-amber-700 border-amber-200/80 group-hover:bg-amber-100 group-hover:border-amber-300",
   },
   {
     id: "informasi",
@@ -227,6 +277,7 @@ const PORTAL_LINKS = [
     description: "Kumpulan berita, galeri kegiatan, dan laporan instansi.",
     href: "#",
     icon: <Info className="w-7 h-7" strokeWidth={1.5} />,
+    iconBg: "bg-fuchsia-50/90 text-fuchsia-700 border-fuchsia-200/80 group-hover:bg-fuchsia-100 group-hover:border-fuchsia-300",
   },
   {
     id: "pengaduan",
@@ -234,6 +285,7 @@ const PORTAL_LINKS = [
     description: "Saluran penyampaian pengaduan dan pelaporan masyarakat.",
     href: "#",
     icon: <MessageSquareWarning className="w-7 h-7" strokeWidth={1.5} />,
+    iconBg: "bg-rose-50/90 text-rose-700 border-rose-200/80 group-hover:bg-rose-100 group-hover:border-rose-300",
   },
   {
     id: "survey",
@@ -242,6 +294,7 @@ const PORTAL_LINKS = [
       "Bantu kami meningkatkan kualitas layanan dengan mengisi survey.",
     href: "#",
     icon: <ClipboardList className="w-7 h-7" strokeWidth={1.5} />,
+    iconBg: "bg-purple-50/90 text-purple-700 border-purple-200/80 group-hover:bg-purple-100 group-hover:border-purple-300",
   },
   {
     id: "zona",
@@ -250,12 +303,15 @@ const PORTAL_LINKS = [
       "Komitmen kami dalam mewujudkan birokrasi yang bersih dan melayani.",
     href: "#",
     icon: <ShieldCheck className="w-7 h-7" strokeWidth={1.5} />,
+    iconBg: "bg-emerald-50/90 text-emerald-700 border-emerald-200/80 group-hover:bg-emerald-100 group-hover:border-emerald-300",
   },
   {
+    id: "kontak",
     title: "Kontak Kami",
     description: "Hubungi kami untuk informasi lebih lanjut dan bantuan.",
     href: "/kontak",
     icon: <Headset className="w-7 h-7" strokeWidth={1.5} />,
+    iconBg: "bg-teal-50/90 text-teal-700 border-teal-200/80 group-hover:bg-teal-100 group-hover:border-teal-300",
   },
 ];
 
@@ -380,7 +436,7 @@ export default function PortalPage({ initialData }) {
 
   return (
     <div
-      className={`relative min-h-screen flex flex-col bg-slate-900 selection:bg-emerald-500/30 overflow-x-hidden ${
+      className={`relative min-h-screen flex flex-col bg-[#e7eeea] text-slate-800 selection:bg-emerald-700 selection:text-white overflow-x-hidden ${
         isAntiCopas ? "select-none" : ""
       }`}
       onContextMenu={(e) => {
@@ -420,7 +476,7 @@ export default function PortalPage({ initialData }) {
                   alt="Logo Kemenag"
                   width={96}
                   height={96}
-                  className="w-full h-full object-contain drop-shadow-2xl"
+                  className="w-full h-full object-contain drop-shadow-md"
                   priority
                 />
               </div>
@@ -428,10 +484,10 @@ export default function PortalPage({ initialData }) {
               {/* Title Section */}
               <div className="flex flex-col items-center text-center flex-1">
                 <h1 className="flex flex-col items-center font-black uppercase tracking-tight leading-none px-2 text-center mb-4">
-                  <span className="text-2xl lg:text-3xl bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+                  <span className="text-2xl lg:text-3xl text-[#064e3b] drop-shadow-xs">
                     {siteInfo.logoTitleLine1}
                   </span>
-                  <span className="text-2xl lg:text-3xl bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent mt-1">
+                  <span className="text-2xl lg:text-3xl text-[#064e3b] mt-1 drop-shadow-xs">
                     {siteInfo.logoTitleLine2}
                   </span>
                 </h1>
@@ -443,36 +499,36 @@ export default function PortalPage({ initialData }) {
                     alt="Hapakat"
                     width={180}
                     height={40}
-                    className="object-contain drop-shadow-md mb-3 h-8 lg:h-10 w-auto"
+                    className="object-contain drop-shadow-xs mb-3 h-8 lg:h-10 w-auto"
                     style={{ width: "auto" }}
                   />
-                  <div className="text-[11px] lg:text-xs font-bold text-slate-300 tracking-wide text-center leading-relaxed">
+                  <div className="text-[11px] lg:text-xs font-bold text-slate-700 tracking-wide text-center leading-relaxed">
                     <p>
-                      <span className="text-emerald-400 text-[13px] lg:text-sm">
+                      <span className="text-emerald-700 font-extrabold text-[13px] lg:text-sm">
                         H
                       </span>
                       armonis,{" "}
-                      <span className="text-emerald-400 text-[13px] lg:text-sm">
+                      <span className="text-emerald-700 font-extrabold text-[13px] lg:text-sm">
                         A
                       </span>
                       manah,{" "}
-                      <span className="text-emerald-400 text-[13px] lg:text-sm">
+                      <span className="text-emerald-700 font-extrabold text-[13px] lg:text-sm">
                         P
                       </span>
                       rofesional,{" "}
-                      <span className="text-emerald-400 text-[13px] lg:text-sm">
+                      <span className="text-emerald-700 font-extrabold text-[13px] lg:text-sm">
                         A
                       </span>
                       kuntabel,{" "}
-                      <span className="text-emerald-400 text-[13px] lg:text-sm">
+                      <span className="text-emerald-700 font-extrabold text-[13px] lg:text-sm">
                         K
                       </span>
                       reatif,{" "}
-                      <span className="text-emerald-400 text-[13px] lg:text-sm">
+                      <span className="text-emerald-700 font-extrabold text-[13px] lg:text-sm">
                         A
                       </span>
                       dil dan{" "}
-                      <span className="text-emerald-400 text-[13px] lg:text-sm">
+                      <span className="text-emerald-700 font-extrabold text-[13px] lg:text-sm">
                         T
                       </span>
                       ransparan
@@ -488,7 +544,7 @@ export default function PortalPage({ initialData }) {
                   alt="Portal Atak"
                   width={144}
                   height={144}
-                  className="w-full h-full object-contain drop-shadow-2xl"
+                  className="w-full h-full object-contain drop-shadow-md"
                   priority
                 />
               </div>
@@ -503,7 +559,7 @@ export default function PortalPage({ initialData }) {
                 className="animate-fade-in w-full mt-1 overflow-hidden flex justify-center"
                 style={{ animationDelay: "0.15s" }}
               >
-                <span className="text-[10px] text-rose-400/80 font-medium bg-rose-500/10 px-3 py-1 rounded-full ring-1 ring-rose-500/20">
+                <span className="text-[10px] text-rose-600 font-medium bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
                   Gagal memuat berita terbaru
                 </span>
               </div>
@@ -513,8 +569,8 @@ export default function PortalPage({ initialData }) {
                   className="animate-fade-in w-full mt-1 overflow-hidden"
                   style={{ animationDelay: "0.15s" }}
                 >
-                  <div className="relative flex items-center gap-2 bg-white/5 backdrop-blur-md px-4 py-1.5 rounded-full ring-1 ring-white/10">
-                    <span className="shrink-0 text-[9px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full leading-none flex items-center justify-center">
+                    <div className="relative flex items-center gap-2.5 bg-white/95 backdrop-blur-md px-4 py-1.5 rounded-full border border-slate-300/80 shadow-xs">
+                    <span className="shrink-0 text-[9px] font-black uppercase tracking-widest text-white bg-emerald-700 px-2.5 py-0.5 rounded-full leading-none flex items-center justify-center shadow-xs">
                       Terbaru
                     </span>
                     <div className="overflow-hidden relative flex-1 flex items-center self-stretch select-none group">
@@ -523,11 +579,11 @@ export default function PortalPage({ initialData }) {
                           <React.Fragment key={`d1-${item.slug}-${i}`}>
                             <Link
                               href={`/berita/${item.slug}`}
-                              className="text-slate-300 text-[11px] font-medium hover:text-emerald-400 transition-colors shrink-0 leading-none flex items-center h-full"
+                              className="text-slate-700 text-[11px] font-semibold hover:text-emerald-800 transition-colors shrink-0 leading-none flex items-center h-full"
                             >
                               {item.title}
                             </Link>
-                            <span className="mx-3 text-slate-500/40 flex items-center h-full leading-none">
+                            <span className="mx-3 text-slate-300 flex items-center h-full leading-none">
                               |
                             </span>
                           </React.Fragment>
@@ -539,11 +595,11 @@ export default function PortalPage({ initialData }) {
                             <Link
                               href={`/berita/${item.slug}`}
                               tabIndex={-1}
-                              className="text-slate-300 text-[11px] font-medium hover:text-emerald-400 transition-colors shrink-0 leading-none flex items-center h-full"
+                              className="text-slate-700 text-[11px] font-semibold hover:text-emerald-800 transition-colors shrink-0 leading-none flex items-center h-full"
                             >
                               {item.title}
                             </Link>
-                            <span className="mx-3 text-slate-500/40 flex items-center h-full leading-none">
+                            <span className="mx-3 text-slate-300 flex items-center h-full leading-none">
                               |
                             </span>
                           </React.Fragment>
@@ -589,31 +645,41 @@ export default function PortalPage({ initialData }) {
                       }}
                       target={link.id === "website_utama" || link.href.startsWith("http") ? "_blank" : undefined}
                       rel={link.id === "website_utama" || link.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                      className={`group relative p-5 lg:p-6 rounded-[2rem] transition-all duration-500 flex flex-col items-start text-left h-full hover:-translate-y-2 hover:shadow-[0_8px_30px_rgb(0,0,0,0.15)] overflow-hidden ${
+                      className={`group relative p-5 lg:p-6 rounded-[2rem] transition-all duration-500 flex flex-col items-start text-left h-full hover:-translate-y-1.5 overflow-hidden ${
                         link.primary
-                          ? "bg-gradient-to-br from-emerald-900/60 to-emerald-800/20 backdrop-blur-3xl border border-emerald-500/30 hover:border-emerald-400/60 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]"
-                          : "bg-[#0f172a]/60 backdrop-blur-3xl border border-white/5 hover:bg-[#1e293b]/80 hover:border-white/10 shadow-xl"
+                          ? "bg-gradient-to-br from-emerald-700 via-emerald-800 to-teal-900 text-white border border-emerald-600/50 shadow-[0_8px_24px_rgba(6,78,59,0.18)] hover:shadow-[0_12px_28px_rgba(6,78,59,0.28)]"
+                          : "bg-white/95 backdrop-blur-xl border border-slate-300/80 hover:border-emerald-500/60 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)] hover:shadow-[0_12px_28px_-4px_rgba(15,23,42,0.1)] hover:bg-white"
                       }`}
                     >
                       {/* Subtly glowing background element */}
                       <div
-                        className={`absolute top-0 right-0 w-32 h-32 blur-3xl -z-10 rounded-full transition-opacity duration-500 ${link.primary ? "bg-emerald-500/20 group-hover:bg-emerald-500/30" : "bg-white/5 group-hover:bg-white/10"}`}
+                        className={`absolute top-0 right-0 w-32 h-32 blur-3xl -z-10 rounded-full transition-opacity duration-500 ${
+                          link.primary ? "bg-emerald-400/20 group-hover:bg-emerald-400/30" : "bg-emerald-500/5 group-hover:bg-emerald-500/10"
+                        }`}
                       />
 
                       <div
-                        className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-5 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 shrink-0 shadow-lg ${
+                        className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-5 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 shrink-0 shadow-xs border ${
                           link.primary
-                            ? "bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-emerald-500/20"
-                            : "bg-gradient-to-br from-slate-700 to-slate-800 text-slate-300 group-hover:text-white"
+                            ? "bg-white/20 text-white border-white/30"
+                            : link.iconBg || "bg-slate-100/90 text-slate-700 border-slate-200/90"
                         }`}
                       >
                         {link.icon}
                       </div>
                       <div className="flex flex-col items-start relative z-10">
-                        <h2 className="text-[17px] lg:text-[19px] font-black text-white mb-2 group-hover:text-emerald-400 transition-colors line-clamp-1 tracking-wide">
+                        <h2
+                          className={`text-[17px] lg:text-[19px] font-black mb-2 transition-colors line-clamp-1 tracking-wide ${
+                            link.primary ? "text-white group-hover:text-emerald-100" : "text-slate-800 group-hover:text-emerald-800"
+                          }`}
+                        >
                           {link.title}
                         </h2>
-                        <p className="text-slate-400 text-sm leading-relaxed line-clamp-2 font-medium">
+                        <p
+                          className={`text-sm leading-relaxed line-clamp-2 font-medium ${
+                            link.primary ? "text-emerald-50" : "text-slate-600"
+                          }`}
+                        >
                           {link.description}
                         </p>
                       </div>
@@ -623,11 +689,11 @@ export default function PortalPage({ initialData }) {
                         <div
                           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-500 ${
                             link.primary
-                              ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 group-hover:translate-x-1"
-                              : "bg-white/10 text-white group-hover:bg-emerald-500 group-hover:translate-x-1 group-hover:shadow-lg group-hover:shadow-emerald-500/30"
+                              ? "bg-white text-emerald-800 shadow-md group-hover:bg-emerald-100 group-hover:translate-x-1"
+                              : "bg-slate-100 text-slate-500 border border-slate-200/90 group-hover:bg-emerald-700 group-hover:text-white group-hover:border-emerald-700 group-hover:shadow-md group-hover:shadow-emerald-700/25 group-hover:translate-x-1"
                           }`}
                         >
-                          <ChevronRight className="w-4 h-4" strokeWidth={3} />
+                          <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
                         </div>
                       </div>
                     </Link>
@@ -653,7 +719,7 @@ export default function PortalPage({ initialData }) {
                     alt="Logo Kemenag"
                     width={40}
                     height={40}
-                    className="w-full h-full object-contain drop-shadow-xl"
+                    className="w-full h-full object-contain drop-shadow-md"
                     priority
                   />
                 </div>
@@ -662,10 +728,10 @@ export default function PortalPage({ initialData }) {
               {/* Title Section */}
               <div className="flex flex-col items-center text-center flex-1 min-w-0">
                 <h1 className="flex flex-col items-center font-black uppercase tracking-tight leading-none px-1 mb-2">
-                  <span className="text-[15px] sm:text-lg bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent text-center leading-tight">
+                  <span className="text-[15px] sm:text-lg text-[#064e3b] text-center leading-tight">
                     {siteInfo.logoTitleLine1}
                   </span>
-                  <span className="text-[12px] sm:text-[15px] bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent text-center leading-tight mt-0.5">
+                  <span className="text-[12px] sm:text-[15px] text-[#064e3b] text-center leading-tight mt-0.5">
                     {siteInfo.logoTitleLine2}
                   </span>
                 </h1>
@@ -677,58 +743,58 @@ export default function PortalPage({ initialData }) {
                     alt="Hapakat"
                     width={120}
                     height={28}
-                    className="object-contain drop-shadow-md mb-2 h-7 lg:h-9 w-auto"
+                    className="object-contain drop-shadow-xs mb-2 h-7 lg:h-9 w-auto"
                     style={{ width: "auto" }}
                   />
                   <div className="w-full overflow-hidden text-center">
                     <p
-                      className="whitespace-nowrap font-bold text-slate-300 tracking-wide text-center"
+                      className="whitespace-nowrap font-bold text-slate-700 tracking-wide text-center"
                       style={{ fontSize: "clamp(4px, 1.45vw, 9px)" }}
                     >
                       <span
-                        className="text-emerald-400"
+                        className="text-emerald-700 font-extrabold"
                         style={{ fontSize: "clamp(5px, 1.7vw, 11px)" }}
                       >
                         H
                       </span>
                       armonis,{" "}
                       <span
-                        className="text-emerald-400"
+                        className="text-emerald-700 font-extrabold"
                         style={{ fontSize: "clamp(5px, 1.7vw, 11px)" }}
                       >
                         A
                       </span>
                       manah,{" "}
                       <span
-                        className="text-emerald-400"
+                        className="text-emerald-700 font-extrabold"
                         style={{ fontSize: "clamp(5px, 1.7vw, 11px)" }}
                       >
                         P
                       </span>
                       rofesional,{" "}
                       <span
-                        className="text-emerald-400"
+                        className="text-emerald-700 font-extrabold"
                         style={{ fontSize: "clamp(5px, 1.7vw, 11px)" }}
                       >
                         A
                       </span>
                       kuntabel,{" "}
                       <span
-                        className="text-emerald-400"
+                        className="text-emerald-700 font-extrabold"
                         style={{ fontSize: "clamp(5px, 1.7vw, 11px)" }}
                       >
                         K
                       </span>
                       reatif,{" "}
                       <span
-                        className="text-emerald-400"
+                        className="text-emerald-700 font-extrabold"
                         style={{ fontSize: "clamp(5px, 1.7vw, 11px)" }}
                       >
                         A
                       </span>
                       dil dan{" "}
                       <span
-                        className="text-emerald-400"
+                        className="text-emerald-700 font-extrabold"
                         style={{ fontSize: "clamp(5px, 1.7vw, 11px)" }}
                       >
                         T
@@ -747,7 +813,7 @@ export default function PortalPage({ initialData }) {
                     alt="Portal Atak"
                     width={96}
                     height={96}
-                    className="w-full h-full object-contain drop-shadow-xl"
+                    className="w-full h-full object-contain drop-shadow-md"
                     priority
                   />
                 </div>
@@ -763,7 +829,7 @@ export default function PortalPage({ initialData }) {
                 className="animate-fade-in w-full mt-1 overflow-hidden flex justify-center"
                 style={{ animationDelay: "0.15s" }}
               >
-                <span className="text-[9px] text-rose-400/80 font-medium bg-rose-500/10 px-3 py-1 rounded-full ring-1 ring-rose-500/20">
+                <span className="text-[9px] text-rose-600 font-medium bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
                   Gagal memuat berita terbaru
                 </span>
               </div>
@@ -773,8 +839,8 @@ export default function PortalPage({ initialData }) {
                   className="animate-fade-in w-full mt-1 overflow-hidden"
                   style={{ animationDelay: "0.15s" }}
                 >
-                  <div className="relative flex items-center gap-2 bg-white/5 backdrop-blur-md px-3.5 py-1.5 rounded-full ring-1 ring-white/10">
-                    <span className="shrink-0 text-[8px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full leading-none flex items-center justify-center">
+                  <div className="relative flex items-center gap-2 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-300/80 shadow-xs">
+                    <span className="shrink-0 text-[8px] font-black uppercase tracking-widest text-white bg-emerald-700 px-2 py-0.5 rounded-full leading-none flex items-center justify-center shadow-xs">
                       Baru
                     </span>
                     <div className="overflow-hidden relative flex-1 flex items-center self-stretch select-none group">
@@ -783,11 +849,11 @@ export default function PortalPage({ initialData }) {
                           <React.Fragment key={`m1-${item.slug}-${i}`}>
                             <Link
                               href={`/berita/${item.slug}`}
-                              className="text-slate-300 text-[10px] font-medium hover:text-emerald-400 transition-colors shrink-0 leading-none flex items-center h-full"
+                              className="text-slate-700 text-[10px] font-semibold hover:text-emerald-800 transition-colors shrink-0 leading-none flex items-center h-full"
                             >
                               {item.title}
                             </Link>
-                            <span className="mx-2.5 text-slate-500/40 flex items-center h-full leading-none">
+                            <span className="mx-2.5 text-slate-300 flex items-center h-full leading-none">
                               |
                             </span>
                           </React.Fragment>
@@ -799,11 +865,11 @@ export default function PortalPage({ initialData }) {
                             <Link
                               href={`/berita/${item.slug}`}
                               tabIndex={-1}
-                              className="text-slate-300 text-[10px] font-medium hover:text-emerald-400 transition-colors shrink-0 leading-none flex items-center h-full"
+                              className="text-slate-700 text-[10px] font-semibold hover:text-emerald-800 transition-colors shrink-0 leading-none flex items-center h-full"
                             >
                               {item.title}
                             </Link>
-                            <span className="mx-2.5 text-slate-500/40 flex items-center h-full leading-none">
+                            <span className="mx-2.5 text-slate-300 flex items-center h-full leading-none">
                               |
                             </span>
                           </React.Fragment>
@@ -849,22 +915,26 @@ export default function PortalPage({ initialData }) {
                       }}
                       target={link.id === "website_utama" || link.href.startsWith("http") ? "_blank" : undefined}
                       rel={link.id === "website_utama" || link.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                      className={`group relative p-4 sm:p-5 rounded-3xl transition-all duration-300 flex flex-col items-center text-center w-full h-full hover:scale-[1.03] active:scale-[0.97] overflow-hidden ${
+                      className={`group relative p-4 sm:p-5 rounded-3xl transition-all duration-300 flex flex-col items-center text-center w-full h-full hover:scale-[1.02] active:scale-[0.98] overflow-hidden ${
                         link.primary
-                          ? "bg-gradient-to-br from-emerald-900/60 to-emerald-800/20 backdrop-blur-3xl border border-emerald-500/30"
-                          : "bg-[#0f172a]/60 backdrop-blur-3xl border border-white/5"
+                          ? "bg-gradient-to-br from-emerald-700 via-emerald-800 to-teal-900 text-white border border-emerald-600/50 shadow-md"
+                          : "bg-white/95 backdrop-blur-xl border border-slate-300/80 shadow-[0_2px_10px_rgba(15,23,42,0.05)] hover:border-emerald-500/60"
                       }`}
                     >
                       <div
-                        className={`w-12 h-12 rounded-[1rem] flex items-center justify-center mb-3 shrink-0 shadow-lg ${
+                        className={`w-12 h-12 rounded-[1rem] flex items-center justify-center mb-3 shrink-0 shadow-xs border ${
                           link.primary
-                            ? "bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-emerald-500/20"
-                            : "bg-gradient-to-br from-slate-700 to-slate-800 text-slate-300"
+                            ? "bg-white/20 text-white border-white/30"
+                            : link.iconBg || "bg-slate-100 text-slate-700 border-slate-200/90"
                         }`}
                       >
                         {link.icon}
                       </div>
-                      <h2 className="text-xs sm:text-[13px] font-bold text-white line-clamp-2 leading-tight">
+                      <h2
+                        className={`text-xs sm:text-[13px] font-extrabold line-clamp-2 leading-tight ${
+                          link.primary ? "text-white" : "text-slate-800"
+                        }`}
+                      >
                         {link.title}
                       </h2>
                     </Link>
@@ -876,41 +946,42 @@ export default function PortalPage({ initialData }) {
         </div>
         {/* PTSP Modal */}
         {isPtspModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-slate-900/45 backdrop-blur-xs animate-fade-in">
             {/* Backdrop Click Area */}
             <div
               className="absolute inset-0"
               onClick={() => setIsPtspModalOpen(false)}
             ></div>
 
-            {/* Modal Card */}
-            <div className="relative w-full max-w-md bg-slate-900/90 border border-emerald-500/20 rounded-3xl shadow-2xl shadow-emerald-950/40 overflow-hidden animate-fade-in-up backdrop-blur-2xl">
+            {/* Modal Card - Responsive Bento Grid */}
+            <div className="relative w-full max-w-xl md:max-w-2xl bg-white/95 border border-slate-200/90 rounded-[1.75rem] sm:rounded-[2rem] shadow-2xl shadow-slate-900/20 overflow-hidden animate-fade-in-up backdrop-blur-2xl flex flex-col my-auto max-h-[90dvh] sm:max-h-[85vh]">
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-slate-900 via-emerald-950/30 to-slate-900 border-b border-white/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-inner">
-                    <FolderOpen className="w-5 h-5" strokeWidth={2} />
+              <div className="flex items-center justify-between px-4.5 py-3.5 sm:px-6 sm:py-4 bg-gradient-to-r from-blue-50/90 via-slate-50 to-white border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-blue-50 border border-blue-200/80 text-blue-600 flex items-center justify-center shadow-xs shrink-0 [&>svg]:w-4.5 [&>svg]:h-4.5 sm:[&>svg]:w-5 sm:[&>svg]:h-5">
+                    <FolderOpen strokeWidth={2} />
                   </div>
-                  <div>
-                    <h3 className="text-white font-black text-base sm:text-lg tracking-tight">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-slate-900 font-extrabold text-sm sm:text-base tracking-tight leading-snug truncate">
                       Layanan PTSP Si ATAK
                     </h3>
-                    <p className="text-[11px] font-medium text-slate-400">
-                      Pusat Layanan Terpadu Satu Pintu
+                    <p className="hidden sm:block text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                      Pusat Layanan Terpadu Satu Pintu Kemenag Barito Utara
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsPtspModalOpen(false)}
-                  className="text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-xl transition-all duration-200"
+                  className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1.5 sm:p-2 rounded-xl transition-all duration-200 shrink-0"
+                  aria-label="Tutup modal"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
 
-              {/* Body */}
-              <div className="p-4 sm:p-5 max-h-[60vh] overflow-y-auto hide-scrollbar">
-                <div className="flex flex-col gap-2.5">
+              {/* Bento Grid Body */}
+              <div className="p-3.5 sm:p-6 overflow-y-auto overscroll-contain">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
                   {PTSP_MENUS.map((menu, idx) => (
                     <Link
                       key={idx}
@@ -918,19 +989,32 @@ export default function PortalPage({ initialData }) {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => setIsPtspModalOpen(false)}
-                      className="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl bg-white/[0.03] hover:bg-emerald-500/10 border border-white/5 hover:border-emerald-500/30 transition-all duration-300 group shadow-sm"
+                      className={`group relative p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white hover:bg-gradient-to-br hover:from-white hover:to-blue-50/40 border border-slate-200/90 hover:border-blue-400/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_20px_-4px_rgba(37,99,235,0.12)] transition-all duration-200 flex flex-col justify-between active:scale-[0.98] min-h-[76px] sm:min-h-[114px] ${
+                        idx === PTSP_MENUS.length - 1 && PTSP_MENUS.length % 2 !== 0 ? "col-span-2 sm:col-span-1" : ""
+                      }`}
                     >
-                      <div className="w-10 h-10 rounded-xl bg-slate-800/90 border border-white/5 group-hover:border-emerald-500/30 group-hover:bg-emerald-500/20 group-hover:scale-105 flex items-center justify-center transition-all duration-300 shrink-0">
-                        {menu.icon}
+                      <div className="flex items-center justify-between mb-2 sm:mb-3">
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 shadow-2xs border ${menu.iconBg} group-hover:scale-105 transition-transform duration-200 [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5`}>
+                          {menu.icon}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {menu.badge && (
+                            <span className="hidden sm:inline-block text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-md">
+                              {menu.badge}
+                            </span>
+                          )}
+                          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-100/90 group-hover:bg-blue-600 group-hover:text-white text-slate-400 flex items-center justify-center transition-all duration-200">
+                            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2.5} />
+                          </div>
+                        </div>
                       </div>
-                      <span className="flex-1 text-slate-200 font-semibold text-sm group-hover:text-emerald-300 transition-colors">
-                        {menu.title}
-                      </span>
-                      <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-emerald-500/20 flex items-center justify-center transition-all duration-300">
-                        <ChevronRight
-                          className="w-4 h-4 text-slate-400 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all duration-300"
-                          strokeWidth={2.5}
-                        />
+                      <div>
+                        <h4 className="text-slate-800 font-bold text-xs sm:text-sm leading-snug group-hover:text-blue-700 transition-colors line-clamp-2">
+                          {menu.title}
+                        </h4>
+                        <p className="hidden sm:block text-slate-500 text-[11px] leading-relaxed line-clamp-2 mt-1">
+                          {menu.desc}
+                        </p>
                       </div>
                     </Link>
                   ))}
@@ -939,63 +1023,78 @@ export default function PortalPage({ initialData }) {
             </div>
           </div>
         )}
+
         {/* Inovasi Modal */}
         {isInovasiModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-slate-900/45 backdrop-blur-xs animate-fade-in">
             {/* Backdrop Click Area */}
             <div
               className="absolute inset-0"
               onClick={() => setIsInovasiModalOpen(false)}
             ></div>
 
-            {/* Modal Card */}
-            <div className="relative w-full max-w-md bg-slate-900/90 border border-amber-500/20 rounded-3xl shadow-2xl shadow-amber-950/40 overflow-hidden animate-fade-in-up backdrop-blur-2xl">
+            {/* Modal Card - Responsive Bento Grid */}
+            <div className="relative w-full max-w-xl md:max-w-2xl bg-white/95 border border-slate-200/90 rounded-[1.75rem] sm:rounded-[2rem] shadow-2xl shadow-slate-900/20 overflow-hidden animate-fade-in-up backdrop-blur-2xl flex flex-col my-auto max-h-[90dvh] sm:max-h-[85vh]">
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-slate-900 via-amber-950/30 to-slate-900 border-b border-white/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shadow-inner">
-                    <Lightbulb className="w-5 h-5" strokeWidth={2} />
+              <div className="flex items-center justify-between px-4.5 py-3.5 sm:px-6 sm:py-4 bg-gradient-to-r from-amber-50/90 via-slate-50 to-white border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center shadow-xs shrink-0 [&>svg]:w-4.5 [&>svg]:h-4.5 sm:[&>svg]:w-5 sm:[&>svg]:h-5">
+                    <Lightbulb strokeWidth={2} />
                   </div>
-                  <div>
-                    <h3 className="text-white font-black text-base sm:text-lg tracking-tight">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-slate-900 font-extrabold text-sm sm:text-base tracking-tight leading-snug truncate">
                       Inovasi Kemenag
                     </h3>
-                    <p className="text-[11px] font-medium text-slate-400">
-                      Aplikasi & Layanan Digital Terintegrasi
+                    <p className="hidden sm:block text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                      Aplikasi & Layanan Digital Terpadu Barito Utara
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsInovasiModalOpen(false)}
-                  className="text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-xl transition-all duration-200"
+                  className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1.5 sm:p-2 rounded-xl transition-all duration-200 shrink-0"
+                  aria-label="Tutup modal"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
 
-              {/* Body */}
-              <div className="p-4 sm:p-5 max-h-[60vh] overflow-y-auto hide-scrollbar">
-                <div className="flex flex-col gap-2.5">
+              {/* Bento Grid Body */}
+              <div className="p-3.5 sm:p-6 overflow-y-auto overscroll-contain">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
                   {INOVASI_MENUS.map((menu, idx) => (
                     <Link
                       key={idx}
                       href={menu.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      target={menu.href.startsWith("http") ? "_blank" : undefined}
+                      rel={menu.href.startsWith("http") ? "noopener noreferrer" : undefined}
                       onClick={() => setIsInovasiModalOpen(false)}
-                      className="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl bg-white/[0.03] hover:bg-amber-500/10 border border-white/5 hover:border-amber-500/30 transition-all duration-300 group shadow-sm"
+                      className={`group relative p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white hover:bg-gradient-to-br hover:from-white hover:to-amber-50/40 border border-slate-200/90 hover:border-amber-400/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_20px_-4px_rgba(245,158,11,0.12)] transition-all duration-200 flex flex-col justify-between active:scale-[0.98] min-h-[76px] sm:min-h-[114px] ${
+                        idx === INOVASI_MENUS.length - 1 && INOVASI_MENUS.length % 2 !== 0 ? "col-span-2 sm:col-span-1" : ""
+                      }`}
                     >
-                      <div className="w-10 h-10 rounded-xl bg-slate-800/90 border border-white/5 group-hover:border-amber-500/30 group-hover:bg-amber-500/20 group-hover:scale-105 flex items-center justify-center transition-all duration-300 shrink-0">
-                        {menu.icon}
+                      <div className="flex items-center justify-between mb-2 sm:mb-3">
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 shadow-2xs border ${menu.iconBg} group-hover:scale-105 transition-transform duration-200 [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5`}>
+                          {menu.icon}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {menu.badge && (
+                            <span className="hidden sm:inline-block text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-md">
+                              {menu.badge}
+                            </span>
+                          )}
+                          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-100/90 group-hover:bg-amber-600 group-hover:text-white text-slate-400 flex items-center justify-center transition-all duration-200">
+                            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2.5} />
+                          </div>
+                        </div>
                       </div>
-                      <span className="flex-1 text-slate-200 font-semibold text-sm group-hover:text-amber-300 transition-colors">
-                        {menu.title}
-                      </span>
-                      <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-amber-500/20 flex items-center justify-center transition-all duration-300">
-                        <ChevronRight
-                          className="w-4 h-4 text-slate-400 group-hover:text-amber-300 group-hover:translate-x-0.5 transition-all duration-300"
-                          strokeWidth={2.5}
-                        />
+                      <div>
+                        <h4 className="text-slate-800 font-bold text-xs sm:text-sm leading-snug group-hover:text-amber-700 transition-colors line-clamp-2">
+                          {menu.title}
+                        </h4>
+                        <p className="hidden sm:block text-slate-500 text-[11px] leading-relaxed line-clamp-2 mt-1">
+                          {menu.desc}
+                        </p>
                       </div>
                     </Link>
                   ))}
@@ -1004,63 +1103,78 @@ export default function PortalPage({ initialData }) {
             </div>
           </div>
         )}
+
         {/* Informasi Publik Modal */}
         {isInformasiModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-slate-900/45 backdrop-blur-xs animate-fade-in">
             {/* Backdrop Click Area */}
             <div
               className="absolute inset-0"
               onClick={() => setIsInformasiModalOpen(false)}
             ></div>
 
-            {/* Modal Card */}
-            <div className="relative w-full max-w-md bg-slate-900/90 border border-fuchsia-500/20 rounded-3xl shadow-2xl shadow-fuchsia-950/40 overflow-hidden animate-fade-in-up backdrop-blur-2xl">
+            {/* Modal Card - Responsive Bento Grid */}
+            <div className="relative w-full max-w-xl md:max-w-2xl bg-white/95 border border-slate-200/90 rounded-[1.75rem] sm:rounded-[2rem] shadow-2xl shadow-slate-900/20 overflow-hidden animate-fade-in-up backdrop-blur-2xl flex flex-col my-auto max-h-[90dvh] sm:max-h-[85vh]">
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-slate-900 via-fuchsia-950/30 to-slate-900 border-b border-white/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-400 flex items-center justify-center shadow-inner">
-                    <Info className="w-5 h-5" strokeWidth={2} />
+              <div className="flex items-center justify-between px-4.5 py-3.5 sm:px-6 sm:py-4 bg-gradient-to-r from-fuchsia-50/90 via-slate-50 to-white border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-fuchsia-50 border border-fuchsia-200/80 text-fuchsia-600 flex items-center justify-center shadow-xs shrink-0 [&>svg]:w-4.5 [&>svg]:h-4.5 sm:[&>svg]:w-5 sm:[&>svg]:h-5">
+                    <Info strokeWidth={2} />
                   </div>
-                  <div>
-                    <h3 className="text-white font-black text-base sm:text-lg tracking-tight">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-slate-900 font-extrabold text-sm sm:text-base tracking-tight leading-snug truncate">
                       Informasi Publik
                     </h3>
-                    <p className="text-[11px] font-medium text-slate-400">
-                      Portal Berita, Galeri & Laporan
+                    <p className="hidden sm:block text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                      Portal Berita, Galeri Kegiatan & Laporan Resmi
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsInformasiModalOpen(false)}
-                  className="text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-xl transition-all duration-200"
+                  className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1.5 sm:p-2 rounded-xl transition-all duration-200 shrink-0"
+                  aria-label="Tutup modal"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
 
-              {/* Body */}
-              <div className="p-4 sm:p-5 max-h-[60vh] overflow-y-auto hide-scrollbar">
-                <div className="flex flex-col gap-2.5">
+              {/* Bento Grid Body */}
+              <div className="p-3.5 sm:p-6 overflow-y-auto overscroll-contain">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
                   {INFORMASI_MENUS.map((menu, idx) => (
                     <Link
                       key={idx}
                       href={menu.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      target={menu.href.startsWith("http") ? "_blank" : undefined}
+                      rel={menu.href.startsWith("http") ? "noopener noreferrer" : undefined}
                       onClick={() => setIsInformasiModalOpen(false)}
-                      className="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl bg-white/[0.03] hover:bg-fuchsia-500/10 border border-white/5 hover:border-fuchsia-500/30 transition-all duration-300 group shadow-sm"
+                      className={`group relative p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white hover:bg-gradient-to-br hover:from-white hover:to-fuchsia-50/40 border border-slate-200/90 hover:border-fuchsia-400/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_20px_-4px_rgba(192,38,211,0.12)] transition-all duration-200 flex flex-col justify-between active:scale-[0.98] min-h-[76px] sm:min-h-[114px] ${
+                        idx === INFORMASI_MENUS.length - 1 && INFORMASI_MENUS.length % 2 !== 0 ? "col-span-2 sm:col-span-1" : ""
+                      }`}
                     >
-                      <div className="w-10 h-10 rounded-xl bg-slate-800/90 border border-white/5 group-hover:border-fuchsia-500/30 group-hover:bg-fuchsia-500/20 group-hover:scale-105 flex items-center justify-center transition-all duration-300 shrink-0">
-                        {menu.icon}
+                      <div className="flex items-center justify-between mb-2 sm:mb-3">
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 shadow-2xs border ${menu.iconBg} group-hover:scale-105 transition-transform duration-200 [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5`}>
+                          {menu.icon}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {menu.badge && (
+                            <span className="hidden sm:inline-block text-[9px] font-bold text-fuchsia-700 bg-fuchsia-50 border border-fuchsia-200/60 px-2 py-0.5 rounded-md">
+                              {menu.badge}
+                            </span>
+                          )}
+                          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-100/90 group-hover:bg-fuchsia-600 group-hover:text-white text-slate-400 flex items-center justify-center transition-all duration-200">
+                            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2.5} />
+                          </div>
+                        </div>
                       </div>
-                      <span className="flex-1 text-slate-200 font-semibold text-sm group-hover:text-fuchsia-300 transition-colors">
-                        {menu.title}
-                      </span>
-                      <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-fuchsia-500/20 flex items-center justify-center transition-all duration-300">
-                        <ChevronRight
-                          className="w-4 h-4 text-slate-400 group-hover:text-fuchsia-300 group-hover:translate-x-0.5 transition-all duration-300"
-                          strokeWidth={2.5}
-                        />
+                      <div>
+                        <h4 className="text-slate-800 font-bold text-xs sm:text-sm leading-snug group-hover:text-fuchsia-700 transition-colors line-clamp-2">
+                          {menu.title}
+                        </h4>
+                        <p className="hidden sm:block text-slate-500 text-[11px] leading-relaxed line-clamp-2 mt-1">
+                          {menu.desc}
+                        </p>
                       </div>
                     </Link>
                   ))}
@@ -1069,68 +1183,81 @@ export default function PortalPage({ initialData }) {
             </div>
           </div>
         )}
+
         {/* Layanan Survey Modal */}
         {isSurveyModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-slate-900/45 backdrop-blur-xs animate-fade-in">
             {/* Backdrop Click Area */}
             <div
               className="absolute inset-0"
               onClick={() => setIsSurveyModalOpen(false)}
             ></div>
 
-            {/* Modal Card */}
-            <div className="relative w-full max-w-md bg-slate-900/90 border border-purple-500/20 rounded-3xl shadow-2xl shadow-purple-950/40 overflow-hidden animate-fade-in-up backdrop-blur-2xl">
+            {/* Modal Card - Responsive Bento Grid */}
+            <div className="relative w-full max-w-xl md:max-w-2xl bg-white/95 border border-slate-200/90 rounded-[1.75rem] sm:rounded-[2rem] shadow-2xl shadow-slate-900/20 overflow-hidden animate-fade-in-up backdrop-blur-2xl flex flex-col my-auto max-h-[90dvh] sm:max-h-[85vh]">
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-slate-900 via-purple-950/30 to-slate-900 border-b border-white/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center shadow-inner">
-                    <ClipboardList className="w-5 h-5" strokeWidth={2} />
+              <div className="flex items-center justify-between px-4.5 py-3.5 sm:px-6 sm:py-4 bg-gradient-to-r from-purple-50/90 via-slate-50 to-white border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-purple-50 border border-purple-200/80 text-purple-600 flex items-center justify-center shadow-xs shrink-0 [&>svg]:w-4.5 [&>svg]:h-4.5 sm:[&>svg]:w-5 sm:[&>svg]:h-5">
+                    <ClipboardList strokeWidth={2} />
                   </div>
-                  <div>
-                    <h3 className="text-white font-black text-base sm:text-lg tracking-tight">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-slate-900 font-extrabold text-sm sm:text-base tracking-tight leading-snug truncate">
                       Layanan Survey
                     </h3>
-                    <p className="text-[11px] font-medium text-slate-400">
-                      Survei Kepuasan & Indeks Pelayanan
+                    <p className="hidden sm:block text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                      Survei Kepuasan & Indeks Pelayanan Masyarakat
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsSurveyModalOpen(false)}
-                  className="text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-xl transition-all duration-200"
+                  className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1.5 sm:p-2 rounded-xl transition-all duration-200 shrink-0"
+                  aria-label="Tutup modal"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
 
-              {/* Body */}
-              <div className="p-4 sm:p-5 max-h-[60vh] overflow-y-auto hide-scrollbar">
-                <div className="flex flex-col gap-2.5">
+              {/* Bento Grid Body */}
+              <div className="p-3.5 sm:p-6 overflow-y-auto overscroll-contain">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
                   {SURVEY_MENUS.map((menu, idx) => (
                     <Link
                       key={idx}
                       href={menu.href}
                       target={menu.href === "#" ? undefined : "_blank"}
-                      rel={
-                        menu.href === "#" ? undefined : "noopener noreferrer"
-                      }
+                      rel={menu.href === "#" ? undefined : "noopener noreferrer"}
                       onClick={(e) => {
                         if (menu.href === "#") e.preventDefault();
                         setIsSurveyModalOpen(false);
                       }}
-                      className="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl bg-white/[0.03] hover:bg-purple-500/10 border border-white/5 hover:border-purple-500/30 transition-all duration-300 group shadow-sm"
+                      className={`group relative p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white hover:bg-gradient-to-br hover:from-white hover:to-purple-50/40 border border-slate-200/90 hover:border-purple-400/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_20px_-4px_rgba(147,51,234,0.12)] transition-all duration-200 flex flex-col justify-between active:scale-[0.98] min-h-[76px] sm:min-h-[114px] ${
+                        idx === SURVEY_MENUS.length - 1 && SURVEY_MENUS.length % 2 !== 0 ? "col-span-2 sm:col-span-1" : ""
+                      }`}
                     >
-                      <div className="w-10 h-10 rounded-xl bg-slate-800/90 border border-white/5 group-hover:border-purple-500/30 group-hover:bg-purple-500/20 group-hover:scale-105 flex items-center justify-center transition-all duration-300 shrink-0">
-                        {menu.icon}
+                      <div className="flex items-center justify-between mb-2 sm:mb-3">
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 shadow-2xs border ${menu.iconBg} group-hover:scale-105 transition-transform duration-200 [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5`}>
+                          {menu.icon}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {menu.badge && (
+                            <span className="hidden sm:inline-block text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md">
+                              {menu.badge}
+                            </span>
+                          )}
+                          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-100/90 group-hover:bg-purple-600 group-hover:text-white text-slate-400 flex items-center justify-center transition-all duration-200">
+                            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2.5} />
+                          </div>
+                        </div>
                       </div>
-                      <span className="flex-1 text-slate-200 font-semibold text-sm group-hover:text-purple-300 transition-colors">
-                        {menu.title}
-                      </span>
-                      <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-purple-500/20 flex items-center justify-center transition-all duration-300">
-                        <ChevronRight
-                          className="w-4 h-4 text-slate-400 group-hover:text-purple-300 group-hover:translate-x-0.5 transition-all duration-300"
-                          strokeWidth={2.5}
-                        />
+                      <div>
+                        <h4 className="text-slate-800 font-bold text-xs sm:text-sm leading-snug group-hover:text-purple-700 transition-colors line-clamp-2">
+                          {menu.title}
+                        </h4>
+                        <p className="hidden sm:block text-slate-500 text-[11px] leading-relaxed line-clamp-2 mt-1">
+                          {menu.desc}
+                        </p>
                       </div>
                     </Link>
                   ))}
@@ -1139,68 +1266,81 @@ export default function PortalPage({ initialData }) {
             </div>
           </div>
         )}
+
         {/* Zona Integritas Modal */}
         {isZonaModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-slate-900/45 backdrop-blur-xs animate-fade-in">
             {/* Backdrop Click Area */}
             <div
               className="absolute inset-0"
               onClick={() => setIsZonaModalOpen(false)}
             ></div>
 
-            {/* Modal Card */}
-            <div className="relative w-full max-w-md bg-slate-900/90 border border-emerald-500/20 rounded-3xl shadow-2xl shadow-emerald-950/40 overflow-hidden animate-fade-in-up backdrop-blur-2xl">
+            {/* Modal Card - Responsive Bento Grid */}
+            <div className="relative w-full max-w-xl md:max-w-2xl bg-white/95 border border-slate-200/90 rounded-[1.75rem] sm:rounded-[2rem] shadow-2xl shadow-slate-900/20 overflow-hidden animate-fade-in-up backdrop-blur-2xl flex flex-col my-auto max-h-[90dvh] sm:max-h-[85vh]">
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-slate-900 via-emerald-950/30 to-slate-900 border-b border-white/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-inner">
-                    <ShieldCheck className="w-5 h-5" strokeWidth={2} />
+              <div className="flex items-center justify-between px-4.5 py-3.5 sm:px-6 sm:py-4 bg-gradient-to-r from-emerald-50/90 via-slate-50 to-white border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-emerald-50 border border-emerald-200/80 text-emerald-600 flex items-center justify-center shadow-xs shrink-0 [&>svg]:w-4.5 [&>svg]:h-4.5 sm:[&>svg]:w-5 sm:[&>svg]:h-5">
+                    <ShieldCheck strokeWidth={2} />
                   </div>
-                  <div>
-                    <h3 className="text-white font-black text-base sm:text-lg tracking-tight">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-slate-900 font-extrabold text-sm sm:text-base tracking-tight leading-snug truncate">
                       Zona Integritas
                     </h3>
-                    <p className="text-[11px] font-medium text-slate-400">
-                      Pembangunan WBK & WBBM
+                    <p className="hidden sm:block text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                      Komitmen Birokrasi Bersih, Akuntabel, dan Melayani
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsZonaModalOpen(false)}
-                  className="text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-xl transition-all duration-200"
+                  className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1.5 sm:p-2 rounded-xl transition-all duration-200 shrink-0"
+                  aria-label="Tutup modal"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
 
-              {/* Body */}
-              <div className="p-4 sm:p-5 max-h-[60vh] overflow-y-auto hide-scrollbar">
-                <div className="flex flex-col gap-2.5">
+              {/* Bento Grid Body */}
+              <div className="p-3.5 sm:p-6 overflow-y-auto overscroll-contain">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
                   {ZONA_MENUS.map((menu, idx) => (
                     <Link
                       key={idx}
                       href={menu.href}
                       target={menu.href === "#" ? undefined : "_blank"}
-                      rel={
-                        menu.href === "#" ? undefined : "noopener noreferrer"
-                      }
+                      rel={menu.href === "#" ? undefined : "noopener noreferrer"}
                       onClick={(e) => {
                         if (menu.href === "#") e.preventDefault();
                         setIsZonaModalOpen(false);
                       }}
-                      className="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl bg-white/[0.03] hover:bg-emerald-500/10 border border-white/5 hover:border-emerald-500/30 transition-all duration-300 group shadow-sm"
+                      className={`group relative p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white hover:bg-gradient-to-br hover:from-white hover:to-emerald-50/40 border border-slate-200/90 hover:border-emerald-400/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_20px_-4px_rgba(16,185,129,0.12)] transition-all duration-200 flex flex-col justify-between active:scale-[0.98] min-h-[76px] sm:min-h-[114px] ${
+                        idx === ZONA_MENUS.length - 1 && ZONA_MENUS.length % 2 !== 0 ? "col-span-2 sm:col-span-1" : ""
+                      }`}
                     >
-                      <div className="w-10 h-10 rounded-xl bg-slate-800/90 border border-white/5 group-hover:border-emerald-500/30 group-hover:bg-emerald-500/20 group-hover:scale-105 flex items-center justify-center transition-all duration-300 shrink-0">
-                        {menu.icon}
+                      <div className="flex items-center justify-between mb-2 sm:mb-3">
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 shadow-2xs border ${menu.iconBg} group-hover:scale-105 transition-transform duration-200 [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5`}>
+                          {menu.icon}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {menu.badge && (
+                            <span className="hidden sm:inline-block text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md">
+                              {menu.badge}
+                            </span>
+                          )}
+                          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-100/90 group-hover:bg-emerald-600 group-hover:text-white text-slate-400 flex items-center justify-center transition-all duration-200">
+                            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2.5} />
+                          </div>
+                        </div>
                       </div>
-                      <span className="flex-1 text-slate-200 font-semibold text-sm group-hover:text-emerald-300 transition-colors">
-                        {menu.title}
-                      </span>
-                      <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-emerald-500/20 flex items-center justify-center transition-all duration-300">
-                        <ChevronRight
-                          className="w-4 h-4 text-slate-400 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all duration-300"
-                          strokeWidth={2.5}
-                        />
+                      <div>
+                        <h4 className="text-slate-800 font-bold text-xs sm:text-sm leading-snug group-hover:text-emerald-700 transition-colors line-clamp-2">
+                          {menu.title}
+                        </h4>
+                        <p className="hidden sm:block text-slate-500 text-[11px] leading-relaxed line-clamp-2 mt-1">
+                          {menu.desc}
+                        </p>
                       </div>
                     </Link>
                   ))}
@@ -1209,68 +1349,81 @@ export default function PortalPage({ initialData }) {
             </div>
           </div>
         )}
+
         {/* Layanan Pengaduan Modal */}
         {isPengaduanModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-slate-900/45 backdrop-blur-xs animate-fade-in">
             {/* Backdrop Click Area */}
             <div
               className="absolute inset-0"
               onClick={() => setIsPengaduanModalOpen(false)}
             ></div>
 
-            {/* Modal Card */}
-            <div className="relative w-full max-w-md bg-slate-900/90 border border-cyan-500/20 rounded-3xl shadow-2xl shadow-cyan-950/40 overflow-hidden animate-fade-in-up backdrop-blur-2xl">
+            {/* Modal Card - Responsive Bento Grid */}
+            <div className="relative w-full max-w-xl md:max-w-2xl bg-white/95 border border-slate-200/90 rounded-[1.75rem] sm:rounded-[2rem] shadow-2xl shadow-slate-900/20 overflow-hidden animate-fade-in-up backdrop-blur-2xl flex flex-col my-auto max-h-[90dvh] sm:max-h-[85vh]">
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-slate-900 via-cyan-950/30 to-slate-900 border-b border-white/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shadow-inner">
-                    <Headset className="w-5 h-5" strokeWidth={2} />
+              <div className="flex items-center justify-between px-4.5 py-3.5 sm:px-6 sm:py-4 bg-gradient-to-r from-rose-50/90 via-slate-50 to-white border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-rose-50 border border-rose-200/80 text-rose-600 flex items-center justify-center shadow-xs shrink-0 [&>svg]:w-4.5 [&>svg]:h-4.5 sm:[&>svg]:w-5 sm:[&>svg]:h-5">
+                    <Headset strokeWidth={2} />
                   </div>
-                  <div>
-                    <h3 className="text-white font-black text-base sm:text-lg tracking-tight">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-slate-900 font-extrabold text-sm sm:text-base tracking-tight leading-snug truncate">
                       Layanan Pengaduan
                     </h3>
-                    <p className="text-[11px] font-medium text-slate-400">
-                      Saluran Aspirasi & Pengaduan Masyarakat
+                    <p className="hidden sm:block text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                      Saluran Resmi Pengaduan, Aspirasi & Pelaporan Masyarakat
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsPengaduanModalOpen(false)}
-                  className="text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-xl transition-all duration-200"
+                  className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1.5 sm:p-2 rounded-xl transition-all duration-200 shrink-0"
+                  aria-label="Tutup modal"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
 
-              {/* Body */}
-              <div className="p-4 sm:p-5 max-h-[60vh] overflow-y-auto hide-scrollbar">
-                <div className="flex flex-col gap-2.5">
+              {/* Bento Grid Body */}
+              <div className="p-3.5 sm:p-6 overflow-y-auto overscroll-contain">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
                   {PENGADUAN_MENUS.map((menu, idx) => (
                     <Link
                       key={idx}
                       href={menu.href}
                       target={menu.href === "#" ? undefined : "_blank"}
-                      rel={
-                        menu.href === "#" ? undefined : "noopener noreferrer"
-                      }
+                      rel={menu.href === "#" ? undefined : "noopener noreferrer"}
                       onClick={(e) => {
                         if (menu.href === "#") e.preventDefault();
                         setIsPengaduanModalOpen(false);
                       }}
-                      className="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl bg-white/[0.03] hover:bg-cyan-500/10 border border-white/5 hover:border-cyan-500/30 transition-all duration-300 group shadow-sm"
+                      className={`group relative p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white hover:bg-gradient-to-br hover:from-white hover:to-rose-50/40 border border-slate-200/90 hover:border-rose-400/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_20px_-4px_rgba(225,29,72,0.12)] transition-all duration-200 flex flex-col justify-between active:scale-[0.98] min-h-[76px] sm:min-h-[114px] ${
+                        idx === PENGADUAN_MENUS.length - 1 && PENGADUAN_MENUS.length % 2 !== 0 ? "col-span-2 sm:col-span-1" : ""
+                      }`}
                     >
-                      <div className="w-10 h-10 rounded-xl bg-slate-800/90 border border-white/5 group-hover:border-cyan-500/30 group-hover:bg-cyan-500/20 group-hover:scale-105 flex items-center justify-center transition-all duration-300 shrink-0">
-                        {menu.icon}
+                      <div className="flex items-center justify-between mb-2 sm:mb-3">
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 shadow-2xs border ${menu.iconBg} group-hover:scale-105 transition-transform duration-200 [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5`}>
+                          {menu.icon}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {menu.badge && (
+                            <span className="hidden sm:inline-block text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200/60 px-2 py-0.5 rounded-md">
+                              {menu.badge}
+                            </span>
+                          )}
+                          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-100/90 group-hover:bg-rose-600 group-hover:text-white text-slate-400 flex items-center justify-center transition-all duration-200">
+                            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2.5} />
+                          </div>
+                        </div>
                       </div>
-                      <span className="flex-1 text-slate-200 font-semibold text-sm group-hover:text-cyan-300 transition-colors">
-                        {menu.title}
-                      </span>
-                      <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-cyan-500/20 flex items-center justify-center transition-all duration-300">
-                        <ChevronRight
-                          className="w-4 h-4 text-slate-400 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-all duration-300"
-                          strokeWidth={2.5}
-                        />
+                      <div>
+                        <h4 className="text-slate-800 font-bold text-xs sm:text-sm leading-snug group-hover:text-rose-700 transition-colors line-clamp-2">
+                          {menu.title}
+                        </h4>
+                        <p className="hidden sm:block text-slate-500 text-[11px] leading-relaxed line-clamp-2 mt-1">
+                          {menu.desc}
+                        </p>
                       </div>
                     </Link>
                   ))}
@@ -1286,7 +1439,7 @@ export default function PortalPage({ initialData }) {
         className="animate-fade-in text-center pb-1 sm:pb-2 pt-0.5 w-full"
         style={{ animationDelay: "0.3s" }}
       >
-        <p className="text-slate-400 text-[8px] md:text-[10px] font-semibold tracking-widest uppercase">
+        <p className="text-slate-500 text-[8px] md:text-[10px] font-bold tracking-widest uppercase">
           &copy; {new Date().getFullYear()} {siteInfo.name}
         </p>
       </div>

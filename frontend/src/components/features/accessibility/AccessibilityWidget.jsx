@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "@/hooks/useNextNavigation";
 import "./AccessibilityWidget.css";
 
@@ -236,15 +235,18 @@ const AccessibilityWidget = () => {
     };
   }, [settings.screenReaderHover]);
 
-  // Lock background body scroll when panel is open
+  // Keyboard accessibility: Escape key to close panel
   useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && isOpen) {
+        setIsOpen(false);
+      }
+    };
     if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
+      window.addEventListener("keydown", handleKeyDown);
     }
     return () => {
-      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen]);
 
@@ -281,187 +283,154 @@ const AccessibilityWidget = () => {
 
   return (
     <>
-      {/* ── Backdrop ─────────────────────────────────── */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            key="a11y-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+      {/* ── Backdrop (GPU-accelerated fade, no full-screen blur thrashing) ─ */}
+      <div
+        className={`a11y-backdrop ${isOpen ? "a11y-backdrop-open" : ""}`}
+        onClick={() => setIsOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* ── Drawer Panel (Continuous GPU compositor translate3d) ───────── */}
+      <aside
+        className={`a11y-drawer ${isOpen ? "a11y-drawer-open" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Panel Aksesibilitas"
+        aria-hidden={!isOpen}
+      >
+        {/* Header */}
+        <div className="a11y-drawer-header">
+          <div className="a11y-drawer-header-icon">
+            <IconWheelchair size={22} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h3>Aksesibilitas</h3>
+            <p>Sesuaikan tampilan untuk kenyamanan Anda</p>
+          </div>
+          <button
+            className="a11y-close-btn"
             onClick={() => setIsOpen(false)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 9994,
-              background: "rgba(15, 23, 42, 0.35)",
-              backdropFilter: "blur(3px)",
-              WebkitBackdropFilter: "blur(3px)",
-              cursor: "pointer",
-            }}
+            aria-label="Tutup panel aksesibilitas"
+          >
+            <IconClose />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="a11y-drawer-body">
+          <div className="a11y-section-label">Tampilan & Warna</div>
+
+          <ToggleRow
+            icon={<IconContrast />}
+            label="Kontras Tinggi"
+            desc="Meningkatkan keterbacaan teks"
+            checked={settings.highContrast}
+            onChange={() => toggle("highContrast")}
           />
-        )}
-      </AnimatePresence>
+          <ToggleRow
+            icon={<IconGrayscale />}
+            label="Mode Abu-abu"
+            desc="Hapus warna untuk fokus teks"
+            checked={settings.grayscale}
+            onChange={() => toggle("grayscale")}
+          />
+          <ToggleRow
+            icon={<IconInvert />}
+            label="Balik Warna (Invert)"
+            desc="Ganti skema warna gelap/terang"
+            checked={settings.invert}
+            onChange={() => toggle("invert")}
+          />
 
-      {/* ── Drawer Panel ────────────────────────────── */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            key="a11y-drawer"
-            className="a11y-drawer"
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          >
-            {/* Header */}
-            <div className="a11y-drawer-header">
-              <div className="a11y-drawer-header-icon">
-                <IconWheelchair size={22} />
+          <div className="a11y-section-label">Keterbacaan & Navigasi</div>
+
+          <ToggleRow
+            icon={<IconUnderline />}
+            label="Garis Bawah Tautan"
+            desc="Tampilkan garis di semua link"
+            checked={settings.underlineLinks}
+            onChange={() => toggle("underlineLinks")}
+          />
+          <ToggleRow
+            icon={<IconLegibleFont />}
+            label="Font Mudah Dibaca"
+            desc="Gunakan font standar bersih"
+            checked={settings.legibleFont}
+            onChange={() => toggle("legibleFont")}
+          />
+          <ToggleRow
+            icon={<IconHighlight />}
+            label="Sorot Judul (Heading)"
+            desc="Beri garis penanda pada judul"
+            checked={settings.highlightHeaders}
+            onChange={() => toggle("highlightHeaders")}
+          />
+          <ToggleRow
+            icon={<IconSpeaker />}
+            label="Pembaca Layar (Klik Teks)"
+            desc="Klik teks/judul untuk membacanya"
+            checked={settings.screenReaderHover}
+            onChange={() => toggle("screenReaderHover")}
+          />
+          <ToggleRow
+            icon={<IconCursor />}
+            label="Kursor Besar"
+            desc="Perbesar ukuran kursor mouse"
+            checked={settings.largeCursor}
+            onChange={() => toggle("largeCursor")}
+          />
+
+          <div className="a11y-section-label">Ukuran Teks</div>
+
+          <div className="a11y-font-row">
+            <div className="a11y-font-info">
+              <div className="a11y-font-icon"><IconFont /></div>
+              <div className="a11y-font-value-wrap">
+                <div className="a11y-font-value">{settings.fontSize}%</div>
+                <div className="a11y-font-value-label">Ukuran Font</div>
               </div>
-              <div style={{ flex: 1 }}>
-                <h3>Aksesibilitas</h3>
-                <p>Sesuaikan tampilan untuk kenyamanan Anda</p>
-              </div>
-              <button
-                className="a11y-close-btn"
-                onClick={() => setIsOpen(false)}
-                aria-label="Tutup panel aksesibilitas"
-              >
-                <IconClose />
-              </button>
             </div>
+            <button
+              className="a11y-font-btn"
+              onClick={() => changeFontSize(-10)}
+              aria-label="Perkecil font"
+              disabled={settings.fontSize <= 80}
+            >−</button>
+            <button
+              className="a11y-font-btn"
+              onClick={() => changeFontSize(10)}
+              aria-label="Perbesar font"
+              disabled={settings.fontSize >= 150}
+            >+</button>
+          </div>
 
-            {/* Body */}
-            <div className="a11y-drawer-body">
-              <div className="a11y-section-label">Tampilan & Warna</div>
+          {hasActive && (
+            <button
+              className="a11y-reset-btn"
+              onClick={resetAll}
+              aria-label="Reset semua pengaturan aksesibilitas"
+            >
+              ↺ &nbsp;Reset Semua Pengaturan
+            </button>
+          )}
+        </div>
+      </aside>
 
-              <ToggleRow
-                icon={<IconContrast />}
-                label="Kontras Tinggi"
-                desc="Meningkatkan keterbacaan teks"
-                checked={settings.highContrast}
-                onChange={() => toggle("highContrast")}
-              />
-              <ToggleRow
-                icon={<IconGrayscale />}
-                label="Mode Abu-abu"
-                desc="Hapus warna untuk fokus teks"
-                checked={settings.grayscale}
-                onChange={() => toggle("grayscale")}
-              />
-              <ToggleRow
-                icon={<IconInvert />}
-                label="Balik Warna (Invert)"
-                desc="Ganti skema warna gelap/terang"
-                checked={settings.invert}
-                onChange={() => toggle("invert")}
-              />
+      {/* ── Side Tab (Smooth CSS slide) ─────────────────────────────────── */}
+      <button
+        className={`a11y-tab ${isOpen ? "a11y-tab-hidden" : ""}`}
+        onClick={() => setIsOpen(true)}
+        aria-label="Buka menu aksesibilitas"
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        title="Aksesibilitas"
+      >
+        {/* Active badge */}
+        {hasActive && <span className="a11y-tab-badge" />}
 
-              <div className="a11y-section-label">Keterbacaan & Navigasi</div>
-
-              <ToggleRow
-                icon={<IconUnderline />}
-                label="Garis Bawah Tautan"
-                desc="Tampilkan garis di semua link"
-                checked={settings.underlineLinks}
-                onChange={() => toggle("underlineLinks")}
-              />
-              <ToggleRow
-                icon={<IconLegibleFont />}
-                label="Font Mudah Dibaca"
-                desc="Gunakan font standar bersih"
-                checked={settings.legibleFont}
-                onChange={() => toggle("legibleFont")}
-              />
-              <ToggleRow
-                icon={<IconHighlight />}
-                label="Sorot Judul (Heading)"
-                desc="Beri garis penanda pada judul"
-                checked={settings.highlightHeaders}
-                onChange={() => toggle("highlightHeaders")}
-              />
-              <ToggleRow
-                icon={<IconSpeaker />}
-                label="Pembaca Layar (Klik Teks)"
-                desc="Klik teks/judul untuk membacanya"
-                checked={settings.screenReaderHover}
-                onChange={() => toggle("screenReaderHover")}
-              />
-              <ToggleRow
-                icon={<IconCursor />}
-                label="Kursor Besar"
-                desc="Perbesar ukuran kursor mouse"
-                checked={settings.largeCursor}
-                onChange={() => toggle("largeCursor")}
-              />
-
-              <div className="a11y-section-label">Ukuran Teks</div>
-
-              <div className="a11y-font-row">
-                <div className="a11y-font-info">
-                  <div className="a11y-font-icon"><IconFont /></div>
-                  <div className="a11y-font-value-wrap">
-                    <div className="a11y-font-value">{settings.fontSize}%</div>
-                    <div className="a11y-font-value-label">Ukuran Font</div>
-                  </div>
-                </div>
-                <button
-                  className="a11y-font-btn"
-                  onClick={() => changeFontSize(-10)}
-                  aria-label="Perkecil font"
-                  disabled={settings.fontSize <= 80}
-                >−</button>
-                <button
-                  className="a11y-font-btn"
-                  onClick={() => changeFontSize(10)}
-                  aria-label="Perbesar font"
-                  disabled={settings.fontSize >= 150}
-                >+</button>
-              </div>
-
-              {hasActive && (
-                <motion.button
-                  className="a11y-reset-btn"
-                  onClick={resetAll}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  aria-label="Reset semua pengaturan aksesibilitas"
-                >
-                  ↺ &nbsp;Reset Semua Pengaturan
-                </motion.button>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Side Tab (Sembunyi otomatis saat panel terbuka !isOpen) ────── */}
-      <AnimatePresence>
-        {!isOpen && (
-          <motion.button
-            key="a11y-tab-btn"
-            className="a11y-tab"
-            onClick={() => setIsOpen(true)}
-            aria-label="Buka menu aksesibilitas"
-            aria-expanded={false}
-            aria-haspopup="dialog"
-            title="Aksesibilitas"
-            initial={{ x: -40, y: "-50%", opacity: 0 }}
-            animate={{ x: 0, y: "-50%", opacity: 1 }}
-            exit={{ x: -40, y: "-50%", opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 24 }}
-            style={{ zIndex: 9991 }}
-          >
-            {/* Active badge */}
-            {hasActive && <span className="a11y-tab-badge" />}
-
-            {/* Wheelchair icon */}
-            <IconWheelchair size={18} />
-          </motion.button>
-        )}
-      </AnimatePresence>
+        {/* Wheelchair icon */}
+        <IconWheelchair size={18} />
+      </button>
     </>
   );
 };
