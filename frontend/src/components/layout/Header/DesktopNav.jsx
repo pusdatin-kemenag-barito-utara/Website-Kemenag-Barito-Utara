@@ -25,7 +25,13 @@ export function DesktopNav({
   isTransparent = false,
 }) {
   return (
-    <nav className={`hidden py-2.5 lg:block transition-all duration-500 ${isTransparent ? "border-t border-white/10" : "border-t border-slate-100/50 dark:border-white/5"}`}>
+    <nav 
+      className={`hidden py-2.5 lg:block transition-colors duration-500 ease-in-out border-t ${
+        isTransparent 
+          ? "border-slate-100/0 dark:border-white/0 shadow-none" 
+          : "border-slate-100/50 dark:border-white/5"
+      }`}
+    >
       <div className="relative flex items-center justify-center w-full">
         <ul className="flex flex-nowrap items-center justify-center gap-2.5 xl:gap-5" ref={desktopDropdownRef}>
           {navigationItems.map((item, idx) => {
@@ -147,7 +153,11 @@ export function DesktopNav({
           })}
         </ul>
 
-        <div className={`absolute right-0 flex items-center pl-3 xl:pl-4 border-l transition-colors duration-300 ${isTransparent ? "border-white/15" : "border-slate-200/50 dark:border-white/5"}`}>
+        <div className={`absolute right-0 flex items-center pl-3 xl:pl-4 border-l transition-colors duration-500 ease-in-out ${
+          isTransparent 
+            ? "border-slate-200/0 dark:border-white/0" 
+            : "border-slate-200/50 dark:border-white/5"
+        }`}>
           <HeaderSearchForm
             value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
             onSubmit={handleSearchSubmit} onKeyDown={handleSearchKeyDown}
@@ -168,7 +178,11 @@ export function HeaderControls({ locale, setLocale, theme, setLightTheme, setDar
   return (
     <div className="hidden lg:flex items-center gap-4">
       {/* Controls Group */}
-      <div className={`flex items-center gap-4 border-r pr-4 transition-colors duration-300 ${isTransparent ? "border-white/15" : "border-slate-200/50 dark:border-white/5"}`}>
+      <div className={`flex items-center gap-4 border-r pr-4 transition-colors duration-500 ease-in-out ${
+        isTransparent 
+          ? "border-slate-200/0 dark:border-white/0" 
+          : "border-slate-200/50 dark:border-white/5"
+      }`}>
         {/* Language Switcher */}
         <div className={`flex items-center gap-1 rounded-full p-1 transition-all duration-300 ${isTransparent ? "bg-white/10 ring-1 ring-white/20 backdrop-blur-md" : "bg-slate-100/50 ring-1 ring-slate-200/50 dark:bg-white/5 dark:ring-white/10"}`}>
           {[
