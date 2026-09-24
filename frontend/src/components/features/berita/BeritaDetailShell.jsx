@@ -53,11 +53,11 @@ export default function BeritaDetailShell({ berita, relatedItems = [], adjacent 
                         className="w-full h-full object-cover transition duration-500 group-hover:scale-[1.02]"
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 48vw, 460px"
                       />
-                      <div className="bg-slate-50 dark:bg-slate-900/60 px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-1.5">
-                        <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                      <div className="bg-slate-50 dark:bg-slate-900/60 px-4 py-2.5 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-1">
+                        <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 leading-snug line-clamp-2">
                           Foto Berita: {berita?.title}
                         </span>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-none">
                           <BeritaDetailDateText isoDate={berita?.isoDate} />
                         </span>
                       </div>
@@ -70,12 +70,12 @@ export default function BeritaDetailShell({ berita, relatedItems = [], adjacent 
                       style={{ display: "none" }}
                     />
 
-                    <div className="not-prose block xl:hidden mb-6 clear-both lg:clear-none">
+                    <div className="not-prose block xl:hidden clear-both lg:clear-none">
                       <BeritaTextToSpeech title={berita?.title || ""} content={berita?.content || ""} />
                     </div>
 
                     <div
-                      className="[&_*]:clear-none [&_div]:!w-auto [&_div]:!block [&_div]:!max-w-none break-words"
+                      className="article-body [&_*]:clear-none [&_div]:!w-auto [&_div]:!block [&_div]:!max-w-none break-words"
                       dangerouslySetInnerHTML={{ __html: sanitizeEditorHtml(berita?.content || "") }}
                     />
 

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
-import { Share2, Link as LinkIcon, Check, Printer } from "lucide-react";
+import { Share2, Link as LinkIcon, Check, Printer, QrCode } from "lucide-react";
+import BeritaBarcodeModal from "./BeritaBarcodeModal";
 
 function buildAbsoluteUrl(path = "") {
     if (typeof window === "undefined") return path || "";
@@ -10,9 +11,10 @@ function buildAbsoluteUrl(path = "") {
     return new URL(path || window.location.pathname, window.location.origin).toString();
 }
 
-export default function BeritaDetailActions({ title, path }) {
+export default function BeritaDetailActions({ title, path, category, date, slug }) {
     const { t, locale } = useLanguage();
     const [copied, setCopied] = useState(false);
+    const [isBarcodeOpen, setIsBarcodeOpen] = useState(false);
 
     function handlePrint() {
         if (typeof window !== "undefined") {
@@ -124,7 +126,37 @@ export default function BeritaDetailActions({ title, path }) {
                         {copied ? (locale === "en" ? "Copied" : "Tersalin") : "Salin Link"}
                     </span>
                 </button>
+
+                {/* Barcode Berita */}
+                <button
+                    onClick={() => setIsBarcodeOpen(true)}
+                    className="col-span-2 flex items-center justify-between gap-2.5 rounded-xl border border-amber-200/80 bg-amber-50/60 px-3.5 py-2.5 transition-all hover:border-amber-300 hover:bg-amber-100/70 hover:shadow-xs dark:border-amber-900/40 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 active:scale-95 cursor-pointer"
+                    title={locale === "en" ? "Show Article Barcode / QR Code" : "Tampilkan Barcode / QR Code Berita"}
+                >
+                    <div className="flex items-center gap-2.5">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">
+                            <QrCode className="h-4 w-4" />
+                        </div>
+                        <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                            {t("newsDetail.barcodeAction") || (locale === "en" ? "Article Barcode" : "Barcode Berita")}
+                        </span>
+                    </div>
+                    <span className="rounded-md bg-amber-200/70 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:bg-amber-900/60 dark:text-amber-200">
+                        {t("newsDetail.barcodeScanDownload") || (locale === "en" ? "Scan / Download" : "Scan / Unduh")}
+                    </span>
+                </button>
             </div>
+
+            {/* Floating Barcode Modal */}
+            <BeritaBarcodeModal
+                isOpen={isBarcodeOpen}
+                onClose={() => setIsBarcodeOpen(false)}
+                title={title}
+                url={buildAbsoluteUrl(path)}
+                category={category}
+                date={date}
+                slug={slug || path?.split("/").filter(Boolean).pop()}
+            />
         </div>
     );
 }

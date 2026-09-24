@@ -183,6 +183,13 @@ export const messagesEn = {
       recommendation: "Reading recommendation",
       relatedNews: "Related news",
       readArticle: "Read article",
+      barcodeAction: "Article Barcode",
+      barcodeScanDownload: "Scan / Download",
+      barcodeModalTitle: "Official Article Barcode",
+      barcodeModalDesc: "Scan the QR Code to read the article or download the official barcode to share.",
+      downloadCard: "Download Barcode Card (PNG)",
+      downloadQrOnly: "Download QR Only",
+      scanInstruction: "Point your smartphone camera at the barcode to read this official article directly.",
     },
     gallery: {
       badge: "DOCUMENTATION",

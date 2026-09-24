@@ -184,6 +184,13 @@ export const messagesId = {
     recommendation: "Rekomendasi berita",
     relatedNews: "Berita terkait",
     readArticle: "Baca berita",
+    barcodeAction: "Barcode Berita",
+    barcodeScanDownload: "Scan / Unduh",
+    barcodeModalTitle: "Barcode Berita Resmi",
+    barcodeModalDesc: "Pindai QR Code untuk membuka berita atau unduh barcode resmi untuk dibagikan.",
+    downloadCard: "Unduh Kartu Barcode (PNG)",
+    downloadQrOnly: "Unduh QR Saja",
+    scanInstruction: "Arahkan kamera smartphone ke barcode untuk membuka berita resmi secara langsung.",
   },
   gallery: {
     badge: "DOKUMENTASI",

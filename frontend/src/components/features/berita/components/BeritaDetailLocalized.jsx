@@ -55,7 +55,13 @@ export function BeritaDetailSidebar({ category, isoDate, views, title, slug, aut
           </div>
         </div>
       </div>
-      <BeritaDetailActions title={title} path={`/berita/${slug}`} />
+      <BeritaDetailActions
+        title={title}
+        path={`/berita/${slug}`}
+        category={displayCategory}
+        date={displayDate}
+        slug={slug}
+      />
     </aside>
   );
 }

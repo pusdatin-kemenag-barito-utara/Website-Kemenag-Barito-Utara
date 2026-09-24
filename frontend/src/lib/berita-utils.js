@@ -182,6 +182,20 @@ export function sanitizeEditorHtml(html = "") {
       }
     });
 
+    // Normalisasi div teks polos menjadi p agar spasi antar-paragraf konsisten
+    doc.body.querySelectorAll("div").forEach((div) => {
+      if (
+        !div.className &&
+        !div.getAttribute("style")?.includes("float") &&
+        !div.querySelector("div, figure, table, ul, ol, h1, h2, h3, h4, h5, h6, blockquote")
+      ) {
+        const p = doc.createElement("p");
+        [...div.attributes].forEach((attr) => p.setAttribute(attr.name, attr.value));
+        p.innerHTML = div.innerHTML;
+        div.replaceWith(p);
+      }
+    });
+
     return doc.body.innerHTML;
   } catch {
     return String(html || "");

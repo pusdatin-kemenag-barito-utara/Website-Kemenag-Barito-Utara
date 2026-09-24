@@ -141,6 +141,9 @@ export function useBeritaManager() {
 
   useEffect(() => {
     if (!openForm || !editorRef.current) return;
+    try {
+      document.execCommand("defaultParagraphSeparator", false, "p");
+    } catch {}
     const nextHtml = form.content || "";
     if (editorRef.current.innerHTML !== nextHtml) {
       editorRef.current.innerHTML = nextHtml;
