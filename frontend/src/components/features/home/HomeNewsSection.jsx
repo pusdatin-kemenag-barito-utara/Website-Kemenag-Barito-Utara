@@ -141,30 +141,16 @@ export default function HomeNewsSection({
         {/* Slider for Hari Ini news */}
         {displayHariIni.length > 0 && (
           <div>
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2.5"
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+            <div className="border-b border-slate-100 dark:border-slate-800/80 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <ClockIcon className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
+                  {isEn ? "LATEST UPDATES" : "INFORMASI TERKINI & TERBARU"}
+                </span>
               </div>
-              <div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight">
-                  {isEn ? "Today's Highlights" : "Berita Hari Ini"}
-                </h3>
-                <p className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase mt-0.5">
-                  {isEn ? "LATEST UPDATES" : "INFORMASI TERKINI"}
-                </p>
-              </div>
+              <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight mt-1">
+                {isEn ? "Today's Highlights" : "Berita Hari Ini"}
+              </h3>
             </div>
             <div
               className="relative flex overflow-x-auto snap-x snap-mandatory pb-6 -mx-6 sm:-mx-10 px-6 sm:px-10 gap-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
@@ -203,30 +189,16 @@ export default function HomeNewsSection({
         {/* Slider for Kegiatan & Umum news */}
         {displayLatest.length > 0 && (
           <div>
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2.5"
-                    d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2.5 2.5 0 00-2.5-2.5H14"
-                  />
-                </svg>
+            <div className="border-b border-slate-100 dark:border-slate-800/80 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <DocumentTextIcon className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
+                  {isEn ? "PROGRAMS & ACTIVITIES" : "PROGRAM DAN AKTIVITAS KANTOR"}
+                </span>
               </div>
-              <div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight">
-                  {isEn ? "Activities & General" : "Kegiatan & Umum"}
-                </h3>
-                <p className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase mt-0.5">
-                  {isEn ? "PROGRAMS & ACTIVITIES" : "PROGRAM & AKTIVITAS"}
-                </p>
-              </div>
+              <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight mt-1">
+                {isEn ? "Activities & General" : "Kegiatan & Umum"}
+              </h3>
             </div>
             <div
               className="relative flex overflow-x-auto snap-x snap-mandatory pb-6 -mx-6 sm:-mx-10 px-6 sm:px-10 gap-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
@@ -260,9 +232,12 @@ export default function HomeNewsSection({
         {displayNasional.length > 0 && (
           <div className="rounded-3xl border border-slate-200/60 bg-white p-6 shadow-lg dark:border-slate-800 dark:bg-slate-900/50 backdrop-blur-md mb-6">
             <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
-                {isEn ? "NATIONAL" : "NASIONAL"}
-              </span>
+              <div className="flex items-center gap-2">
+                <GlobeIcon className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
+                  {isEn ? "NATIONAL" : "NASIONAL"}
+                </span>
+              </div>
               <h3 className="text-xl font-black mt-1 text-slate-900 dark:text-white">
                 {isEn ? "National News" : "Berita Nasional"}
               </h3>
@@ -308,9 +283,12 @@ export default function HomeNewsSection({
         {displayPopular.length > 0 && (
           <div className="rounded-3xl border border-slate-200/60 bg-white p-6 shadow-lg dark:border-slate-800 dark:bg-slate-900/50 backdrop-blur-md">
             <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
-                {popularBadgeText}
-              </span>
+              <div className="flex items-center gap-2">
+                <FlameIcon className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
+                  {popularBadgeText}
+                </span>
+              </div>
               <h3 className="text-xl font-black mt-1 text-slate-900 dark:text-white">
                 {popularTitleText}
               </h3>
@@ -382,32 +360,18 @@ export default function HomeNewsSection({
           {/* HARI INI BLOCK */}
           {displayHariIni.length > 0 && (
             <div>
-              <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-6 flex items-center gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
-                  <svg
-                    className="h-6 w-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2.5"
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-slate-900 dark:text-white">
-                    {isEn ? "Today's Highlights" : "Berita Hari Ini"}
-                  </h3>
-                  <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase mt-1">
+              <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-6">
+                <div className="flex items-center gap-2">
+                  <ClockIcon className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
                     {isEn
                       ? "LATEST UPDATES & BREAKING NEWS"
                       : "INFORMASI TERKINI & TERBARU"}
-                  </p>
+                  </span>
                 </div>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
+                  {isEn ? "Today's Highlights" : "Berita Hari Ini"}
+                </h3>
               </div>
               <motion.div
                 className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 flex-grow"
@@ -433,32 +397,18 @@ export default function HomeNewsSection({
           {/* KEGIATAN & UMUM BLOCK */}
           {displayLatest.length > 0 && (
             <div>
-              <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-6 flex items-center gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-                  <svg
-                    className="h-6 w-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2.5"
-                      d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2.5 2.5 0 00-2.5-2.5H14"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-slate-900 dark:text-white">
-                    {isEn ? "Activities & General" : "Kegiatan & Umum"}
-                  </h3>
-                  <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase mt-1">
+              <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-6">
+                <div className="flex items-center gap-2">
+                  <DocumentTextIcon className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
                     {isEn
                       ? "PROGRAMS AND AGENCY ACTIVITIES"
                       : "PROGRAM DAN AKTIVITAS KANTOR"}
-                  </p>
+                  </span>
                 </div>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
+                  {isEn ? "Activities & General" : "Kegiatan & Umum"}
+                </h3>
               </div>
               <motion.div
                 className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 flex-grow"
@@ -481,10 +431,15 @@ export default function HomeNewsSection({
         {(displayNasional.length > 0 || displayPopular.length > 0) && (
           <div className="lg:col-span-4 flex flex-col">
             {/* Spacer header matching the height of the left header perfectly */}
-            <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-6 opacity-0 select-none pointer-events-none hidden lg:block flex-shrink-0">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+            <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-6 opacity-0 select-none pointer-events-none hidden lg:block flex-shrink-0" aria-hidden="true">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+                  SPACER
+                </span>
+              </div>
+              <h3 className="text-2xl font-black tracking-tight mt-1">
                 SPACER
-              </span>
+              </h3>
             </div>
 
             <div className="flex flex-col gap-6">
@@ -492,9 +447,12 @@ export default function HomeNewsSection({
               {displayNasional.length > 0 && (
                 <div className="rounded-3xl border border-slate-200/60 bg-white p-6 shadow-lg dark:border-slate-800 dark:bg-slate-900/50 backdrop-blur-md flex flex-col">
                   <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4 flex-shrink-0">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
-                      {isEn ? "NATIONAL" : "NASIONAL"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <GlobeIcon className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
+                        {isEn ? "NATIONAL" : "NASIONAL"}
+                      </span>
+                    </div>
                     <h3 className="text-xl font-black mt-1 text-slate-900 dark:text-white">
                       {isEn ? "National News" : "Berita Nasional"}
                     </h3>
@@ -544,9 +502,12 @@ export default function HomeNewsSection({
               {displayPopular.length > 0 && (
                 <div className="rounded-3xl border border-slate-200/60 bg-white p-6 shadow-lg dark:border-slate-800 dark:bg-slate-900/50 backdrop-blur-md flex flex-col">
                   <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4 flex-shrink-0">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
-                      {popularBadgeText}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <FlameIcon className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
+                        {popularBadgeText}
+                      </span>
+                    </div>
                     <h3 className="text-xl font-black mt-1 text-slate-900 dark:text-white">
                       {popularTitleText}
                     </h3>
@@ -735,6 +696,88 @@ function ChevronRightIcon({ className = "" }) {
       aria-hidden="true"
     >
       <path d="M9 18l6-6-6-6" />
+    </svg>
+  );
+}
+
+function ClockIcon({ className = "" }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.5"
+        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  );
+}
+
+function DocumentTextIcon({ className = "" }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.5"
+        d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2.5 2.5 0 00-2.5-2.5H14"
+      />
+    </svg>
+  );
+}
+
+function GlobeIcon({ className = "" }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.5"
+        d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  );
+}
+
+function FlameIcon({ className = "" }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.5"
+        d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.5"
+        d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"
+      />
     </svg>
   );
 }
