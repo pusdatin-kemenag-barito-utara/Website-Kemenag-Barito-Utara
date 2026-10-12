@@ -85,15 +85,25 @@ function KepalaKantorCard({ pejabat }) {
           )}
 
           {/* CTA Link */}
-          <div className="pt-2 flex justify-center lg:justify-start">
+          <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-3">
             <Link
               href="/informasi/struktur-organisasi"
               className="inline-flex items-center gap-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-emerald-900/40 transition-all duration-300 hover:scale-[1.02] active:scale-95"
             >
               <Users className="h-4 w-4" />
-              <span>Lihat Struktur Organisasi</span>
+              <span>Struktur Organisasi</span>
               <ArrowRight className="h-4 w-4 animate-arrow-bounce ml-1" />
             </Link>
+            {pejabat._count?.pegawai_seksi > 0 && (
+              <Link
+                href="/informasi/profil-pejabat/kepala-kantor"
+                className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/40 bg-emerald-950/60 hover:bg-emerald-800/60 px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-emerald-200 shadow-md transition-all duration-300 hover:scale-[1.02] active:scale-95"
+              >
+                <Users className="h-4 w-4 text-emerald-400" />
+                <span>{pejabat._count.pegawai_seksi} Staf Pimpinan</span>
+                <ArrowRight className="h-3.5 w-3.5 ml-0.5" />
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -173,18 +183,20 @@ function PejabatCard({ pejabat }) {
       </div>
 
       {/* Footer Link (Staf Pegawai) */}
-      {pejabat._count?.pegawai_seksi != null && (
-        <div className="w-full pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
-          <Link
-            href={pejabat.slug ? `/informasi/profil-pejabat/${pejabat.slug}` : "#"}
-            className="group/btn flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 hover:bg-emerald-600 py-3 text-xs font-bold uppercase tracking-wider text-emerald-800 hover:text-white shadow-sm transition-all duration-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white"
-          >
-            <Users className="h-4 w-4" />
-            <span>{pejabat._count.pegawai_seksi} Staf Pegawai</span>
-            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-1" />
-          </Link>
-        </div>
-      )}
+      <div className="w-full pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+        <Link
+          href={pejabat.slug ? `/informasi/profil-pejabat/${pejabat.slug}` : "#"}
+          className="group/btn flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 hover:bg-emerald-600 py-3 text-xs font-bold uppercase tracking-wider text-emerald-800 hover:text-white shadow-sm transition-all duration-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white"
+        >
+          <Users className="h-4 w-4" />
+          <span>
+            {pejabat._count?.pegawai_seksi > 0
+              ? `${pejabat._count.pegawai_seksi} Staf Pegawai`
+              : "Lihat Profil & Staf"}
+          </span>
+          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-1" />
+        </Link>
+      </div>
     </div>
   );
 }

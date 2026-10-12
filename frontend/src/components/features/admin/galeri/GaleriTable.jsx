@@ -1,37 +1,26 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { normalizeCoverImageUrl, isImageCached, markImageCached, getAlternativeStorageUrl } from "@/lib/cover-image";
 
-function GaleriImageThumb({ src, alt }) {
+function GaleriImageThumb({ src, alt, priority = false }) {
   const normalized = normalizeCoverImageUrl(src);
   const [currentSrc, setCurrentSrc] = useState(normalized);
   const [loaded, setLoaded] = useState(() => isImageCached(normalized));
   const [hasError, setHasError] = useState(false);
+  const imgRef = useRef(null);
 
   useEffect(() => {
     setCurrentSrc(normalized);
     setHasError(false);
+    if (isImageCached(normalized)) {
+      setLoaded(true);
+    }
   }, [normalized]);
 
   useEffect(() => {
-    if (!currentSrc) return;
-    if (isImageCached(currentSrc)) {
-      setLoaded(true);
-      return;
-    }
-    const img = new window.Image();
-    img.src = currentSrc;
-    img.onload = () => {
+    if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
       markImageCached(currentSrc);
       setLoaded(true);
-    };
-    img.onerror = () => {
-      const altSrc = getAlternativeStorageUrl(currentSrc);
-      if (altSrc && altSrc !== currentSrc) {
-        setCurrentSrc(altSrc);
-      } else {
-        setHasError(true);
-      }
-    };
+    }
   }, [currentSrc]);
 
   if (!currentSrc || hasError) {
@@ -54,9 +43,10 @@ function GaleriImageThumb({ src, alt }) {
         </div>
       )}
       <img
+        ref={imgRef}
         src={currentSrc}
         alt={alt || "Dokumentasi Galeri"}
-        loading="lazy"
+        loading={priority ? "eager" : "lazy"}
         decoding="async"
         onLoad={() => {
           markImageCached(currentSrc);
@@ -111,8 +101,12 @@ export function GaleriTable({ items, loading, onEdit, onDelete, deletingId }) {
           key={item.id}
           className="group relative aspect-[3/4] w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-900 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 dark:border-slate-800"
         >
-          {/* Main Visual Image with In-Memory Cache */}
-          <GaleriImageThumb src={item.image_url} alt={item.title} />
+          {/* Main Visual Image with In-Memory Cache and PocketBase Thumbnail */}
+          <GaleriImageThumb
+            src={item.thumb_url || item.image_url}
+            alt={item.title}
+            priority={index < 6}
+          />
 
           {/* Top Subtle Gradient */}
           <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />

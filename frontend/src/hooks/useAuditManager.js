@@ -1,14 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-
-async function readJsonSafely(response) {
-  const raw = await response.text();
-  if (!raw) return {};
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return {};
-  }
-}
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 export function useAuditManager() {
   const [items, setItems] = useState([]);
@@ -25,26 +16,20 @@ export function useAuditManager() {
   const [idToDelete, setIdToDelete] = useState(null);
   const [bulkAction, setBulkAction] = useState(false);
 
-  const loadItems = useCallback(async (signal) => {
+  const loadItems = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
-      const response = await fetch("/api/admin/audit?limit=200", {
-        method: "GET",
-        cache: "no-store",
-        signal,
+      const pb = getPocketBase();
+      const records = await pb.collection("audit_logs").getList(1, 200, {
+        sort: "-created",
       });
 
-      const data = await readJsonSafely(response);
-      if (!response.ok) {
-        throw new Error(data?.message || "Gagal memuat riwayat aktivitas.");
-      }
-
-      setItems(Array.isArray(data?.items) ? data.items : []);
+      setItems(Array.isArray(records?.items) ? records.items : []);
       setCurrentPage(1);
     } catch (err) {
-      if (err.name === "AbortError") return;
+      if (err.name === "AbortError" || err.isAbort) return;
       setError(err?.message || "Gagal memuat riwayat aktivitas.");
       setItems([]);
     } finally {
@@ -53,9 +38,7 @@ export function useAuditManager() {
   }, []);
 
   useEffect(() => {
-    const controller = new AbortController();
-    loadItems(controller.signal);
-    return () => controller.abort();
+    loadItems();
   }, [loadItems]);
 
   useEffect(() => {
@@ -105,18 +88,21 @@ export function useAuditManager() {
       setError("");
       setMessage("");
 
-      const url = bulkAction
-        ? "/api/admin/audit?clear=all"
-        : `/api/admin/audit?id=${idToDelete}`;
-
-      const response = await fetch(url, { method: "DELETE" });
-      const data = await readJsonSafely(response);
-
-      if (!response.ok) {
-        throw new Error(data?.message || "Gagal menghapus log.");
+      const pb = getPocketBase();
+      if (bulkAction) {
+        for (const it of items) {
+          try {
+            await pb.collection("audit_logs").delete(it.id);
+          } catch {
+            // ignore
+          }
+        }
+        setMessage("Berhasil mengosongkan seluruh riwayat log.");
+      } else if (idToDelete) {
+        await pb.collection("audit_logs").delete(idToDelete);
+        setMessage("Berhasil menghapus log.");
       }
 
-      setMessage(data?.message || "Berhasil menghapus log.");
       setShowDeleteModal(false);
       setIdToDelete(null);
       setBulkAction(false);
@@ -127,7 +113,7 @@ export function useAuditManager() {
       setDeletingId(null);
       setClearingAll(false);
     }
-  }, [idToDelete, bulkAction, loadItems]);
+  }, [idToDelete, bulkAction, items, loadItems]);
 
   return {
     items,
@@ -140,14 +126,14 @@ export function useAuditManager() {
     currentPage,
     totalPages,
     handlePageChange,
-    showDeleteModal,
-    deletingId,
-    clearingAll,
-    bulkAction,
     requestDelete,
     requestClearAll,
     cancelDelete,
     confirmDelete,
-    loadItems,
+    showDeleteModal,
+    idToDelete,
+    bulkAction,
+    deletingId,
+    clearingAll,
   };
 }

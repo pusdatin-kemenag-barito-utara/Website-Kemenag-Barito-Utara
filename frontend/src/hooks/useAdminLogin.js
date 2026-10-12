@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "@/hooks/useNextNavigation";
-import { createClient } from "@/lib/supabase/client";
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 function encodeSavedEmail(email) {
   try {
@@ -19,26 +19,16 @@ function decodeSavedEmail(encoded) {
 }
 
 function mapLoginError(error) {
-  const rawCode = String(error?.code || "").toUpperCase();
   const rawMessage = String(error?.message || "").toLowerCase();
-  if (rawCode === "ACCOUNT_LOCKED" || rawCode === "RATE_LIMITED" || rawMessage.includes("terlalu banyak")) {
-    return error?.message || "Terlalu banyak percobaan login. Akun dikunci sementara demi keamanan. Silakan tunggu beberapa saat.";
-  }
-  if (rawMessage.includes("invalid login credentials") || rawCode === "INVALID_CREDENTIALS") {
-    return "Email atau password salah, silakan coba lagi.";
-  }
-  if (rawCode === "NOT_ADMIN") {
-    return "Akun ini tidak memiliki hak akses ke panel admin.";
-  }
-  if (rawCode === "CAPTCHA_FAILED") {
-    return "Verifikasi captcha gagal. Silakan ulangi verifikasi.";
+  if (rawMessage.includes("failed to authenticate") || rawMessage.includes("invalid")) {
+    return "Email atau kata sandi salah, silakan coba lagi.";
   }
   return error?.message || "Terjadi kesalahan saat login admin.";
 }
 
 export function useAdminLogin(initialUnauthorized) {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
+  const pb = getPocketBase();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -71,38 +61,12 @@ export function useAdminLogin(initialUnauthorized) {
   const [turnstileToken, setTurnstileToken] = useState(null);
 
   useEffect(() => {
-    const controller = new AbortController();
-    async function checkSession() {
-      try {
-        const { data, error: sessionError } = await supabase.auth.getSession();
-        if (controller.signal.aborted) return;
-        if (!sessionError && data?.session) {
-          const res = await fetch("/api/admin/session", {
-            method: "GET",
-            cache: "no-store",
-            signal: controller.signal,
-          });
-          if (controller.signal.aborted) return;
-          if (res.ok) {
-            const payload = await res.json();
-            if (
-              payload?.ok &&
-              (payload?.permissions?.isAdmin || payload?.permissions?.isEditor)
-            ) {
-              router.replace("/admin");
-              return;
-            }
-          }
-        }
-      } catch (err) {
-        if (err?.name === "AbortError") return;
-      } finally {
-        if (!controller.signal.aborted) setLoadingSession(false);
-      }
+    if (pb.authStore.isValid && pb.authStore.record) {
+      router.replace("/admin");
+    } else {
+      setLoadingSession(false);
     }
-    checkSession();
-    return () => controller.abort();
-  }, [router, supabase]);
+  }, [router, pb]);
 
   const handlePasswordKeyState = (event) =>
     setCapsLock(Boolean(event.getModifierState?.("CapsLock")));
@@ -119,29 +83,74 @@ export function useAdminLogin(initialUnauthorized) {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/pusdatin/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        body: JSON.stringify({ 
-          email: email.trim().toLowerCase(), 
-          password,
-          turnstileToken 
-        }),
-      });
+      const authData = await pb
+        .collection("users")
+        .authWithPassword(email.trim().toLowerCase(), password);
 
-      const payload = await res.json().catch(() => null);
-      if (!res.ok || (payload && payload.ok === false)) {
-        setError(payload ? mapLoginError(payload) : "Layanan autentikasi sedang tidak tersedia, silakan coba beberapa saat lagi.");
-        setSubmitting(false);
-        setTurnstileToken(null);
-        setTurnstileResetKey((prev) => prev + 1);
-        return;
+      if (!authData || !authData.record) {
+        throw new Error("Autentikasi gagal. Record tidak ditemukan.");
+      }
+
+      // 1. Ekspor dan sinkronkan cookie secara instan
+      if (typeof document !== "undefined") {
+        try {
+          const cookie = pb.authStore.exportToCookie({
+            httpOnly: false,
+            sameSite: "Lax",
+            secure: window.location.protocol === "https:",
+          });
+          document.cookie = cookie;
+        } catch {
+          // ignore cookie write errors
+        }
+      }
+
+      // 2. Pre-cache session & permission ke sessionStorage agar useAdminShell di /admin langsung instant tanpa loading
+      const user = authData.record;
+      const role = user.role || "super_admin";
+      const session = {
+        authenticated: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name || "Admin",
+          full_name: user.name || "Admin",
+          role: role,
+          avatar_url: user.avatar ? pb.files.getURL(user, user.avatar) : "",
+        },
+        permissions: {
+          isAdmin: role === "super_admin" || role === "admin",
+          isEditor: role === "editor",
+          hasAdminPanelAccess: true,
+          role: role,
+        },
+      };
+
+      const perm = {
+        role: role,
+        email: user.email,
+        isSuperAdmin: role === "super_admin",
+        isAdmin: role === "super_admin" || role === "admin",
+        isEditor: role === "editor",
+        isActive: true,
+        approved: true,
+      };
+
+      try {
+        sessionStorage.setItem(
+          "kemenag_admin_shell_session",
+          JSON.stringify({ session, perm })
+        );
+      } catch {
+        // ignore storage errors
       }
 
       try {
         if (rememberMe) {
-          localStorage.setItem("admin_remember_email", encodeSavedEmail(email.trim().toLowerCase()));
+          localStorage.setItem(
+            "admin_remember_email",
+            encodeSavedEmail(email.trim().toLowerCase())
+          );
         } else {
           localStorage.removeItem("admin_remember_email");
         }
@@ -150,11 +159,12 @@ export function useAdminLogin(initialUnauthorized) {
       }
 
       setSuccess(true);
+      // Animasi transisi cepat 200ms untuk feedback centang hijau, lalu navigasi instan
       setTimeout(() => {
-        window.location.href = "/admin";
-      }, 1500);
+        window.location.replace("/admin");
+      }, 200);
     } catch (err) {
-      setError(err?.message || "Terjadi kesalahan jaringan saat login.");
+      setError(mapLoginError(err));
       setSubmitting(false);
       setTurnstileToken(null);
       setTurnstileResetKey((prev) => prev + 1);

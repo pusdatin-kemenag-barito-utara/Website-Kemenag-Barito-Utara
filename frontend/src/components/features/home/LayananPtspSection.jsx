@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "@/components/common/NextImage";
+import { DEFAULT_PTSP_SERVICES } from "@/data/ptsp-services";
 
 function normalizeBannerSlug(slug) {
   if (!slug) return "layanan-sub-bagian-tata-usaha";
@@ -17,7 +18,10 @@ function normalizeBannerSlug(slug) {
 }
 
 export default function LayananPtspSection({ services = [] }) {
-  if (!services || services.length === 0) return null;
+  const displayServices =
+    Array.isArray(services) && services.length > 0 && services.some((s) => s?.slug && s?.name)
+      ? services
+      : DEFAULT_PTSP_SERVICES;
 
   return (
     <section id="katalog-ptsp" className="py-8 lg:py-12 bg-white dark:bg-slate-950 overflow-hidden relative">
@@ -57,7 +61,7 @@ export default function LayananPtspSection({ services = [] }) {
         </div>
 
         <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 sm:gap-6">
-          {services.map((service) => {
+          {displayServices.map((service) => {
             const ptspUrl = "https://ptsp.kemenag-baritoutara.com";
             const canonicalSlug = normalizeBannerSlug(service.slug);
             const localBannerWebp = `/assets/banners/${canonicalSlug}.webp`;

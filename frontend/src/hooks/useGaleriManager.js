@@ -1,8 +1,94 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { compressImageToBase64 } from "@/lib/image-compress";
 import { preloadImages } from "@/lib/cover-image";
+import { getPocketBase, getPocketBaseFileUrl } from "@/lib/pocketbase/client";
 
 const ITEMS_PER_PAGE = 12;
+const GALERI_CACHE_PREFIX = "kemenag_galeri_cache_v2_";
+const GALERI_YEARS_KEY = "kemenag_galeri_years_v2";
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 menit
+
+// Global module-level In-Memory Cache (tetap aktif selama sesi tab browser)
+const galeriMemoryCache = new Map();
+
+function getCacheKey(page, search, year) {
+  return `${page}_${search ? search.trim().toLowerCase() : ""}_${year || ""}`;
+}
+
+function getCachedGaleri(page, search, year) {
+  const key = getCacheKey(page, search, year);
+  const now = Date.now();
+
+  // 1. Cek In-Memory Cache
+  if (galeriMemoryCache.has(key)) {
+    const entry = galeriMemoryCache.get(key);
+    if (now - entry.timestamp < CACHE_TTL_MS) {
+      return entry.data;
+    }
+  }
+
+  // 2. Cek SessionStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = sessionStorage.getItem(GALERI_CACHE_PREFIX + key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (now - parsed.timestamp < CACHE_TTL_MS) {
+          galeriMemoryCache.set(key, parsed);
+          return parsed.data;
+        }
+      }
+    } catch {
+      // Abaikan bila sessionStorage error
+    }
+  }
+
+  return null;
+}
+
+function setCachedGaleri(page, search, year, data) {
+  const key = getCacheKey(page, search, year);
+  const entry = { data, timestamp: Date.now() };
+  galeriMemoryCache.set(key, entry);
+
+  if (typeof window !== "undefined") {
+    try {
+      sessionStorage.setItem(GALERI_CACHE_PREFIX + key, JSON.stringify(entry));
+    } catch {
+      // Abaikan jika quota penuh
+    }
+  }
+}
+
+function clearGaleriCache() {
+  galeriMemoryCache.clear();
+  if (typeof window !== "undefined") {
+    try {
+      const toRemove = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const k = sessionStorage.key(i);
+        if (k && (k.startsWith(GALERI_CACHE_PREFIX) || k === GALERI_YEARS_KEY)) {
+          toRemove.push(k);
+        }
+      }
+      toRemove.forEach((k) => sessionStorage.removeItem(k));
+    } catch {
+      // Abaikan
+    }
+  }
+}
+
+function dataURLtoFile(dataurl, filename) {
+  const arr = dataurl.split(",");
+  const mime = arr[0].match(/:(.*?);/)?.[1] || "image/webp";
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+}
 
 const emptyForm = {
   published_at: null,
@@ -12,18 +98,32 @@ const emptyForm = {
 };
 
 export function useGaleriManager() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Ambil cache awal secara instan (0 milidetik, tanpa tunggu fetch)
+  const initialCache = useMemo(() => {
+    return getCachedGaleri(1, "", "");
+  }, []);
+
+  const [items, setItems] = useState(() => initialCache?.items || []);
+  const [loading, setLoading] = useState(() => !initialCache);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [yearFilter, setYearFilter] = useState("");
-  const [availableYears, setAvailableYears] = useState([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [totalPages, setTotalPages] = useState(() => initialCache?.totalPages || 1);
+  const [totalItems, setTotalItems] = useState(() => initialCache?.totalItems || 0);
+  const [availableYears, setAvailableYears] = useState(() => initialCache?.availableYears || []);
 
   const [openForm, setOpenForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -35,45 +135,139 @@ export function useGaleriManager() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const loadItems = useCallback(async (signal, page = 1, search = "", year = "") => {
+  // Muat daftar tahun dokumentasi galeri
+  const loadYears = useCallback(async () => {
     try {
-      setLoading(true);
-      let url = `/api/admin/galeri?page=${page}&limit=${ITEMS_PER_PAGE}`;
-      if (search && search.trim()) {
-        url += `&q=${encodeURIComponent(search.trim())}`;
+      if (typeof window !== "undefined") {
+        const cachedYears = sessionStorage.getItem(GALERI_YEARS_KEY);
+        if (cachedYears) {
+          const parsed = JSON.parse(cachedYears);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setAvailableYears(parsed);
+            return parsed;
+          }
+        }
       }
-      if (year) {
-        url += `&year=${encodeURIComponent(year)}`;
-      }
-      const response = await fetch(url, { cache: "no-store", signal });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Gagal memuat galeri.");
-      const list = data.items || [];
-      setItems(list);
-      preloadImages(list.map((it) => it.image_url));
+      const pb = getPocketBase();
+      const allList = await pb.collection("galeri").getFullList({
+        fields: "published_at",
+        sort: "-published_at",
+        requestKey: null,
+      });
+      const years = [
+        ...new Set(
+          allList
+            .map((r) => (r.published_at ? new Date(r.published_at).getFullYear() : null))
+            .filter(Boolean)
+        ),
+      ].sort((a, b) => b - a);
 
-      const total = Number(data.total ?? data.pagination?.total ?? (data.items?.length || 0));
-      const pages = Number(data.totalPages ?? data.pagination?.totalPages ?? Math.ceil(total / ITEMS_PER_PAGE) ?? 1);
-      setTotalPages(Math.max(1, pages));
-      setTotalItems(total);
-      if (Array.isArray(data.availableYears)) {
-        setAvailableYears(data.availableYears);
+      if (years.length > 0) {
+        setAvailableYears(years);
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem(GALERI_YEARS_KEY, JSON.stringify(years));
+          } catch {}
+        }
       }
-    } catch (err) {
-      if (err.name === "AbortError") return;
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      return years;
+    } catch {
+      return [];
     }
   }, []);
 
+  const loadItems = useCallback(
+    async (signal, page = 1, search = "", year = "", isSilent = false) => {
+      const cached = getCachedGaleri(page, search, year);
+      if (cached && !isSilent) {
+        setItems(cached.items);
+        setTotalPages(cached.totalPages);
+        setTotalItems(cached.totalItems);
+        if (cached.availableYears?.length > 0) {
+          setAvailableYears(cached.availableYears);
+        }
+        setLoading(false);
+      } else if (!isSilent) {
+        setLoading(true);
+      }
+
+      try {
+        const pb = getPocketBase();
+
+        // Susun filter dinamis PocketBase
+        const filterParts = [];
+        if (search && search.trim()) {
+          const safeSearch = search.trim().replace(/['"]/g, "");
+          filterParts.push(`title ~ "${safeSearch}"`);
+        }
+        if (year && year.trim()) {
+          const safeYear = year.trim();
+          filterParts.push(`published_at >= "${safeYear}-01-01 00:00:00" && published_at <= "${safeYear}-12-31 23:59:59"`);
+        }
+
+        const options = {
+          sort: "-published_at",
+          requestKey: null,
+        };
+        if (filterParts.length > 0) {
+          options.filter = filterParts.join(" && ");
+        }
+
+        const res = await pb.collection("galeri").getList(page, ITEMS_PER_PAGE, options);
+
+        // Optimasi: siapkan URL original dan URL thumbnail 400x533 (ringan, tajam, auto-cached)
+        const list = res.items.map((it) => {
+          const fullUrl = it.image_file ? getPocketBaseFileUrl(it, it.image_file) : (it.image_url || "");
+          const thumbUrl = it.image_file ? getPocketBaseFileUrl(it, it.image_file, { thumb: "400x533" }) : fullUrl;
+          return {
+            ...it,
+            image_url: fullUrl,
+            thumb_url: thumbUrl,
+          };
+        });
+
+        const pages = Math.max(1, res.totalPages);
+        const total = res.totalItems || 0;
+
+        setItems(list);
+        setTotalPages(pages);
+        setTotalItems(total);
+
+        // Simpan ke cache (In-Memory + SessionStorage)
+        setCachedGaleri(page, search, year, {
+          items: list,
+          totalPages: pages,
+          totalItems: total,
+          availableYears,
+        });
+
+        // Preload thumbnail gambar agar tersimpan di cache disk browser
+        preloadImages(list.map((it) => it.thumb_url || it.image_url));
+      } catch (err) {
+        if (err.name === "AbortError" || err.isAbort) return;
+        if (!cached) {
+          setError(err.message || "Gagal memuat galeri.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [availableYears]
+  );
+
+  useEffect(() => {
+    loadYears();
+  }, [loadYears]);
+
   useEffect(() => {
     const controller = new AbortController();
-    loadItems(controller.signal, currentPage, searchQuery, yearFilter);
+    const cached = getCachedGaleri(currentPage, debouncedSearch, yearFilter);
+    // Jika data sudah ada di cache, lakukan background silent revalidation
+    loadItems(controller.signal, currentPage, debouncedSearch, yearFilter, Boolean(cached));
     return () => controller.abort();
-  }, [currentPage, searchQuery, yearFilter, refreshKey, loadItems]);
+  }, [currentPage, debouncedSearch, yearFilter, refreshKey, loadItems]);
 
-  const paginatedItems = items; // Already paginated from server
+  const paginatedItems = items; // Sudah di-paginate di level database
 
   const imagePreview = useMemo(() => {
     if (editingId && form.gallery_upload_base64) return [form.gallery_upload_base64];
@@ -190,41 +384,56 @@ export function useGaleriManager() {
   async function handleSave() {
     try {
       setSaving(true);
-      const url = editingId
-        ? `/api/admin/galeri?id=${editingId}`
-        : "/api/admin/galeri";
-      const method = editingId ? "PUT" : "POST";
-
-      const payload = {
-        published_at: form.published_at,
-      };
+      setError("");
+      const pb = getPocketBase();
 
       if (editingId) {
-        payload.gallery_upload_base64 = form.gallery_upload_base64;
-      } else {
-        payload.gallery_uploads = form.gallery_uploads;
+        if (form.gallery_upload_base64 && form.gallery_upload_base64.startsWith("data:")) {
+          const file = dataURLtoFile(form.gallery_upload_base64, `galeri_edit_${Date.now()}.webp`);
+          const formData = new FormData();
+          formData.append("image_file", file);
+          formData.append(
+            "published_at",
+            form.published_at ? new Date(form.published_at).toISOString() : new Date().toISOString()
+          );
+          await pb.collection("galeri").update(editingId, formData);
+        } else {
+          await pb.collection("galeri").update(editingId, {
+            published_at: form.published_at ? new Date(form.published_at).toISOString() : new Date().toISOString(),
+          });
+        }
+      } else if (Array.isArray(form.gallery_uploads) && form.gallery_uploads.length > 0) {
+        for (let i = 0; i < form.gallery_uploads.length; i++) {
+          const up = form.gallery_uploads[i];
+          const base64Str = typeof up === "string" ? up : (up?.base64 || up?.image_url || "");
+          if (base64Str && base64Str.startsWith("data:")) {
+            const file = dataURLtoFile(base64Str, `galeri_${Date.now()}_${i + 1}.webp`);
+            const formData = new FormData();
+            formData.append("image_file", file);
+            formData.append("is_published", "true");
+            formData.append("source_type", "manual");
+            formData.append(
+              "published_at",
+              form.published_at ? new Date(form.published_at).toISOString() : new Date().toISOString()
+            );
+            await pb.collection("galeri").create(formData);
+          }
+        }
       }
 
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      // Bersihkan cache agar data baru termuat
+      clearGaleriCache();
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Gagal menyimpan.");
-
-      setMessage(data.message);
+      setMessage("Visual galeri berhasil disimpan.");
       handleCloseForm();
-      
-      // If we are on page 1, manually reload, else set page 1 to trigger reload
+
       if (currentPage === 1) {
-        await loadItems(null, 1);
+        await loadItems(null, 1, searchQuery, yearFilter);
       } else {
         setCurrentPage(1);
       }
     } catch (err) {
-      setError(err.message);
+      setError(err?.message || "Gagal menyimpan galeri.");
     } finally {
       setSaving(false);
     }
@@ -239,17 +448,18 @@ export function useGaleriManager() {
     if (!deleteTarget) return;
     try {
       setDeletingId(deleteTarget.id);
-      const response = await fetch(`/api/admin/galeri?id=${deleteTarget.id}`, {
-        method: "DELETE",
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Gagal menghapus.");
-      setMessage("Item berhasil dihapus.");
+      const pb = getPocketBase();
+      await pb.collection("galeri").delete(deleteTarget.id);
+
+      // Bersihkan cache agar data baru termuat
+      clearGaleriCache();
+
+      setMessage("Item galeri berhasil dihapus.");
       setShowDeleteConfirm(false);
       setDeleteTarget(null);
-      await loadItems(null, currentPage); // stay on same page
+      await loadItems(null, currentPage, searchQuery, yearFilter);
     } catch (err) {
-      setError(err.message);
+      setError(err?.message || "Gagal menghapus galeri.");
     } finally {
       setDeletingId(null);
     }
@@ -310,6 +520,9 @@ export function useGaleriManager() {
     yearFilter,
     setYearFilter,
     availableYears,
-    triggerRefresh: () => setRefreshKey((k) => k + 1),
+    triggerRefresh: () => {
+      clearGaleriCache();
+      setRefreshKey((k) => k + 1);
+    },
   };
 }

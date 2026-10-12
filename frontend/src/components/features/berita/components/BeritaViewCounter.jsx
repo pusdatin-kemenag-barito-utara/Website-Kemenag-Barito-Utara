@@ -1,8 +1,8 @@
-"use client";
-
 import React, { useEffect, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { Eye } from "lucide-react";
+import { incrementBeritaViewCount, getPublicBeritaBySlug } from "@/lib/pocketbase/db";
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 export default function BeritaViewCounter({ slug, initialViews = 0 }) {
   const { t, locale } = useLanguage();
@@ -13,7 +13,6 @@ export default function BeritaViewCounter({ slug, initialViews = 0 }) {
     if (!slug) return;
 
     let isMounted = true;
-    const controller = new AbortController();
 
     async function recordAndFetchView() {
       try {
@@ -22,62 +21,52 @@ export default function BeritaViewCounter({ slug, initialViews = 0 }) {
           typeof sessionStorage !== "undefined" &&
           sessionStorage.getItem(sessionKey) === "1";
 
-        // Hanya kirim increment jika belum tercatat dalam sesi kunjungan browser ini
         if (!alreadyViewedInSession) {
-          const response = await fetch(`/api/berita/${slug}/view`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            signal: controller.signal,
-          });
+          const updated = await incrementBeritaViewCount(slug);
+          try {
+            sessionStorage.setItem(sessionKey, "1");
+          } catch {}
 
-          if (response.ok) {
-            try {
-              sessionStorage.setItem(sessionKey, "1");
-            } catch {}
-
-            const data = await response.json();
-            const count =
-              typeof data?.views === "number"
-                ? data.views
-                : typeof data?.data?.views === "number"
-                ? data.data.views
-                : null;
-            if (isMounted && count !== null) {
-              setViews(count);
-              setIsUpdating(true);
-              setTimeout(() => {
-                if (isMounted) setIsUpdating(false);
-              }, 800);
-            }
+          if (isMounted && typeof updated?.views === "number") {
+            setViews(updated.views);
+            setIsUpdating(true);
+            setTimeout(() => {
+              if (isMounted) setIsUpdating(false);
+            }, 800);
           }
         }
       } catch (err) {
-        if (err?.name === "AbortError") return;
+        // silent
       }
     }
 
     recordAndFetchView();
 
-    // Background interval sync (setiap 20 detik)
-    const interval = setInterval(async () => {
+    // Native PocketBase Realtime SSE subscription
+    const pb = getPocketBase();
+    let unsubscribe = null;
+    (async () => {
       try {
-        const res = await fetch(`/api/berita/${slug}`, { cache: "no-store" });
-        if (res.ok) {
-          const data = await res.json();
-          const latest = data?.berita?.views ?? data?.views;
-          if (isMounted && typeof latest === "number" && latest !== views) {
-            setViews(latest);
-          }
+        const record = await getPublicBeritaBySlug(slug);
+        if (record?.id && isMounted) {
+          unsubscribe = await pb.collection("berita").subscribe(record.id, (e) => {
+            if (isMounted && e.action === "update" && typeof e.record?.views === "number") {
+              setViews(e.record.views);
+              setIsUpdating(true);
+              setTimeout(() => {
+                if (isMounted) setIsUpdating(false);
+              }, 800);
+            }
+          });
         }
-      } catch {
-        // silent fail on network glitch
-      }
-    }, 20000);
+      } catch {}
+    })();
 
     return () => {
       isMounted = false;
-      controller.abort();
-      clearInterval(interval);
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
   }, [slug]);
 

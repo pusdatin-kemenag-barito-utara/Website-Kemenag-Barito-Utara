@@ -7,6 +7,7 @@ import {
   ActionIconButton,
   StatusPill,
 } from "../slides/SlidesUI";
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 // Helper to extract 11-char YouTube ID from any format (watch, youtu.be, shorts, embed, live)
 function extractYoutubeId(raw = "") {
@@ -327,12 +328,14 @@ export default function YoutubeManager() {
     try {
       setLoading(true);
       setError("");
-      const res = await fetch("/api/admin/youtube", { cache: "no-store" });
-      if (!res.ok) throw new Error("Gagal memuat daftar video YouTube.");
-      const data = await res.json();
-      setItems(Array.isArray(data) ? data : []);
+      const pb = getPocketBase();
+      const records = await pb.collection("youtube_videos").getFullList({
+        sort: "sort_order",
+      });
+      setItems(Array.isArray(records) ? records : []);
     } catch (err) {
-      setError(err.message || "Terjadi kesalahan saat memuat data.");
+      if (err.name === "AbortError" || err.isAbort) return;
+      setError(err.message || "Terjadi kesalahan saat memuat data video YouTube.");
     } finally {
       setLoading(false);
     }
@@ -386,7 +389,7 @@ export default function YoutubeManager() {
       setUrlError("");
       try {
         setFetchingTitle(true);
-        const res = await fetch(`/api/admin/youtube/info?url=${encodeURIComponent(rawVal)}`);
+        const res = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${id}`);
         if (res.ok) {
           const data = await res.json();
           if (data && data.title && !form.title) {
@@ -443,19 +446,15 @@ export default function YoutubeManager() {
         title: form.title.trim(),
         youtube_id: finalId,
         is_published: form.is_published,
+        sort_order: editingId ? undefined : items.length + 1,
       };
 
-      const url = editingId ? `/api/admin/youtube/${editingId}` : "/api/admin/youtube";
-      const method = editingId ? "PATCH" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error || "Gagal menyimpan video.");
+      const pb = getPocketBase();
+      if (editingId) {
+        await pb.collection("youtube_videos").update(editingId, payload);
+      } else {
+        await pb.collection("youtube_videos").create(payload);
+      }
 
       setMessage(editingId ? "Video YouTube berhasil diperbarui." : "Video YouTube baru berhasil ditambahkan.");
       setOpenForm(false);
@@ -470,9 +469,8 @@ export default function YoutubeManager() {
   const handleDelete = async () => {
     if (!deletingId) return;
     try {
-      const res = await fetch(`/api/admin/youtube/${deletingId}`, { method: "DELETE" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error || "Gagal menghapus video.");
+      const pb = getPocketBase();
+      await pb.collection("youtube_videos").delete(deletingId);
 
       setMessage("Video YouTube berhasil dihapus.");
       fetchItems();
@@ -493,12 +491,8 @@ export default function YoutubeManager() {
     );
 
     try {
-      const res = await fetch(`/api/admin/youtube/${item.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_published: nextState }),
-      });
-      if (!res.ok) throw new Error("Gagal mengubah status publikasi.");
+      const pb = getPocketBase();
+      await pb.collection("youtube_videos").update(item.id, { is_published: nextState });
       setMessage(nextState ? "Video sekarang tayang di beranda." : "Video dialihkan ke draf.");
     } catch (err) {
       setError(err.message || "Gagal mengubah status.");
@@ -529,17 +523,10 @@ export default function YoutubeManager() {
     setItems(newItems);
 
     try {
+      const pb = getPocketBase();
       await Promise.all([
-        fetch(`/api/admin/youtube/${itemA.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sort_order: itemA.sort_order }),
-        }),
-        fetch(`/api/admin/youtube/${itemB.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sort_order: itemB.sort_order }),
-        }),
+        pb.collection("youtube_videos").update(itemA.id, { sort_order: itemA.sort_order }),
+        pb.collection("youtube_videos").update(itemB.id, { sort_order: itemB.sort_order }),
       ]);
     } catch (err) {
       fetchItems();

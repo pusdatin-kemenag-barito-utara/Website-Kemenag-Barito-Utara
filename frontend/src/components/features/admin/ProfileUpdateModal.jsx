@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { getPocketBase } from "@/lib/pocketbase/client";
 import { createPortal } from "react-dom";
 import Cropper from "react-easy-crop";
 import { logError } from "@/lib/logger";
@@ -23,7 +23,7 @@ export default function ProfileUpdateModal({ open, onClose, profile, onUpdateSuc
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const fileInputRef = useRef(null);
-  const supabase = createClient();
+  const pb = getPocketBase();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -133,38 +133,20 @@ export default function ProfileUpdateModal({ open, onClose, profile, onUpdateSuc
         throw new Error("Nama lengkap tidak boleh kosong");
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Sesi login tidak valid. Silakan login kembali.");
-
-      let finalAvatarUrl = profile?.avatar_url;
-      let avatarBase64 = null;
-
-      // Konversi avatarFile ke base64 jika ada foto baru
-      if (avatarFile) {
-        avatarBase64 = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.readAsDataURL(avatarFile);
-        });
+      if (!pb.authStore.record?.id) {
+        throw new Error("Sesi login tidak valid. Silakan login kembali.");
       }
 
-      // Update ke database backend (backend meng-handle storage upload & DB update)
-      const response = await fetch("/api/admin/update-profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: trimmedName,
-          email,
-          avatarUrl: finalAvatarUrl,
-          avatarBase64,
-          accessToken: session.access_token,
-        }),
-      });
+      const formData = new FormData();
+      formData.append("name", trimmedName);
+      if (avatarFile) {
+        formData.append("avatar", avatarFile);
+      }
 
-      const resData = await response.json();
-      if (!response.ok) throw new Error(resData.message || "Gagal memperbarui profil");
-
-      const newAvatarUrl = resData.avatar_url || resData.data?.avatar_url || finalAvatarUrl;
+      const updatedRecord = await pb.collection("users").update(pb.authStore.record.id, formData);
+      const newAvatarUrl = updatedRecord.avatar
+        ? pb.files.getURL(updatedRecord, updatedRecord.avatar)
+        : (profile?.avatar_url || "");
 
       setSuccess("Profil berhasil diperbarui.");
       

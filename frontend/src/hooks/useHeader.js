@@ -4,6 +4,7 @@ import { getNavigationItems } from "../data/navigation";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { searchSite } from "../lib/search";
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 export function useHeader(options = {}) {
   const currentPathname = usePathname();
@@ -106,35 +107,27 @@ export function useHeader(options = {}) {
       } catch {}
     }
 
-    const controller = new AbortController();
-
-    async function checkAdminSession() {
+    function checkAdminSession() {
       try {
-        const res = await fetch("/api/admin/session", {
-          method: "GET",
-          cache: "no-store",
-          signal: controller.signal,
-        });
+        const pb = getPocketBase();
+        const isValid = Boolean(pb?.authStore?.isValid);
+        const record = pb?.authStore?.record;
+        const role = record?.role || "";
+        const isAdmin = isValid && (role === "admin" || role === "superadmin" || role === "editor");
 
-        if (!res.ok) throw new Error("Gagal membaca session admin");
-
-        const data = await res.json();
-
-        const state = { loaded: true, isAdmin: Boolean(data?.permissions?.isAdmin) };
+        const state = { loaded: true, isAdmin };
         setAdminState(state);
 
         try {
           sessionStorage.setItem("admin_session", JSON.stringify(state));
           sessionStorage.setItem("admin_session_time", String(Date.now()));
         } catch {}
-      } catch (err) {
-        if (err.name === "AbortError") return;
+      } catch {
         setAdminState({ loaded: true, isAdmin: false });
       }
     }
 
     checkAdminSession();
-    return () => controller.abort();
   }, []);
 
   useEffect(() => {

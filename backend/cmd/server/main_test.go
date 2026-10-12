@@ -34,5 +34,5 @@ func TestLoggerFormat(t *testing.T) {
 
 func TestPrintStartupBanner(t *testing.T) {
 	// Memastikan printStartupBanner berjalan tanpa panic dan memformat output dengan benar
-	printStartupBanner(142*time.Millisecond, "8080", 12400*time.Microsecond, nil, 1500*time.Microsecond, 62)
+	printStartupBanner(142*time.Millisecond, "8080", 12400*time.Microsecond, 1500*time.Microsecond, 62)
 }

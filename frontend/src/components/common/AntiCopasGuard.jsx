@@ -1,6 +1,5 @@
-"use client";
-
 import { useEffect, useState } from "react";
+import { getPublicSettings } from "@/lib/pocketbase/db";
 
 /**
  * AntiCopasGuard
@@ -19,10 +18,9 @@ export default function AntiCopasGuard() {
     const isPortal = pathname === "/" || pathname === "/portal";
     if (!isPortal) return;
 
-    // Fetch pengaturan langsung dari endpoint publik
+    // Fetch pengaturan langsung dari PocketBase
     const loadSetting = () => {
-      fetch("/api/settings", { cache: "no-store" })
-        .then((res) => (res.ok ? res.json() : null))
+      getPublicSettings()
         .then((data) => {
           if (data && (data.fitur_anti_copas === true || data.fitur_anti_copas === "true")) {
             setActive(true);

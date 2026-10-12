@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "@/hooks/useNextNavigation";
-import { createClient } from "@/lib/supabase/client";
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 export function useUpdatePassword() {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
+  const pb = getPocketBase();
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -17,26 +17,13 @@ export function useUpdatePassword() {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    let active = true;
-    async function checkRecoverySession() {
-      try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (!active) return;
-        if (error || !user) {
-          setError("Sesi reset password tidak valid atau sudah kedaluwarsa.");
-          setChecking(false);
-          return;
-        }
-        setReady(true);
-      } catch (err) {
-        if (active) setError(err?.message || "Terjadi kesalahan saat memeriksa sesi.");
-      } finally {
-        if (active) setChecking(false);
-      }
+    if (pb.authStore.isValid && pb.authStore.record) {
+      setReady(true);
+    } else {
+      setError("Sesi update password tidak valid atau belum login.");
     }
-    checkRecoverySession();
-    return () => { active = false; };
-  }, [supabase]);
+    setChecking(false);
+  }, [pb]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -46,10 +33,13 @@ export function useUpdatePassword() {
 
     setSubmitting(true);
     try {
-      const { error: updateError } = await supabase.auth.updateUser({ password });
-      if (updateError) throw updateError;
+      await pb.collection("users").update(pb.authStore.record.id, {
+        password: password,
+        passwordConfirm: confirmPassword,
+      });
       setSuccess("Password berhasil diperbarui. Silakan login kembali.");
       setPassword(""); setConfirmPassword("");
+      pb.authStore.clear();
       setTimeout(() => router.replace("/pusdatin/auth"), 1500);
     } catch (err) {
       setError(err?.message || "Gagal memperbarui password.");

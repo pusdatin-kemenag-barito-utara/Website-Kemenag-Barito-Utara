@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"kemenag-backend/internal/db"
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
 
@@ -93,23 +92,13 @@ func jsonString(s string) string {
 
 // ChatToolsHandler — GET /api/chat/tools (daftar layanan + lokasi untuk UI)
 func ChatToolsHandler(c fiber.Ctx) error {
-	ctx, cancel := context.WithTimeout(c.Context(), 6*time.Second)
-	defer cancel()
-	pool := db.Get()
-
-	services := []fiber.Map{}
-	if pool != nil {
-		rows, err := pool.Query(ctx, `
-			SELECT slug, judul, nama_kepala FROM kemenag_website.seksi ORDER BY created_at ASC`)
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var slug, judul, namaKepala string
-				if err := rows.Scan(&slug, &judul, &namaKepala); err == nil {
-					services = append(services, fiber.Map{"slug": slug, "judul": judul, "nama_kepala": namaKepala})
-				}
-			}
-		}
+	defaultServices := []fiber.Map{
+		{"slug": "tata-usaha", "judul": "Subbagian Tata Usaha", "nama_kepala": "Kepala Subbagian Tata Usaha"},
+		{"slug": "pendidikan-madrasah", "judul": "Seksi Pendidikan Madrasah", "nama_kepala": "Kepala Seksi Pendis"},
+		{"slug": "bimas-islam", "judul": "Seksi Bimbingan Masyarakat Islam", "nama_kepala": "Kepala Seksi Bimas Islam"},
+		{"slug": "haji-umrah", "judul": "Seksi Penyelenggaraan Haji dan Umrah", "nama_kepala": "Kepala Seksi PHU"},
+		{"slug": "pakis", "judul": "Seksi Pendidikan Agama dan Keagamaan Islam", "nama_kepala": "Kepala Seksi PAKIS"},
+		{"slug": "zakat-wakaf", "judul": "Penyelenggara Zakat dan Wakaf", "nama_kepala": "Penyelenggara Zawa"},
 	}
 
 	return response.OK(c, fiber.Map{
@@ -119,6 +108,6 @@ func ChatToolsHandler(c fiber.Ctx) error {
 			"lat":     -0.9564,
 			"lng":     114.8945,
 		},
-		"services": services,
+		"services": defaultServices,
 	})
 }

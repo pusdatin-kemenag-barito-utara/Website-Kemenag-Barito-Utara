@@ -34,7 +34,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Guard Server-Side Astro: Bila mengakses area /admin/* tanpa cookie sesi login yang sah,
   // langsung tolak dan direct ke halaman login rahasia (/pusdatin/auth).
   if (pathname.startsWith("/admin")) {
-    const authCookie = context.cookies.get("sb-website-auth-token");
+    const authCookie = context.cookies.get("pb_auth") || context.cookies.get("sb-website-auth-token");
     if (!authCookie || !authCookie.value) {
       const loginUrl = new URL("/pusdatin/auth", context.url);
       return context.redirect(loginUrl.toString(), 302);

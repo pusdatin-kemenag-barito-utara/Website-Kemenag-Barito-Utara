@@ -34,8 +34,9 @@ export function GalleryLightbox({
 
   const handleDownload = async (e) => {
     e.stopPropagation();
+    const targetUrl = item.fullImageUrl || item.imageUrl;
     try {
-      const response = await fetch(item.imageUrl);
+      const response = await fetch(targetUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -47,7 +48,7 @@ export function GalleryLightbox({
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch {
-      window.open(item.imageUrl, "_blank");
+      window.open(targetUrl, "_blank");
     }
   };
 
@@ -126,7 +127,7 @@ export function GalleryLightbox({
             className="flex h-full w-full items-center justify-center p-2"
           >
             <img
-              src={item.imageUrl}
+              src={item.fullImageUrl || item.imageUrl}
               alt={item.title || "Preview Galeri"}
               className="max-h-[76vh] sm:max-h-[80vh] max-w-full rounded-2xl object-contain shadow-[0_20px_60px_rgba(0,0,0,0.8)] select-none border border-white/10 ring-1 ring-white/5"
             />

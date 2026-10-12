@@ -12,10 +12,7 @@ interface ImportMetaEnv {
   readonly SSR?: boolean;
   readonly MODE?: string;
   readonly NEXT_PUBLIC_SITE_URL?: string;
-  readonly NEXT_PUBLIC_SUPABASE_URL?: string;
-  readonly NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
-  readonly NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
-  readonly NEXT_PUBLIC_SUPABASE_CMS_BUCKET?: string;
+  readonly NEXT_PUBLIC_POCKETBASE_URL?: string;
   readonly NEXT_PUBLIC_TURNSTILE_SITE_KEY?: string;
   readonly NEXT_PUBLIC_GA_ID?: string;
   readonly NEXT_PUBLIC_GTM_ID?: string;

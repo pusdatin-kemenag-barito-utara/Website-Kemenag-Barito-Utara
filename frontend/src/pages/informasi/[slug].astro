@@ -1,5 +1,5 @@
 ---
-import { apiGet } from "@/lib/api-client";
+import { getStaticPageBySlug } from "@/lib/pocketbase/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import InformasiSlugShell from "@/components/features/informasi/InformasiSlugShell";
 import { breadcrumbSchema } from "@/lib/structured-data";
@@ -10,13 +10,13 @@ const { slug } = Astro.params;
 
 let pageData = null;
 try {
-  const res = await apiGet(`/static-pages?slug=${encodeURIComponent(slug)}`);
+  const res = await getStaticPageBySlug(slug);
   if (res && res.title) {
     pageData = {
       title: res.title,
       description: res.description || "",
       content: res.content || "",
-      updated_at: res.updated_at || null,
+      updated_at: res.updated || null,
     };
   }
 } catch (err) {

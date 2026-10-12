@@ -3,35 +3,7 @@ import {
   deriveEditorPermissionGroups,
   expandEditorPermissionGroups,
 } from "@/lib/permissions";
-
-async function parseSafeJsonResponse(res) {
-  const rawText = await res.text();
-  const contentType = String(
-    res.headers.get("content-type") || "",
-  ).toLowerCase();
-
-  if (!rawText) {
-    return {};
-  }
-
-  if (contentType.includes("application/json")) {
-    try {
-      return JSON.parse(rawText);
-    } catch {
-      return {};
-    }
-  }
-
-  try {
-    return JSON.parse(rawText);
-  } catch {
-    return {
-      message: res.ok
-        ? "Respons server tidak dalam format JSON."
-        : "Server mengembalikan respons tidak valid. Silakan coba lagi.",
-    };
-  }
-}
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 export function useEditorsManagement(initialEditors = []) {
   const [busyAction, setBusyAction] = useState("");
@@ -72,26 +44,34 @@ export function useEditorsManagement(initialEditors = []) {
 
   const [toast, setToast] = useState(null);
 
-  async function loadEditors(signal) {
+  async function loadEditors() {
     setLoading(true);
     setError("");
 
     try {
-      const res = await fetch("/api/admin/editors", {
-        method: "GET",
-        cache: "no-store",
-        signal,
+      const pb = getPocketBase();
+      const records = await pb.collection("users").getFullList({
+        sort: "-created",
       });
 
-      const data = await parseSafeJsonResponse(res);
+      const mapped = records.map((u) => ({
+        user_id: u.id,
+        id: u.id,
+        full_name: u.name || u.email,
+        name: u.name || "",
+        email: u.email,
+        unit_name: u.unit_name || "-",
+        role: u.role || "editor",
+        status: u.status || (u.is_active !== false ? "active" : "inactive"),
+        is_active: u.is_active !== false,
+        permissions: Array.isArray(u.permissions) ? u.permissions : [],
+        last_sign_in_at: u.last_sign_in_at || u.updated,
+        created_at: u.created,
+      }));
 
-      if (!res.ok) {
-        throw new Error(data?.message || "Gagal memuat data editor.");
-      }
-
-      setEditors(Array.isArray(data?.editors) ? data.editors : []);
+      setEditors(mapped);
     } catch (err) {
-      if (err.name === "AbortError") return;
+      if (err.name === "AbortError" || err.isAbort) return;
       setError(err?.message || "Terjadi kesalahan saat memuat editor.");
     } finally {
       setLoading(false);
@@ -99,11 +79,9 @@ export function useEditorsManagement(initialEditors = []) {
   }
 
   useEffect(() => {
-    const controller = new AbortController();
     if (!initialEditors?.length) {
-      loadEditors(controller.signal);
+      loadEditors();
     }
-    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -165,35 +143,27 @@ export function useEditorsManagement(initialEditors = []) {
     setError("");
 
     try {
-      const res = await fetch(`/api/admin/editors/${userId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await parseSafeJsonResponse(res);
-
-      if (res.status === 403) {
-        const forbiddenMessage =
-          data?.message ||
-          "Sesi Anda bukan super_admin aktif. Silakan login ulang dengan akun super_admin.";
-        throw new Error(forbiddenMessage);
+      const pb = getPocketBase();
+      if (payload.action === "delete") {
+        await pb.collection("users").delete(userId);
+        setEditors((prev) => prev.filter((ed) => ed.user_id !== userId));
+      } else if (payload.action === "approve") {
+        await pb.collection("users").update(userId, { status: "active", is_active: true });
+      } else if (payload.action === "reject") {
+        await pb.collection("users").update(userId, { status: "rejected", is_active: false });
+      } else if (payload.action === "activate") {
+        await pb.collection("users").update(userId, { status: "active", is_active: true });
+      } else if (payload.action === "deactivate") {
+        await pb.collection("users").update(userId, { status: "inactive", is_active: false });
+      } else if (payload.action === "unlock") {
+        await pb.collection("users").update(userId, { status: "active", is_active: true });
+      } else if (payload.action === "set_role") {
+        await pb.collection("users").update(userId, { role: payload.role });
       }
 
-      if (!res.ok) {
-        throw new Error(data?.message || "Aksi gagal diproses.");
-      }
-
-      const successMessage = successText || data?.message || "Aksi berhasil.";
+      const successMessage = successText || "Aksi berhasil diproses.";
       setMessage(successMessage);
       pushToast("success", successMessage);
-
-      // If it was a delete action, remove from local state immediately for snappy UI
-      if (payload.action === "delete") {
-        setEditors((prev) => prev.filter((ed) => ed.user_id !== userId));
-      }
 
       await loadEditors();
     } catch (err) {
@@ -214,24 +184,11 @@ export function useEditorsManagement(initialEditors = []) {
     setError("");
 
     try {
-      const res = await fetch(
-        `/api/admin/editors/${activeEditor.user_id}/permissions`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            permissions: expandEditorPermissionGroups(selectedPermissions),
-          }),
-        },
-      );
-
-      const data = await parseSafeJsonResponse(res);
-
-      if (!res.ok) {
-        throw new Error(data?.message || "Gagal menyimpan permission.");
-      }
+      const pb = getPocketBase();
+      const perms = expandEditorPermissionGroups(selectedPermissions);
+      await pb.collection("users").update(activeEditor.user_id, {
+        permissions: perms,
+      });
 
       setMessage("Permission editor berhasil disimpan.");
       pushToast("success", "Permission editor berhasil disimpan.");
@@ -321,22 +278,12 @@ export function useEditorsManagement(initialEditors = []) {
     setError("");
 
     try {
-      const res = await fetch(`/api/admin/editors/${roleEditor.user_id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "set_role",
-          role: roleDraft,
-        }),
+      const pb = getPocketBase();
+      await pb.collection("users").update(roleEditor.user_id, {
+        role: roleDraft,
       });
 
-      const data = await parseSafeJsonResponse(res);
-
-      if (!res.ok) {
-        throw new Error(data?.message || "Gagal mengubah role.");
-      }
-
-      const successMessage = data?.message || "Role akun berhasil diperbarui.";
+      const successMessage = "Role akun berhasil diperbarui.";
       setMessage(successMessage);
       pushToast("success", successMessage);
       closeRoleModal();
@@ -407,17 +354,17 @@ export function useEditorsManagement(initialEditors = []) {
     setError("");
 
     try {
-      const res = await fetch("/api/admin/editors/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(createFormData),
+      const pb = getPocketBase();
+      await pb.collection("users").create({
+        name: createFormData.fullName.trim(),
+        email: createFormData.email.trim(),
+        unit_name: createFormData.unitName.trim(),
+        password: createFormData.password,
+        passwordConfirm: createFormData.password,
+        role: "editor",
+        status: "active",
+        is_active: true,
       });
-
-      const data = await parseSafeJsonResponse(res);
-
-      if (!res.ok) {
-        throw new Error(data?.message || "Gagal membuat akun editor.");
-      }
 
       pushToast("success", "Akun editor baru berhasil dibuat dan langsung aktif.");
       closeCreateModal();

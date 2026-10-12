@@ -1,5 +1,6 @@
 ---
 import { apiGet } from "@/lib/api-client";
+import { getPublicSeksiBySlug } from "@/lib/pocketbase/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import ProfilPejabatSlugShell from "@/components/features/informasi/ProfilPejabatSlugShell";
 import { breadcrumbSchema } from "@/lib/structured-data";
@@ -18,6 +19,19 @@ try {
   seksiData = null;
 }
 
+if (!seksiData || !seksiData.pegawai || seksiData.pegawai.length === 0) {
+  try {
+    const pbData = await getPublicSeksiBySlug(slug);
+    if (pbData) {
+      seksiData = {
+        ...(seksiData || {}),
+        ...pbData,
+        pegawai: pbData.pegawai && pbData.pegawai.length > 0 ? pbData.pegawai : (seksiData?.pegawai || []),
+      };
+    }
+  } catch (_e) {}
+}
+
 if (!seksiData) {
   try {
     const listRes = await apiGet("/seksi");
@@ -31,6 +45,20 @@ if (!seksiData) {
 if (!seksiData) {
   return Astro.redirect("/informasi", 404);
 }
+
+// Pastikan URL foto dan posisi vertikal wajah terisi utuh
+const fotoKepalaUrl = seksiData.foto_kepala || (seksiData.foto_kepala_file ? `https://dbb.kemenag-baritoutara.com/api/files/seksi/${seksiData.id}/${seksiData.foto_kepala_file}` : "");
+const pegawais = (seksiData.pegawai || []).map((p: any) => ({
+  ...p,
+  foto: p.foto || (p.foto_file ? `https://dbb.kemenag-baritoutara.com/api/files/pegawai_seksi/${p.id}/${p.foto_file}` : ""),
+  foto_y: typeof p.foto_y === "number" ? p.foto_y : 50,
+}));
+seksiData = {
+  ...seksiData,
+  foto_kepala: fotoKepalaUrl,
+  foto_kepala_y: typeof seksiData.foto_kepala_y === "number" ? seksiData.foto_kepala_y : 50,
+  pegawai: pegawais,
+};
 ---
 
 <BaseLayout

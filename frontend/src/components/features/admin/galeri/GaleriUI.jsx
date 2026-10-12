@@ -142,7 +142,7 @@ export function DeleteConfirmModal({ open, onConfirm, onCancel, loading, title, 
         <div className="mt-8 flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 h-12 rounded-xl bg-rose-600 text-[10px] font-black uppercase tracking-widest text-white shadow-md shadow-rose-600/20 hover:bg-rose-700 transition-all active:scale-95"
+            className="flex-1 h-12 rounded-xl border border-slate-200 bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-200 transition-all active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Batal
           </button>

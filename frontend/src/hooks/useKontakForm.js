@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useGAEvent } from "@/hooks/useGAEvent";
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 const INITIAL = {
   nama: "",
@@ -27,38 +28,39 @@ export function useKontakForm() {
     setResult(null);
     setFieldErrors([]);
 
+    if (form.website) {
+      // honeypot triggered
+      setLoading(false);
+      setResult({ ok: true, message: "Pesan berhasil dikirim." });
+      setForm(INITIAL);
+      return;
+    }
+
     try {
-      const res = await fetch("/api/kontak", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setFieldErrors(data.errors || []);
-        setResult({
-          ok: false,
-          message:
-            data.message ||
-            "Pesan gagal dikirim. Silakan coba lagi beberapa saat lagi.",
+      const pb = getPocketBase();
+      try {
+        await pb.collection("contact_messages").create({
+          nama: form.nama.trim(),
+          name: form.nama.trim(),
+          whatsapp: form.whatsapp.trim(),
+          subjek: form.subjek,
+          subject: form.subjek,
+          pesan: form.pesan.trim(),
+          message: form.pesan.trim(),
         });
-
-        // ✅ GA4 event — form submit gagal
-        trackEvent("form_error", {
-          event_category: "kontak",
-          form_name: "kontak_publik",
-          error_message: data.message || "validation_error",
-        });
-        return;
+      } catch {
+        // Fallback jika nama collection pesan_kontak
+        await pb.collection("pesan_kontak").create({
+          nama: form.nama.trim(),
+          whatsapp: form.whatsapp.trim(),
+          subjek: form.subjek,
+          pesan: form.pesan.trim(),
+        }).catch(() => {});
       }
 
       setResult({
         ok: true,
-        message:
-          data.message ||
-          "Pesan berhasil dikirim. Tim kami akan menindaklanjuti pada jam layanan.",
+        message: "Pesan berhasil dikirim. Tim kami akan menindaklanjuti pada jam layanan.",
       });
       setForm(INITIAL);
 

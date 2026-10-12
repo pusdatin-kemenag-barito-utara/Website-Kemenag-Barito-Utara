@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { compressImageToBase64 } from "@/lib/image-compress";
 import { toCoverPreviewUrl, preloadImages } from "@/lib/cover-image";
+import { getPocketBase, getPocketBaseFileUrl } from "@/lib/pocketbase/client";
 
 const emptyForm = {
   title: "",
@@ -80,63 +81,30 @@ export function useSlidesManager() {
       setLoading(true);
       setError("");
 
-      const params = new URLSearchParams();
-      params.set("page", String(currentPage));
-      params.set("limit", String(pageSize));
-      if (searchQuery.trim()) params.set("q", searchQuery.trim());
-      if (categoryFilter && categoryFilter !== "all") params.set("category", categoryFilter);
-      if (statusFilter === "published") params.set("is_published", "true");
-      if (statusFilter === "draft") params.set("is_published", "false");
-
-      const response = await fetch(`/api/admin/homepage-slides?${params.toString()}`, {
-        method: "GET",
-        cache: "no-store",
-        signal,
+      const pb = getPocketBase();
+      const records = await pb.collection("homepage_slides").getFullList({
+        sort: "sort_order",
+        requestKey: null,
       });
 
-      const data = await readJsonSafely(response);
-      if (!response.ok) {
-        throw new Error(data?.message || "Gagal memuat data infografis.");
-      }
+      const list = records.map((r) => ({
+        ...r,
+        image_url: r.image_file ? getPocketBaseFileUrl(r, r.image_file) : (r.image_url || ""),
+      }));
 
-      const list = Array.isArray(data?.items) ? data.items : [];
       setItems(list);
       preloadImages(list.map((it) => it.image_url));
 
-      // Parse dynamic categories from server
-      if (Array.isArray(data?.categories) && data.categories.length > 0) {
-        const colorPalette = [
-          "bg-emerald-500",
-          "bg-teal-500",
-          "bg-sky-500",
-          "bg-indigo-500",
-          "bg-amber-500",
-          "bg-purple-500",
-          "bg-rose-500",
-          "bg-cyan-500",
-        ];
-        const merged = data.categories.map((c, idx) => {
-          const existing = DEFAULT_CATEGORIES.find((d) => d.id === c.id);
-          return {
-            id: c.id,
-            label: c.label || c.id,
-            color: existing?.color || colorPalette[idx % colorPalette.length],
-          };
-        });
-        setCategories(merged);
-      }
-
-      const total = data?.pagination?.totalItems ?? data?.total ?? list.length;
-      const published = data?.pagination?.totalPublished ?? data?.publishedCount ?? 0;
-      const draft = data?.draftCount ?? (total - published >= 0 ? total - published : 0);
-      const pages = data?.pagination?.totalPages ?? data?.totalPages ?? 1;
+      const total = list.length;
+      const published = list.filter((x) => x.is_published).length;
+      const draft = total - published;
 
       setTotalItems(total);
       setTotalPublished(published);
       setTotalDraft(draft);
-      setTotalPages(pages > 0 ? pages : 1);
+      setTotalPages(Math.max(1, Math.ceil(total / pageSize)));
     } catch (err) {
-      if (err.name === "AbortError") return;
+      if (err.name === "AbortError" || err.isAbort) return;
       setError(err?.message || "Gagal memuat data infografis.");
       setItems([]);
     } finally {
@@ -219,16 +187,8 @@ export function useSlidesManager() {
     setTotalDraft((prev) => (nextStatus ? Math.max(0, prev - 1) : prev + 1));
 
     try {
-      const response = await fetch(`/api/admin/homepage-slides/${item.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_published: nextStatus }),
-      });
-
-      const data = await readJsonSafely(response);
-      if (!response.ok) {
-        throw new Error(data?.message || "Gagal mengubah status publikasi.");
-      }
+      const pb = getPocketBase();
+      await pb.collection("homepage_slides").update(item.id, { is_published: nextStatus });
 
       setMessage(
         nextStatus
@@ -334,20 +294,11 @@ export function useSlidesManager() {
         category: form.category || "utama",
       };
 
-      const url = editingId
-        ? `/api/admin/homepage-slides/${editingId}`
-        : "/api/admin/homepage-slides";
-      const method = editingId ? "PATCH" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await readJsonSafely(response);
-      if (!response.ok) {
-        throw new Error(data?.message || "Gagal menyimpan infografis.");
+      const pb = getPocketBase();
+      if (editingId) {
+        await pb.collection("homepage_slides").update(editingId, payload);
+      } else {
+        await pb.collection("homepage_slides").create(payload);
       }
 
       setMessage(editingId ? "Infografis berhasil diperbarui." : "Infografis baru berhasil ditambahkan.");
@@ -381,14 +332,8 @@ export function useSlidesManager() {
       setError("");
       setMessage("");
 
-      const response = await fetch(`/api/admin/homepage-slides/${idToDelete}`, {
-        method: "DELETE",
-      });
-
-      const data = await readJsonSafely(response);
-      if (!response.ok) {
-        throw new Error(data?.message || "Gagal menghapus infografis.");
-      }
+      const pb = getPocketBase();
+      await pb.collection("homepage_slides").delete(idToDelete);
 
       setMessage("Infografis berhasil dihapus.");
       setShowDeleteConfirm(false);

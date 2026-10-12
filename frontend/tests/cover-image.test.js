@@ -22,32 +22,32 @@ describe("normalizeCoverImageUrl", () => {
     );
   });
 
-  it("resolves /storage/ paths to Supabase storage URL", () => {
+  it("resolves /storage/ paths to PocketBase storage URL", () => {
     const localPath = "/storage/berita/foto.webp";
     const result = normalizeCoverImageUrl(localPath);
-    expect(result).toContain("/storage/v1/object/public/cms-media/berita/foto.webp");
+    expect(result).toContain("/api/files/berita/foto.webp");
   });
 
-  it("resolves /api/storage/media/ paths to Supabase storage URL", () => {
+  it("resolves /api/storage/media/ paths to PocketBase storage URL", () => {
     const apiPath = "/api/storage/media/galeri/foto.webp";
     const result = normalizeCoverImageUrl(apiPath);
-    expect(result).toContain("/storage/v1/object/public/cms-media/galeri/foto.webp");
+    expect(result).toContain("/api/files/galeri/foto.webp");
   });
 
-  it("resolves full domain URLs containing /api/storage/media/ to Supabase storage URL", () => {
+  it("resolves full domain URLs containing /api/storage/media/ to PocketBase storage URL", () => {
     const fullApiPath =
       "https://baritoutara.kemenag.go.id/api/storage/media/berita/2026/08/cover-sample.webp";
     const result = normalizeCoverImageUrl(fullApiPath);
     expect(result).toContain(
-      "/storage/v1/object/public/cms-media/berita/2026/08/cover-sample.webp"
+      "/api/files/berita/2026/08/cover-sample.webp"
     );
   });
 
-  it("preserves valid HTTPS URLs (Supabase storage)", () => {
-    const supabaseUrl =
-      "https://abc.supabase.co/storage/v1/object/public/cms-media/foto.webp";
-    const result = normalizeCoverImageUrl(supabaseUrl);
-    expect(result).toBe(supabaseUrl);
+  it("preserves valid HTTPS URLs (PocketBase storage)", () => {
+    const pbUrl =
+      "https://pb.example.test/api/files/berita/xyz123/foto.webp";
+    const result = normalizeCoverImageUrl(pbUrl);
+    expect(result).toBe(pbUrl);
   });
 
   it("preserves other valid HTTPS URLs", () => {
@@ -76,14 +76,14 @@ describe("toCoverPreviewUrl", () => {
   it("normalizes storage paths in toCoverPreviewUrl", () => {
     const localPath = "/storage/berita/sample.webp";
     const result = toCoverPreviewUrl(localPath);
-    expect(result).toContain("/storage/v1/object/public/cms-media/berita/sample.webp");
+    expect(result).toContain("/api/files/berita/sample.webp");
   });
 
-  it("does not proxy Supabase storage URLs", () => {
-    const supabaseUrl =
-      "https://abc.supabase.co/storage/v1/object/public/cms-media/foto.webp";
-    const result = toCoverPreviewUrl(supabaseUrl);
-    expect(result).toBe(supabaseUrl);
+  it("does not proxy PocketBase storage URLs", () => {
+    const pbUrl =
+      "https://pb.example.test/api/files/berita/xyz123/foto.webp";
+    const result = toCoverPreviewUrl(pbUrl);
+    expect(result).toBe(pbUrl);
     expect(result).not.toContain("image-proxy");
   });
 

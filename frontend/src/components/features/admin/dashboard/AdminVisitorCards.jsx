@@ -1,39 +1,11 @@
-"use client";
-
-import React, { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import React, { useState } from "react";
 
 function numberFmt(n) {
   return new Intl.NumberFormat("id-ID").format(Number(n || 0));
 }
 
 export default function AdminVisitorCards({ initialStats = { total: 0, today: 0 } }) {
-  const [onlineCount, setOnlineCount] = useState(1);
-
-  useEffect(() => {
-    const supabase = createClient();
-    const presenceId = crypto.randomUUID();
-
-    const channel = supabase.channel("admin_online_visitors", {
-      config: { presence: { key: presenceId } },
-    });
-
-    channel
-      .on("presence", { event: "sync" }, () => {
-        const count = Object.keys(channel.presenceState()).length;
-        setOnlineCount(count > 0 ? count : 1);
-      })
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          await channel.track({ online_at: new Date().toISOString() });
-        }
-      });
-
-    return () => {
-      channel.untrack();
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  const [onlineCount] = useState(1);
 
   return (
     <>

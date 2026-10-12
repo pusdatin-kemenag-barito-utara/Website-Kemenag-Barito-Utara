@@ -2,14 +2,18 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"kemenag-backend/internal/cache"
-	"kemenag-backend/internal/db"
+)
+
+var (
+	memTotal   int64 = initialTotal
+	memToday   int64 = 0
+	memDate    string
+	memMu      sync.RWMutex
 )
 
 const (
@@ -28,40 +32,24 @@ func todayStrWIB() string {
 	return time.Now().Add(7 * time.Hour).UTC().Format("2006-01-02")
 }
 
-// GetVisitorStats: total + hari ini (pola visitor-tracker.ts).
+// GetVisitorStats: total + hari ini (pola visitor-tracker).
 func GetVisitorStats(ctx context.Context) (int64, int64) {
 	today := todayStrWIB()
-	total := int64(initialTotal)
-	var dbToday int64
 
-	pool := db.Get()
-	if pool != nil {
-		var valueJSON []byte
-		err := pool.QueryRow(ctx,
-			`SELECT value FROM kemenag_website.site_settings WHERE key = $1`, visitorKey).Scan(&valueJSON)
-		if err == nil {
-			var data map[string]any
-			_ = json.Unmarshal(valueJSON, &data)
-			if t, ok := data["total"]; ok {
-				if f, ok := toF64(t); ok && f > initialTotal {
-					total = int64(f)
-				}
-			}
-			if d, ok := data["todayDate"].(string); ok && d == today {
-				if c, ok := toF64(data["todayCount"]); ok {
-					dbToday = int64(c)
-				}
-			}
-		} else {
-			// seed
-			_, _ = pool.Exec(ctx,
-				`INSERT INTO kemenag_website.site_settings (key, value, updated_at)
-				 VALUES ($1, $2::jsonb, now()) ON CONFLICT (key) DO NOTHING`,
-				visitorKey, `{"total":1860,"todayCount":0,"todayDate":"`+today+`"}`)
+	memMu.RLock()
+	if memDate != today {
+		memMu.RUnlock()
+		memMu.Lock()
+		if memDate != today {
+			memDate = today
+			memToday = 0
 		}
+		memMu.Unlock()
+		memMu.RLock()
 	}
-
-	todayCount := dbToday
+	total := memTotal
+	todayCount := memToday
+	memMu.RUnlock()
 
 	if cache.HasRedis() {
 		if pending, err := cache.Get(ctx, "visitor:total_pending"); err == nil {
@@ -70,11 +58,8 @@ func GetVisitorStats(ctx context.Context) (int64, int64) {
 		}
 		if rt, err := cache.Get(ctx, "visitor:today:"+today); err == nil {
 			rtn := parseIntSafe(rt)
-			if rtn > dbToday {
+			if rtn > todayCount {
 				todayCount = rtn
-			} else if rtn > 0 && rtn < dbToday {
-				pending, _ := cache.Get(ctx, "visitor:total_pending")
-				todayCount = dbToday + parseIntSafe(pending)
 			}
 		}
 	}
@@ -82,7 +67,7 @@ func GetVisitorStats(ctx context.Context) (int64, int64) {
 	return total, todayCount
 }
 
-// IncrementVisitorStats: +1 total & hari ini (Redis pending + flush 30s / fallback DB).
+// IncrementVisitorStats: +1 total & hari ini (Redis pending + flush 30s / fallback in-memory).
 func IncrementVisitorStats(ctx context.Context, path string) {
 	today := todayStrWIB()
 
@@ -104,42 +89,18 @@ func IncrementVisitorStats(ctx context.Context, path string) {
 		return
 	}
 
-	// Fallback tanpa Redis: update langsung DB
-	pool := db.Get()
-	if pool == nil {
-		return
+	// Fallback in-memory
+	memMu.Lock()
+	if memDate != today {
+		memDate = today
+		memToday = 0
 	}
-	now := time.Now().UTC().Format(time.RFC3339)
-	_, _ = pool.Exec(ctx, `
-		INSERT INTO kemenag_website.site_settings (key, value, updated_at)
-		VALUES ($1, $2::jsonb, $3)
-		ON CONFLICT (key) DO UPDATE SET
-			value = jsonb_set(
-				jsonb_set(
-					jsonb_set(
-						COALESCE(kemenag_website.site_settings.value, '{}'::jsonb),
-						'{total}',
-						(GREATEST(COALESCE((kemenag_website.site_settings.value->>'total')::int, 1860), 1860) + 1)::text::jsonb
-					),
-					'{todayCount}',
-					(CASE
-						WHEN kemenag_website.site_settings.value->>'todayDate' = $4
-						THEN COALESCE((kemenag_website.site_settings.value->>'todayCount')::int, 0) + 1
-						ELSE 1
-					END)::text::jsonb
-				),
-				'{todayDate}',
-				to_jsonb($4::text)
-			),
-			updated_at = $3`,
-		visitorKey,
-		`{"total":1861,"todayCount":1,"todayDate":"`+today+`"}`,
-		now,
-		today,
-	)
+	memTotal++
+	memToday++
+	memMu.Unlock()
 }
 
-// flushVisitorStats: GETDEL pending → update DB + heal redis.
+// flushVisitorStats: GETDEL pending → update memory.
 func flushVisitorStats() {
 	visitorMu.Lock()
 	visitorTimer = nil
@@ -156,59 +117,9 @@ func flushVisitorStats() {
 		return
 	}
 
-	today := todayStrWIB()
-	redisToday := int64(0)
-	if rt, err := cache.Get(ctx, "visitor:today:"+today); err == nil {
-		redisToday = parseIntSafe(rt)
-	}
-
-	pool := db.Get()
-	if pool == nil {
-		return
-	}
-
-	var valueJSON []byte
-	err = pool.QueryRow(ctx,
-		`SELECT value FROM kemenag_website.site_settings WHERE key = $1`, visitorKey).Scan(&valueJSON)
-	if err != nil {
-		// insert seed
-		_, _ = pool.Exec(ctx,
-			`INSERT INTO kemenag_website.site_settings (key, value, updated_at)
-			 VALUES ($1, $2::jsonb, now())`,
-			visitorKey,
-			`{"total":`+itoa(delta+initialTotal)+`,"todayCount":`+itoa(redisToday)+`,"todayDate":"`+today+`"}`)
-		return
-	}
-
-	var data map[string]any
-	_ = json.Unmarshal(valueJSON, &data)
-	dbTotal := int64(initialTotal)
-	if t, ok := toF64(data["total"]); ok && t > initialTotal {
-		dbTotal = int64(t)
-	}
-	newTotal := dbTotal + delta
-
-	dbToday := int64(0)
-	if d, ok := data["todayDate"].(string); ok && d == today {
-		if c, ok := toF64(data["todayCount"]); ok {
-			dbToday = int64(c)
-		}
-	}
-	syncedToday := dbToday + delta
-	if redisToday > dbToday {
-		syncedToday = redisToday
-	}
-
-	if redisToday < syncedToday {
-		_ = cache.Set(ctx, "visitor:today:"+today, itoa(syncedToday), visitorTTL)
-	}
-
-	_, _ = pool.Exec(ctx,
-		`UPDATE kemenag_website.site_settings
-		 SET value = $2::jsonb, updated_at = now()
-		 WHERE key = $1`,
-		visitorKey,
-		`{"total":`+itoa(newTotal)+`,"todayCount":`+itoa(syncedToday)+`,"todayDate":"`+today+`"}`)
+	memMu.Lock()
+	memTotal += delta
+	memMu.Unlock()
 }
 
 func toF64(v any) (float64, bool) {
@@ -267,5 +178,3 @@ func fmtSscan(s string, v *float64) (int, error) {
 	}
 	return 1, nil
 }
-
-var _ = log.Println

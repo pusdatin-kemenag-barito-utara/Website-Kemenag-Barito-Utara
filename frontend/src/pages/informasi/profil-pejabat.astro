@@ -1,5 +1,6 @@
 ---
 import { apiGet } from "@/lib/api-client";
+import { getPublicSeksiList } from "@/lib/pocketbase/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import ProfilPejabatShell from "@/components/features/informasi/ProfilPejabatShell";
 import { breadcrumbSchema } from "@/lib/structured-data";
@@ -18,31 +19,45 @@ const SLUG_ORDER = [
   "kua-kantor-urusan-agama",
 ];
 
-let rawSeksiList = [];
+let rawSeksiList: any[] = [];
 try {
   const res = await apiGet("/seksi");
   rawSeksiList = Array.isArray(res?.seksi) ? res.seksi : [];
-} catch (err) {
+} catch (_err) {
   rawSeksiList = [];
 }
 
+if (!rawSeksiList || rawSeksiList.length === 0) {
+  try {
+    rawSeksiList = await getPublicSeksiList();
+  } catch (_e) {
+    rawSeksiList = [];
+  }
+}
+
 const seksiList = rawSeksiList
-  .map((s) => ({
-    ...s,
-    id: String(s.id ?? ""),
-    _count: { pegawai_seksi: Number(s.pegawai_count ?? 0) },
-  }))
-  .sort((a, b) => {
+  .map((s: any) => {
+    const fotoUrl = s.foto_kepala || (s.foto_kepala_file ? `https://dbb.kemenag-baritoutara.com/api/files/seksi/${s.id}/${s.foto_kepala_file}` : "");
+    return {
+      ...s,
+      foto_kepala: fotoUrl,
+      foto_kepala_y: typeof s.foto_kepala_y === "number" ? s.foto_kepala_y : 50,
+      id: String(s.id ?? ""),
+      _count: { pegawai_seksi: Number(s.pegawai_count ?? s._count?.pegawai_seksi ?? 0) },
+    };
+  })
+  .sort((a: any, b: any) => {
     let indexA = SLUG_ORDER.indexOf(a.slug);
     let indexB = SLUG_ORDER.indexOf(b.slug);
     if (indexA === -1) indexA = 999;
     if (indexB === -1) indexB = 999;
-    return indexA - indexB;
+    if (indexA !== indexB) return indexA - indexB;
+    return (a.judul || "").localeCompare(b.judul || "");
   });
 
-const kepalaKantor = seksiList.find((s) => s.slug === "kepala-kantor") || null;
+const kepalaKantor = seksiList.find((s: any) => s.slug === "kepala-kantor") || null;
 const pejabatList = seksiList.filter(
-  (s) => s.slug !== "kepala-kantor" && s.slug !== "kua-kantor-urusan-agama",
+  (s: any) => s.slug !== "kepala-kantor" && s.slug !== "kua-kantor-urusan-agama",
 );
 
 const breadcrumb = [

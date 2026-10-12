@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { FloatingFeedback, ToggleSwitch } from "@/components/features/admin/slides/SlidesUI";
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 const defaultSettings = {
   nama_kantor: "Kementerian Agama Kabupaten Barito Utara",
@@ -32,26 +33,47 @@ export default function PengaturanForm({ initialSettings }) {
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  // Fetch settings from API
-  const fetchSettings = useCallback(async (signal) => {
+  // Fetch settings from PocketBase
+  const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
-      const res = await fetch("/api/admin/pengaturan", { cache: "no-store", signal });
-      if (!res.ok) throw new Error("Gagal mengambil data pengaturan.");
-      const data = await res.json();
-      if (data && typeof data === "object") {
-        setFormData((prev) => ({
-          ...defaultSettings,
-          ...prev,
-          ...data,
-        }));
-        if (data.updated_at) {
-          setLastUpdated(data.updated_at);
+      const pb = getPocketBase();
+      const records = await pb.collection("site_settings").getFullList({ requestKey: null });
+      const map = {};
+      let identityObj = null;
+
+      for (const rec of records) {
+        if (rec.key === "identity" && rec.value && typeof rec.value === "object") {
+          identityObj = rec.value;
+        } else if (rec.key === "fitur_anti_copas") {
+          map[rec.key] = rec.value === true || rec.value === "true";
+        } else if (rec.value !== undefined && rec.value !== null) {
+          map[rec.key] = rec.value;
         }
       }
+
+      // Fallback nilai dari identityObj jika field individual kosong
+      if (identityObj) {
+        for (const [k, v] of Object.entries(identityObj)) {
+          if (v && (!map[k] || map[k] === "")) {
+            if (k === "fitur_anti_copas") {
+              map[k] = v === true || v === "true";
+            } else {
+              map[k] = v;
+            }
+          }
+        }
+      }
+
+      setFormData((prev) => ({
+        ...defaultSettings,
+        ...prev,
+        ...map,
+      }));
+      setLastUpdated(new Date().toISOString());
     } catch (err) {
-      if (err.name === "AbortError") return;
+      if (err.name === "AbortError" || err.isAbort) return;
       setError(err.message || "Terjadi kesalahan saat memuat pengaturan.");
     } finally {
       setLoading(false);
@@ -59,9 +81,7 @@ export default function PengaturanForm({ initialSettings }) {
   }, []);
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetchSettings(controller.signal);
-    return () => controller.abort();
+    fetchSettings();
   }, [fetchSettings]);
 
   const handleChange = (e) => {
@@ -76,17 +96,44 @@ export default function PengaturanForm({ initialSettings }) {
     setMessage("");
 
     try {
-      const res = await fetch("/api/admin/pengaturan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      const pb = getPocketBase();
+      // Ambil seluruh record yang ada dalam 1 kali request
+      const existingRecords = await pb.collection("site_settings").getFullList({ requestKey: null });
+      const recordMap = new Map(existingRecords.map((r) => [r.key, r.id]));
 
-      const data = await res.json();
+      // Siapkan batch operasi paralel
+      const operations = [];
 
-      if (!res.ok) {
-        throw new Error(data.message || data.error || "Gagal menyimpan pengaturan.");
+      for (const [key, val] of Object.entries(formData)) {
+        const valToSave = typeof val === "boolean" ? val : (val ?? "");
+        const existingId = recordMap.get(key);
+
+        if (existingId) {
+          operations.push(
+            pb.collection("site_settings").update(existingId, { value: valToSave }, { requestKey: null })
+          );
+        } else {
+          operations.push(
+            pb.collection("site_settings").create({ key, value: valToSave }, { requestKey: null })
+          );
+        }
       }
+
+      // Sinkronkan juga key "identity" jika ada di DB
+      const identityId = recordMap.get("identity");
+      if (identityId) {
+        const identityPayload = {
+          ...formData,
+          updatedAt: new Date().toISOString(),
+          updatedBy: pb.authStore?.record?.email || "admin",
+        };
+        operations.push(
+          pb.collection("site_settings").update(identityId, { value: identityPayload }, { requestKey: null })
+        );
+      }
+
+      // Eksekusi semua secara paralel berkecepatan tinggi
+      await Promise.all(operations);
 
       setMessage("Pengaturan identitas kantor berhasil disimpan.");
       setLastUpdated(new Date().toISOString());

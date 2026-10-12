@@ -19,6 +19,7 @@ import { FloatingFeedback, DeleteConfirmModal } from "./slides/SlidesUI";
 import { compressImageToBase64 } from "@/lib/image-compress";
 import { logError } from "@/lib/logger";
 import { preloadImages } from "@/lib/cover-image";
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 export default function AdminSeksiDetailManager({ id }) {
   const router = useRouter();
@@ -74,32 +75,52 @@ export default function AdminSeksiDetailManager({ id }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const fetchSeksiDetail = useCallback(async (signal) => {
+  const fetchSeksiDetail = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/seksi/${id}`, { signal });
-      if (!res.ok) {
-        throw new Error("Gagal memuat detail seksi.");
+      const pb = getPocketBase();
+      let seksi;
+      try {
+        seksi = await pb.collection("seksi").getOne(id);
+      } catch {
+        seksi = await pb.collection("seksi").getFirstListItem(`slug = "${id}" || original_id = "${id}"`);
       }
-      const data = await res.json();
-      setSeksiData(data);
+
+      const seksiRecordId = seksi.id;
+      const filter = seksi.original_id
+        ? `seksi_id = "${seksiRecordId}" || seksi_id = "${seksi.original_id}"`
+        : `seksi_id = "${seksiRecordId}"`;
+
+      const rawPegawais = await pb.collection("pegawai_seksi").getFullList({
+        filter,
+        sort: "sort_order",
+        requestKey: null,
+      }).catch(() => []);
+
+      const pegawais = (rawPegawais || []).map((p) => ({
+        ...p,
+        foto: p.foto || (p.foto_file ? `https://dbb.kemenag-baritoutara.com/api/files/pegawai_seksi/${p.id}/${p.foto_file}` : ""),
+      }));
+
+      const fotoKepalaUrl = seksi.foto_kepala || (seksi.foto_kepala_file ? `https://dbb.kemenag-baritoutara.com/api/files/seksi/${seksi.id}/${seksi.foto_kepala_file}` : "");
+
+      setSeksiData(seksi);
       setSeksiForm({
-        judul: data.judul || "",
-        deskripsi: data.deskripsi || "",
-        nama_kepala: data.nama_kepala || "",
-        nip_kepala: data.nip_kepala || "",
-        foto_kepala: data.foto_kepala || "",
-        foto_kepala_y: data.foto_kepala_y ?? 50,
+        judul: seksi.judul || "",
+        deskripsi: seksi.deskripsi || "",
+        nama_kepala: seksi.nama_kepala || "",
+        nip_kepala: seksi.nip_kepala || "",
+        foto_kepala: fotoKepalaUrl,
+        foto_kepala_y: seksi.foto_kepala_y ?? 50,
       });
-      setFotoKepalaPreview(data.foto_kepala || "");
-      const pegawais = data.pegawai_seksis || [];
+      setFotoKepalaPreview(fotoKepalaUrl);
       setPegawaiList(pegawais);
 
-      const photosToPreload = [data.foto_kepala, ...pegawais.map((p) => p.foto)].filter(Boolean);
+      const photosToPreload = [fotoKepalaUrl, ...pegawais.map((p) => p.foto)].filter(Boolean);
       preloadImages(photosToPreload);
     } catch (err) {
-      if (err?.name === "AbortError") return;
+      if (err?.name === "AbortError" || err?.isAbort) return;
       logError("seksi_detail_fetch_error", { error: err?.message });
       setError(err?.message || "Terjadi kesalahan saat memuat data.");
     } finally {
@@ -109,9 +130,7 @@ export default function AdminSeksiDetailManager({ id }) {
 
   useEffect(() => {
     if (!id) return;
-    const controller = new AbortController();
-    fetchSeksiDetail(controller.signal);
-    return () => controller.abort();
+    fetchSeksiDetail();
   }, [id, fetchSeksiDetail]);
 
   // Handle Seksi profile save
@@ -122,42 +141,22 @@ export default function AdminSeksiDetailManager({ id }) {
     setMessage("");
 
     try {
+      const pb = getPocketBase();
       const payload = {
-        ...seksiForm,
-        ...(fotoKepalaBase64 && {
-          foto_upload_base64: fotoKepalaBase64,
-          foto_kepala_base64: fotoKepalaBase64,
-          foto_kepala_name: `kasi-${(seksiForm.nama_kepala || "kasi").replace(/\s+/g, "-").toLowerCase()}`,
-        }),
+        judul: seksiForm.judul,
+        deskripsi: seksiForm.deskripsi,
+        nama_kepala: seksiForm.nama_kepala,
+        nip_kepala: seksiForm.nip_kepala,
+        foto_kepala: fotoKepalaBase64 || seksiForm.foto_kepala,
+        foto_kepala_y: seksiForm.foto_kepala_y,
       };
 
-      const res = await fetch(`/api/admin/seksi/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const targetId = seksiData?.id || id;
+      const updated = await pb.collection("seksi").update(targetId, payload);
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || "Gagal memperbarui profil seksi.");
-      }
-
-      if (data?.item) {
-        setSeksiData((prev) => ({ ...prev, ...data.item }));
-        setSeksiForm((prev) => ({
-          ...prev,
-          judul: data.item.judul || prev.judul,
-          nama_kepala: data.item.nama_kepala || prev.nama_kepala,
-          nip_kepala: data.item.nip_kepala || prev.nip_kepala,
-          foto_kepala_y: data.item.foto_kepala_y ?? prev.foto_kepala_y,
-        }));
-        if (data.item.foto_kepala) {
-          setFotoKepalaPreview(data.item.foto_kepala);
-        }
-      }
+      setSeksiData((prev) => ({ ...prev, ...updated }));
       setFotoKepalaBase64("");
       setMessage("Profil seksi berhasil diperbarui.");
-      router.refresh();
     } catch (err) {
       logError("seksi_detail_save_error", { error: err?.message });
       setError(err?.message || "Terjadi kesalahan saat menyimpan data.");
@@ -329,50 +328,35 @@ export default function AdminSeksiDetailManager({ id }) {
     setMessage("");
 
     try {
+      const pb = getPocketBase();
       const payload = {
-        ...pegawaiForm,
-        ...(fotoPegawaiBase64 && {
-          foto_upload_base64: fotoPegawaiBase64,
-          foto_base64: fotoPegawaiBase64,
-          foto_name: `pegawai-${(pegawaiForm.nama || "pegawai").replace(/\s+/g, "-").toLowerCase()}`,
-        }),
+        nama: pegawaiForm.nama,
+        nip: pegawaiForm.nip || "",
+        jabatan: pegawaiForm.jabatan,
+        sort_order: Number(pegawaiForm.sort_order || 0),
+        foto: fotoPegawaiBase64 || pegawaiForm.foto || "",
+        foto_y: pegawaiForm.foto_y ?? 50,
+        seksi_id: seksiData?.id || id,
       };
 
-      const url = editingPegawai
-        ? `/api/admin/seksi/${id}/pegawai/${editingPegawai.id}`
-        : `/api/admin/seksi/${id}/pegawai`;
-
-      const method = editingPegawai ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || "Gagal menyimpan data pegawai.");
-      }
-
-      // Refresh list
+      let resultRecord;
       if (editingPegawai) {
+        resultRecord = await pb.collection("pegawai_seksi").update(editingPegawai.id, payload);
         setPegawaiList((prev) =>
           prev
-            .map((p) => (p.id === editingPegawai.id ? { ...p, ...(data?.item || payload) } : p))
+            .map((p) => (p.id === editingPegawai.id ? { ...p, ...resultRecord } : p))
             .sort((a, b) => a.sort_order - b.sort_order),
         );
         setMessage("Data staf pegawai berhasil diperbarui.");
       } else {
-        const newItem = data?.item || { ...payload, id: data?.id || String(Date.now()) };
+        resultRecord = await pb.collection("pegawai_seksi").create(payload);
         setPegawaiList((prev) =>
-          [...prev, newItem].sort((a, b) => a.sort_order - b.sort_order),
+          [...prev, resultRecord].sort((a, b) => a.sort_order - b.sort_order),
         );
         setMessage("Staf pegawai baru berhasil ditambahkan.");
       }
 
       setOpenPegawaiModal(false);
-      router.refresh();
     } catch (err) {
       logError("seksi_detail_pegawai_save_error", { error: err?.message });
       setError(
@@ -400,21 +384,11 @@ export default function AdminSeksiDetailManager({ id }) {
     setShowDeleteConfirm(false);
 
     try {
-      const res = await fetch(
-        `/api/admin/seksi/${id}/pegawai/${deletingPegawaiId}`,
-        {
-          method: "DELETE",
-        },
-      );
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || "Gagal menghapus staf pegawai.");
-      }
+      const pb = getPocketBase();
+      await pb.collection("pegawai_seksi").delete(deletingPegawaiId);
 
       setPegawaiList((prev) => prev.filter((p) => p.id !== deletingPegawaiId));
       setMessage(`Staf pegawai "${deletingPegawaiName}" berhasil dihapus.`);
-      router.refresh();
     } catch (err) {
       logError("seksi_detail_pegawai_delete_error", { error: err?.message });
       setError(
@@ -563,7 +537,7 @@ export default function AdminSeksiDetailManager({ id }) {
                           <img
                             src={fotoKepalaPreview}
                             alt="Circle Preview"
-                            className="h-full w-full object-cover scale-[1.2] origin-center transition-[object-position] duration-150"
+                            className="h-full w-full object-cover transition-[object-position] duration-150"
                             style={{ objectPosition: `50% ${seksiForm.foto_kepala_y ?? 50}%` }}
                           />
                         </div>
@@ -873,7 +847,7 @@ export default function AdminSeksiDetailManager({ id }) {
                             <img
                               src={fotoPegawaiPreview}
                               alt="Circle Preview"
-                              className="h-full w-full object-cover scale-[1.2] origin-center transition-[object-position] duration-150"
+                              className="h-full w-full object-cover transition-[object-position] duration-150"
                               style={{ objectPosition: `50% ${pegawaiForm.foto_y ?? 50}%` }}
                             />
                           </div>

@@ -55,6 +55,11 @@ const ProfileNode = ({ data, variant = "secondary", className = "", delay = 0 })
   );
 };
 
+import { getPublicSeksiList } from "@/lib/pocketbase/db";
+
+/**
+ * @param {{ breadcrumb?: any[], leadershipData?: any[] }} props
+ */
 export default function StrukturOrganisasiShell({ breadcrumb = [], leadershipData = [] }) {
   const [leadershipList, setLeadershipList] = useState(leadershipData);
 
@@ -62,23 +67,15 @@ export default function StrukturOrganisasiShell({ breadcrumb = [], leadershipDat
     setLeadershipList(leadershipData);
   }, [leadershipData]);
 
-  const abortRef = useRef(null);
-
   const fetchLatestData = async () => {
-    if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
     try {
-      const res = await fetch("/api/seksi", { cache: "no-store", signal: controller.signal });
-      if (!res.ok) return;
-      const data = await res.json();
-      const raw = Array.isArray(data) ? data : data?.seksi;
-      if (Array.isArray(raw) && raw.length > 0) {
-        const mapped = Array.isArray(data) ? data : buildLeadershipData(raw);
+      const seksi = await getPublicSeksiList();
+      if (Array.isArray(seksi) && seksi.length > 0) {
+        const mapped = buildLeadershipData(seksi);
         setLeadershipList(mapped);
       }
     } catch (e) {
-      if (e?.name === "AbortError") return;
+      // silent
     }
   };
 

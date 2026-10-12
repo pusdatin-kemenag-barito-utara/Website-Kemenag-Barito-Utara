@@ -73,14 +73,10 @@ export default defineConfig({
       "process.env.PUBLIC_API_URL": JSON.stringify(
         process.env.PUBLIC_API_URL || "",
       ),
-      "process.env.NEXT_PUBLIC_SUPABASE_URL": JSON.stringify(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-      ),
-      "process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY": JSON.stringify(
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-      ),
-      "process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
-        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "",
+      "process.env.NEXT_PUBLIC_POCKETBASE_URL": JSON.stringify(
+        process.env.NEXT_PUBLIC_POCKETBASE_URL ||
+          process.env.POCKETBASE_URL ||
+          "",
       ),
       "process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY": JSON.stringify(
         process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "",
@@ -96,9 +92,6 @@ export default defineConfig({
       ),
       "process.env.NEXT_PUBLIC_PUSDATIN_URL": JSON.stringify(
         process.env.NEXT_PUBLIC_PUSDATIN_URL || "",
-      ),
-      "process.env.NEXT_PUBLIC_SUPABASE_CMS_BUCKET": JSON.stringify(
-        process.env.NEXT_PUBLIC_SUPABASE_CMS_BUCKET || "cms-media",
       ),
     },
     server: {

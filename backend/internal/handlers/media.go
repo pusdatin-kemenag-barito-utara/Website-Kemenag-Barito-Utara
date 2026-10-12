@@ -12,7 +12,6 @@ import (
 
 	"kemenag-backend/internal/config"
 	"kemenag-backend/internal/response"
-	"kemenag-backend/internal/services"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -23,18 +22,17 @@ func allowedProxyHosts() map[string]bool {
 		"drive.google.com":          true,
 		"docs.google.com":           true,
 		"lh3.googleusercontent.com": true,
-		"cdn.kemenag-baritoutara.com": true,
+		"cdn.kemenag-baritoutara.com":  true,
 		"ptsp.kemenag-baritoutara.com": true,
-		"localhost":                 true,
+		"localhost":                    true,
 	}
-	host := ""
-	if u := config.Cfg.SupabaseURL; u != "" {
+	if u := config.Cfg.PocketBaseURL; u != "" {
 		if i := strings.Index(u, "://"); i != -1 {
-			host = strings.TrimSuffix(strings.TrimPrefix(u[i+3:], ""), "/")
+			host := strings.TrimSuffix(strings.TrimPrefix(u[i+3:], ""), "/")
+			if host != "" {
+				hosts[host] = true
+			}
 		}
-	}
-	if host != "" {
-		hosts[host] = true
 	}
 	if site := config.Cfg.SiteURL; site != "" {
 		if i := strings.Index(site, "://"); i != -1 {
@@ -114,14 +112,24 @@ func ImageProxyHandler(c fiber.Ctx) error {
 	return c.Send(body)
 }
 
-// StorageMediaHandler — GET /api/storage/media/* (proxy Supabase Storage public URL)
+// StorageMediaHandler — GET /api/storage/media/* (proxy PocketBase / media files)
 func StorageMediaHandler(c fiber.Ctx) error {
 	path := strings.Trim(c.Params("*"), "/")
 	if path == "" {
 		return response.Error(c, 400, "Path kosong.", "PATH_REQUIRED")
 	}
 
-	upstream := config.Cfg.SupabaseURL + "/storage/v1/object/public/cms-media/" + path
+	pbURL := config.Cfg.PocketBaseURL
+
+	var upstream string
+	if strings.HasPrefix(path, "api/files/") {
+		upstream = pbURL + "/" + path
+	} else if strings.HasPrefix(path, "files/") {
+		upstream = pbURL + "/api/" + path
+	} else {
+		upstream = pbURL + "/api/files/" + path
+	}
+
 	req, err := http.NewRequestWithContext(c.Context(), http.MethodGet, upstream, nil)
 	if err != nil {
 		return response.Error(c, 502, "Gagal membangun URL.", "BAD_UPSTREAM")
@@ -166,4 +174,3 @@ func StorageMediaHandler(c fiber.Ctx) error {
 }
 
 var _ = context.Background
-var _ = services.Storage

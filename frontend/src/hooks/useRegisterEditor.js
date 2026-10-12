@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "@/hooks/useNextNavigation";
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 export function useRegisterEditor() {
   const router = useRouter();
@@ -18,13 +19,16 @@ export function useRegisterEditor() {
     setError("");
     setSuccess("");
     try {
-      const res = await fetch("/api/admin/register-editor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, email, unitName, password }),
+      const pb = getPocketBase();
+      await pb.collection("users").create({
+        email: email.trim(),
+        password: password,
+        passwordConfirm: password,
+        name: fullName.trim(),
+        unit_name: unitName.trim(),
+        role: "editor",
+        status: "pending",
       });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || "Gagal membuat akun.");
 
       setSuccess(
         "Akun editor berhasil dibuat. Silakan login, lalu tunggu verifikasi super admin.",

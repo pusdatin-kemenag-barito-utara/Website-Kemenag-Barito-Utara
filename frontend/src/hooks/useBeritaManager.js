@@ -19,6 +19,32 @@ import {
 } from "@/lib/berita-utils";
 import { compressImageToBase64 } from "@/lib/image-compress";
 import { toCoverPreviewUrl, normalizeCoverImageUrl } from "@/lib/cover-image";
+import { getPocketBase, getPocketBaseFileUrl } from "@/lib/pocketbase/client";
+
+function dataURLtoFile(dataurl, filename) {
+  const arr = dataurl.split(",");
+  const mime = arr[0].match(/:(.*?);/)?.[1] || "image/webp";
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+}
+
+function extractPbErrorMessage(err, fallback = "Gagal menyimpan berita.") {
+  if (err?.data?.data && typeof err.data.data === "object") {
+    const errorEntries = Object.entries(err.data.data);
+    if (errorEntries.length > 0) {
+      const details = errorEntries
+        .map(([field, detail]) => `${field}: ${detail?.message || detail?.code || "tidak valid"}`)
+        .join(", ");
+      return `${err.message || fallback} (${details})`;
+    }
+  }
+  return err?.message || fallback;
+}
 
 // Background in-memory image preloader
 const imagePreloadCache = new Set();
@@ -94,23 +120,24 @@ export function useBeritaManager() {
       setLoading(true);
       setError("");
 
-      const response = await fetch("/api/admin/berita?limit=1000", {
-        method: "GET",
-        cache: "no-store",
-        signal,
+      const pb = getPocketBase();
+      const records = await pb.collection("berita").getFullList({
+        sort: "-published_at",
+        requestKey: null,
       });
 
-      const data = await readJsonSafely(response);
+      const list = records.map((r) => ({
+        ...r,
+        cover_image: r.cover_file ? getPocketBaseFileUrl(r, r.cover_file) : (r.cover_image || ""),
+        is_published: !!r.is_published,
+        published_at: r.published_at || new Date().toISOString(),
+        views: r.views || 0,
+      }));
 
-      if (!response.ok) {
-        throw new Error(data?.message || "Gagal memuat daftar berita.");
-      }
-
-      const list = Array.isArray(data?.items) ? data.items : [];
       setItems(list);
       preloadNewsImages(list);
     } catch (err) {
-      if (err.name === "AbortError") return;
+      if (err.name === "AbortError" || err.isAbort) return;
       setError(err.message || "Gagal memuat daftar berita.");
       setItems([]);
     } finally {
@@ -339,9 +366,8 @@ export function useBeritaManager() {
     setOpenForm(true);
 
     try {
-      const response = await fetch(`/api/admin/berita/${item.id}`, { cache: "no-store" });
-      const data = await readJsonSafely(response);
-      const article = data?.berita || data?.data || data;
+      const pb = getPocketBase();
+      const article = await pb.collection("berita").getOne(item.id, { requestKey: null });
       if (article && article.content) {
         setForm((prev) => ({
           ...prev,
@@ -573,20 +599,15 @@ export function useBeritaManager() {
     setError("");
 
     try {
-      const { base64: base64Str } = await compressImageToBase64(file);
-      
-      const response = await fetch("/api/admin/berita/upload-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image_base64: base64Str }),
-      });
+      const pb = getPocketBase();
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("path", `berita/content/${Date.now()}-${file.name}`);
+      formData.append("mime_type", file.type || "image/webp");
+      formData.append("size", file.size);
 
-      const data = await readJsonSafely(response);
-      const rawImageUrl = data?.url || data?.data?.url;
-      if (!response.ok || !rawImageUrl) {
-        throw new Error(data?.error || data?.message || "Gagal mengunggah gambar.");
-      }
-      const imageUrl = normalizeCoverImageUrl(rawImageUrl);
+      const media = await pb.collection("berita_content_media").create(formData);
+      const imageUrl = getPocketBaseFileUrl(media, media.file);
 
       // Restore selection
       const selection = window.getSelection();
@@ -789,8 +810,8 @@ export function useBeritaManager() {
       return null;
     }
 
-    const finalCover = form.cover_upload_base64 || form.cover_image || "";
-    if (!finalCover) {
+    const hasCover = form.cover_upload_base64 || form.cover_image;
+    if (!hasCover) {
       setError("Cover berita wajib diupload.");
       return null;
     }
@@ -814,9 +835,7 @@ export function useBeritaManager() {
       category: form.category || "Umum",
       excerpt: autoExcerpt,
       content: currentContent,
-      cover_image: finalCover,
-      cover_upload_base64: form.cover_upload_base64 || "",
-      cover_upload_name: form.cover_upload_name || "",
+      cover_image: form.cover_image && !form.cover_image.startsWith("data:") ? form.cover_image : "",
       is_published: isPublished,
       published_at: publishedAtIso,
     };
@@ -832,21 +851,46 @@ export function useBeritaManager() {
       setError("");
       setMessage("");
 
-      const response = await fetch(
-        editingId ? `/api/admin/berita/${editingId}` : "/api/admin/berita",
-        {
-          method: editingId ? "PUT" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        },
-      );
+      const pb = getPocketBase();
+      const formData = new FormData();
+      formData.append("title", payload.title);
+      formData.append("slug", payload.slug);
+      formData.append("category", payload.category);
+      formData.append("excerpt", payload.excerpt);
+      formData.append("content", payload.content);
+      formData.append("is_published", String(payload.is_published));
+      if (payload.published_at) {
+        formData.append("published_at", payload.published_at);
+      }
+      if (pb.authStore.record?.id) {
+        formData.append("author_id", pb.authStore.record.id);
+      }
 
-      const data = await readJsonSafely(response);
+      // Handle cover image
+      const hasUploadedCover = form.cover_upload_base64 && form.cover_upload_base64.startsWith("data:");
+      if (hasUploadedCover) {
+        const file = dataURLtoFile(form.cover_upload_base64, form.cover_upload_name || "cover.webp");
+        formData.append("cover_file", file);
+        if (form.cover_upload_size_kb) {
+          formData.append("cover_size_kb", String(form.cover_upload_size_kb));
+        }
+      } else if (payload.cover_image) {
+        formData.append("cover_image", payload.cover_image);
+      }
 
-      if (!response.ok) {
-        throw new Error(data?.message || data?.error || "Gagal menyimpan berita.");
+      let record;
+      if (editingId) {
+        record = await pb.collection("berita").update(editingId, formData);
+      } else {
+        record = await pb.collection("berita").create(formData);
+      }
+
+      // Jika baru upload cover_file, sinkronkan cover_image dengan URL PocketBase publik
+      if (hasUploadedCover && record?.cover_file) {
+        const publicFileUrl = pb.files.getURL(record, record.cover_file);
+        if (publicFileUrl && record.cover_image !== publicFileUrl) {
+          await pb.collection("berita").update(record.id, { cover_image: publicFileUrl });
+        }
       }
 
       const isPublished = Boolean(payload.is_published);
@@ -860,7 +904,7 @@ export function useBeritaManager() {
       resetForm();
       await loadItems();
     } catch (err) {
-      setError(err.message || "Gagal menyimpan berita.");
+      setError(extractPbErrorMessage(err, "Gagal menyimpan berita."));
     } finally {
       setSaving(false);
     }
@@ -878,17 +922,10 @@ export function useBeritaManager() {
       setError("");
       setMessage("");
 
-      const response = await fetch(`/api/admin/berita/${deleteTarget.id}`, {
-        method: "DELETE",
-      });
+      const pb = getPocketBase();
+      await pb.collection("berita").delete(deleteTarget.id);
 
-      const data = await readJsonSafely(response);
-
-      if (!response.ok) {
-        throw new Error(data?.message || "Gagal menghapus berita.");
-      }
-
-      setMessage(data?.message || "Berita berhasil dihapus.");
+      setMessage("Berita berhasil dihapus.");
       await loadItems();
     } catch (err) {
       setError(err.message || "Gagal menghapus berita.");

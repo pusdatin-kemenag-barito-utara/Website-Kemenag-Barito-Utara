@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "@/hooks/useNextNavigation";
-import { createClient } from "@/lib/supabase/client";
 import {
   trackPageView,
   trackMenuClick,
@@ -54,42 +53,7 @@ export default function PageViewTracker() {
     return () => clearTimeout(timerRef.current);
   }, [pathname]);
 
-  // ── 2. Supabase Presence — "Sedang Online" Realtime ──
-  useEffect(() => {
-    const supabase = createClient();
-    const presenceId = crypto.randomUUID();
-
-    const existing = supabase.getChannels().find((c) => c.topic === "realtime:online_visitors");
-    if (existing) {
-      supabase.removeChannel(existing);
-    }
-
-    const channel = supabase.channel("online_visitors", {
-      config: { presence: { key: presenceId } },
-    });
-
-    channel
-      .on("presence", { event: "sync" }, () => {
-        const count = Object.keys(channel.presenceState()).length;
-        window.dispatchEvent(
-          new CustomEvent("online-visitors-change", {
-            detail: { count: count > 0 ? count : 1 },
-          })
-        );
-      })
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          await channel.track({ online_at: new Date().toISOString() });
-        }
-      });
-
-    return () => {
-      channel.untrack();
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  // ── 3. Global Click Delegation (Seluruh Menu, Button, CTA, Dokumen & Outbound) ──
+  // ── 2. Global Click Delegation (Seluruh Menu, Button, CTA, Dokumen & Outbound) ──
   useEffect(() => {
     if (typeof window === "undefined") return;
 

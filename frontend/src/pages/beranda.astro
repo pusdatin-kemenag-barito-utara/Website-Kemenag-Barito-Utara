@@ -1,11 +1,11 @@
 ---
 import { siteInfo } from "@/data/site";
-import { apiGet } from "@/lib/api-client";
+import { getPublicHomeData, getPublicYoutubeVideos, getPublicSettings } from "@/lib/pocketbase/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import HomePage from "@/components/features/home/HomePage";
 import { breadcrumbSchema } from "@/lib/structured-data";
 
-// SSR on-demand (data dinamis dari backend Golang)
+// SSR on-demand (data dinamis langsung dari PocketBase)
 export const prerender = false;
 
 let homeData: any = {};
@@ -13,9 +13,9 @@ let youtubeVideos: any[] = [];
 let initialSettings: any = null;
 try {
   const [home, videos, settings] = await Promise.all([
-    apiGet("/home"),
-    apiGet("/youtube").catch(() => []),
-    apiGet("/settings").catch(() => null),
+    getPublicHomeData(),
+    getPublicYoutubeVideos(6),
+    getPublicSettings(),
   ]);
   homeData = home || {};
   youtubeVideos = Array.isArray(videos) ? videos : [];

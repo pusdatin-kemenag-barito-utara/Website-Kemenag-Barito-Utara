@@ -1,15 +1,10 @@
 package services
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
 	"log"
 	"strings"
 	"sync"
 	"time"
-
-	"kemenag-backend/internal/db"
 )
 
 // AuditService — buffer batch ke kemenag_website.audit_logs.
@@ -127,7 +122,7 @@ func (a *AuditService) Record(opts struct {
 	}
 }
 
-// Flush insert batch ke DB.
+// Flush memproses batch audit.
 func (a *AuditService) Flush() {
 	a.mu.Lock()
 	if a.lock || len(a.buffer) == 0 {
@@ -143,46 +138,8 @@ func (a *AuditService) Flush() {
 	}
 	a.mu.Unlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	pool := db.Get()
-	if pool == nil {
-		a.mu.Lock()
-		a.lock = false
-		a.mu.Unlock()
-		return
-	}
-
-	tx, err := pool.Begin(ctx)
-	if err == nil {
-		for _, rec := range batch {
-			beforeJSON, _ := json.Marshal(rec.BeforeState)
-			afterJSON, _ := json.Marshal(rec.AfterState)
-			ipVal := rec.IP
-			var ipArg any
-			if ipVal == nil {
-				ipArg = nil
-			} else {
-				ipArg = fmt.Sprintf("%v", ipVal)
-			}
-			_, err2 := tx.Exec(ctx, `
-				INSERT INTO kemenag_website.audit_logs
-					(action, target, target_schema, performed_by, before_state, after_state, ip)
-				VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-				rec.Action, rec.Target, rec.TargetSchema, rec.PerformedBy,
-				string(beforeJSON), string(afterJSON), ipArg)
-			if err2 != nil {
-				log.Printf("[audit] insert error: %v", err2)
-			}
-		}
-		_ = tx.Commit(ctx)
-	} else {
-		log.Printf("[audit] begin tx error: %v", err)
-		// kembalikan batch ke buffer
-		a.mu.Lock()
-		a.buffer = append(batch, a.buffer...)
-		a.mu.Unlock()
+	for _, rec := range batch {
+		log.Printf("[audit] %s | action: %s | target: %s | by: %s", rec.TargetSchema, rec.Action, rec.Target, rec.PerformedBy)
 	}
 
 	a.mu.Lock()

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PasswordInput } from "./login/UpdatePasswordUI";
-import { createClient } from "@/lib/supabase/client";
+import { getPocketBase } from "@/lib/pocketbase/client";
 import { createPortal } from "react-dom";
 
 export default function PasswordUpdateModal({ open, onClose }) {
@@ -43,10 +43,14 @@ export default function PasswordUpdateModal({ open, onClose }) {
 
     setLoading(true);
     try {
-      const supabase = createClient();
-      const { error: updateError } = await supabase.auth.updateUser({ password });
-      
-      if (updateError) throw updateError;
+      const pb = getPocketBase();
+      if (!pb.authStore.record?.id) {
+        throw new Error("Sesi tidak ditemukan. Silakan login kembali.");
+      }
+      await pb.collection("users").update(pb.authStore.record.id, {
+        password: password,
+        passwordConfirm: confirmPassword,
+      });
       
       setSuccess("Password berhasil diperbarui.");
       setPassword("");

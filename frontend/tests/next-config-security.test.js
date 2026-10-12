@@ -5,9 +5,9 @@ import { describe, it, expect } from "vitest";
 // process.env at module load time, we replicate the relevant pure functions.
 // This approach tests the security logic without Next.js bundler involvement.
 
-function buildCspForTest({ supabaseHost = null, isProd = false } = {}) {
-  const supabase = supabaseHost ? `https://${supabaseHost}` : "";
-  const wsSupabase = supabaseHost ? `wss://${supabaseHost}` : "";
+function buildCspForTest({ pocketbaseHost = null, isProd = false } = {}) {
+  const pocketbase = pocketbaseHost ? `https://${pocketbaseHost}` : "";
+  const wsPocketbase = pocketbaseHost ? `wss://${pocketbaseHost}` : "";
 
   const directives = {
     "default-src": ["'self'"],
@@ -38,8 +38,8 @@ function buildCspForTest({ supabaseHost = null, isProd = false } = {}) {
       "https://challenges.cloudflare.com",
       "https://cdn.onesignal.com",
       "https://onesignal.com",
-      supabase,
-      wsSupabase,
+      pocketbase,
+      wsPocketbase,
     ].filter(Boolean),
     "frame-src": [
       "'self'",
@@ -126,15 +126,15 @@ describe("Security: Content Security Policy (CSP)", () => {
     expect(csp).toContain("https://challenges.cloudflare.com");
   });
 
-  it("includes Supabase host in connect-src when supabaseHost is set", () => {
-    const csp = buildCspForTest({ supabaseHost: "abc.supabase.co" });
-    expect(csp).toContain("https://abc.supabase.co");
-    expect(csp).toContain("wss://abc.supabase.co");
+  it("includes PocketBase host in connect-src when pocketbaseHost is set", () => {
+    const csp = buildCspForTest({ pocketbaseHost: "pb.example.test" });
+    expect(csp).toContain("https://pb.example.test");
+    expect(csp).toContain("wss://pb.example.test");
   });
 
-  it("does NOT include supabase when supabaseHost is null", () => {
-    const csp = buildCspForTest({ supabaseHost: null });
-    expect(csp).not.toContain("supabase.co");
+  it("does NOT include pocketbase when pocketbaseHost is null", () => {
+    const csp = buildCspForTest({ pocketbaseHost: null });
+    expect(csp).not.toContain("pb.example.test");
   });
 
   it("allows Service Worker via worker-src 'self'", () => {

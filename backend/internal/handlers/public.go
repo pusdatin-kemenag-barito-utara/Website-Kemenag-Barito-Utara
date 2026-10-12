@@ -2,11 +2,15 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
+	"kemenag-backend/internal/config"
 	"kemenag-backend/internal/db"
 	"kemenag-backend/internal/middleware"
 	"kemenag-backend/internal/response"
@@ -15,191 +19,170 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// SeksiPublicHandler — GET /api/seksi (urutan organisasi + komposisi kepala)
+// SeksiPublicHandler — GET /api/seksi (via PocketBase)
 func SeksiPublicHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
-	pool := db.Get()
-	if pool == nil {
-		return response.Error(c, 503, "Database tidak tersedia", "DB_UNAVAILABLE")
-	}
 
-	rows, err := pool.Query(ctx, `
-		SELECT s.id, s.slug, s.judul, s.nama_kepala, s.nip_kepala, s.foto_kepala, s.deskripsi, s.foto_kepala_y,
-		       COUNT(p.id) AS pegawai_count
-		FROM kemenag_website.seksi s
-		LEFT JOIN kemenag_website.pegawai_seksi p ON p.seksi_id = s.id
-		GROUP BY s.id
-		ORDER BY s.created_at ASC`)
+	pbURL := config.Cfg.PocketBaseURL
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pbURL+"/api/collections/seksi/records?perPage=50", nil)
 	if err != nil {
-		return response.Error(c, 500, "Gagal mengambil seksi", "DB_ERROR")
+		return response.Error(c, 500, "Gagal membangun request", "INTERNAL_ERROR")
 	}
-	defer rows.Close()
 
-	var seksi []fiber.Map
-	for rows.Next() {
-		var id, slug, judul, namaKepala string
-		var nipKepala, fotoKepala, deskripsi any
-		var fotoY, pegawaiCount int
-		if err := rows.Scan(&id, &slug, &judul, &namaKepala, &nipKepala, &fotoKepala, &deskripsi, &fotoY, &pegawaiCount); err != nil {
-			continue
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return response.Error(c, 502, "Gagal mengambil data seksi dari PocketBase", "UPSTREAM_ERROR")
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Items []fiber.Map `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return response.Error(c, 500, "Gagal memproses response", "PARSE_ERROR")
+	}
+
+	// Agregasi jumlah pegawai_seksi per seksi
+	pegawaiReq, errP := http.NewRequestWithContext(ctx, http.MethodGet, pbURL+"/api/collections/pegawai_seksi/records?perPage=200&sort=sort_order", nil)
+	if errP == nil {
+		if respP, errPDo := client.Do(pegawaiReq); errPDo == nil {
+			defer respP.Body.Close()
+			var dataP struct {
+				Items []fiber.Map `json:"items"`
+			}
+			if json.NewDecoder(respP.Body).Decode(&dataP) == nil {
+				counts := make(map[string]int)
+				for _, p := range dataP.Items {
+					if sid, ok := p["seksi_id"].(string); ok && sid != "" {
+						counts[sid]++
+					}
+				}
+				for i, s := range data.Items {
+					sid, _ := s["id"].(string)
+					origID, _ := s["original_id"].(string)
+					cnt := counts[sid]
+					if origID != "" && origID != sid {
+						cnt += counts[origID]
+					}
+					s["pegawai_count"] = cnt
+					data.Items[i] = s
+				}
+			}
 		}
-		seksi = append(seksi, fiber.Map{
-			"id":             id,
-			"slug":           slug,
-			"judul":          judul,
-			"nama_kepala":    namaKepala,
-			"nip_kepala":     nipKepala,
-			"foto_kepala":    fotoKepala,
-			"foto_kepala_y":  fotoY,
-			"deskripsi":      deskripsi,
-			"pegawai_count":  pegawaiCount,
-		})
 	}
 
 	response.CDNCacheControl(c, 600, 1200)
-	return c.JSON(fiber.Map{"seksi": seksi})
+	return c.JSON(fiber.Map{"seksi": data.Items})
 }
 
 // SeksiDetailPublicHandler — GET /api/seksi/:slug
 func SeksiDetailPublicHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
-	pool := db.Get()
-	if pool == nil {
-		return response.Error(c, 503, "Database tidak tersedia", "DB_UNAVAILABLE")
-	}
 
 	slug := strings.TrimSpace(c.Params("slug"))
 	if slug == "" {
 		return response.Error(c, 400, "Slug seksi diperlukan", "BAD_REQUEST")
 	}
 
-	var id, seksiSlug, judul, namaKepala string
-	var nipKepala, fotoKepala, deskripsi any
-	var fotoY int
-	err := pool.QueryRow(ctx, `
-		SELECT id, slug, judul, nama_kepala, nip_kepala, foto_kepala, deskripsi, foto_kepala_y
-		FROM kemenag_website.seksi
-		WHERE slug = $1 OR id::text = $1
-		LIMIT 1`, slug).Scan(&id, &seksiSlug, &judul, &namaKepala, &nipKepala, &fotoKepala, &deskripsi, &fotoY)
-	if err != nil {
-		return response.Error(c, 404, "Seksi tidak ditemukan", "NOT_FOUND")
-	}
+	pbURL := config.Cfg.PocketBaseURL
 
-	// Ambil seluruh pegawai seksi terkait
-	pRows, err := pool.Query(ctx, `
-		SELECT id, nama, nip, jabatan, foto, sort_order, foto_y
-		FROM kemenag_website.pegawai_seksi
-		WHERE seksi_id = $1
-		ORDER BY sort_order ASC, created_at ASC`, id)
-	var pegawaiList []fiber.Map
-	if err == nil {
-		defer pRows.Close()
-		for pRows.Next() {
-			var pID, pNama string
-			var pNip, pJabatan, pFoto any
-			var pSort, pFotoY int
-			if err := pRows.Scan(&pID, &pNama, &pNip, &pJabatan, &pFoto, &pSort, &pFotoY); err == nil {
-				pegawaiList = append(pegawaiList, fiber.Map{
-					"id":         pID,
-					"nama":       pNama,
-					"nip":        pNip,
-					"jabatan":    pJabatan,
-					"foto":       pFoto,
-					"foto_y":     pFotoY,
-					"sort_order": pSort,
-				})
+	reqURL := fmt.Sprintf("%s/api/collections/seksi/records?filter=(slug='%s')&perPage=1", pbURL, url.QueryEscape(slug))
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return response.Error(c, 502, "Upstream error", "UPSTREAM_ERROR")
+	}
+	defer resp.Body.Close()
+
+	var res struct {
+		Items []fiber.Map `json:"items"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&res) == nil && len(res.Items) > 0 {
+		seksi := res.Items[0]
+		seksiID, _ := seksi["id"].(string)
+		origID, _ := seksi["original_id"].(string)
+
+		// Fetch staf pegawai_seksi yang terhubung ke seksi ini
+		filterCond := fmt.Sprintf("seksi_id='%s'", seksiID)
+		if origID != "" && origID != seksiID {
+			filterCond = fmt.Sprintf("seksi_id='%s'||seksi_id='%s'", seksiID, origID)
+		}
+
+		pegawaiReqURL := fmt.Sprintf("%s/api/collections/pegawai_seksi/records?filter=(%s)&sort=sort_order&perPage=100", pbURL, url.QueryEscape(filterCond))
+		pegawaiReq, errP := http.NewRequestWithContext(ctx, http.MethodGet, pegawaiReqURL, nil)
+		var pegawaiItems []fiber.Map
+		if errP == nil {
+			if respP, errPDo := client.Do(pegawaiReq); errPDo == nil {
+				defer respP.Body.Close()
+				var pData struct {
+					Items []fiber.Map `json:"items"`
+				}
+				if json.NewDecoder(respP.Body).Decode(&pData) == nil {
+					pegawaiItems = pData.Items
+				}
 			}
 		}
-	}
-	if pegawaiList == nil {
-		pegawaiList = []fiber.Map{}
+
+		if pegawaiItems == nil {
+			pegawaiItems = []fiber.Map{}
+		}
+		seksi["pegawai"] = pegawaiItems
+		seksi["pegawai_count"] = len(pegawaiItems)
+
+		response.CDNCacheControl(c, 600, 1200)
+		return c.JSON(fiber.Map{"seksi": seksi})
 	}
 
-	response.CDNCacheControl(c, 600, 1200)
-	return c.JSON(fiber.Map{
-		"seksi": fiber.Map{
-			"id":            id,
-			"slug":          seksiSlug,
-			"judul":         judul,
-			"nama_kepala":   namaKepala,
-			"nip_kepala":    nipKepala,
-			"foto_kepala":   fotoKepala,
-			"foto_kepala_y": fotoY,
-			"deskripsi":     deskripsi,
-			"pegawai":       pegawaiList,
-		},
-	})
+	return response.Error(c, 404, "Seksi tidak ditemukan", "NOT_FOUND")
 }
 
 // StaticPagesHandler — GET /api/static-pages (?slug=)
 func StaticPagesHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
-	pool := db.Get()
-	if pool == nil {
-		return response.Error(c, 503, "Database tidak tersedia", "DB_UNAVAILABLE")
-	}
+
+	pbURL := config.Cfg.PocketBaseURL
 
 	slug := strings.TrimSpace(c.Query("slug"))
+	var reqURL string
+	if slug != "" {
+		reqURL = fmt.Sprintf("%s/api/collections/static_pages/records?filter=(slug='%s')&perPage=1", pbURL, url.QueryEscape(slug))
+	} else {
+		reqURL = fmt.Sprintf("%s/api/collections/static_pages/records?perPage=50", pbURL)
+	}
+
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return response.Error(c, 502, "Upstream error", "UPSTREAM_ERROR")
+	}
+	defer resp.Body.Close()
+
+	var res struct {
+		Items []fiber.Map `json:"items"`
+	}
+	_ = json.NewDecoder(resp.Body).Decode(&res)
 
 	if slug != "" {
-		var id, pageSlug, title, content string
-		var description any
-		var isPublished bool
-		var updatedAt *time.Time
-		err := pool.QueryRow(ctx, `
-			SELECT id, slug, title, description, content, is_published, updated_at
-			FROM kemenag_website.static_pages
-			WHERE slug = $1 AND is_published = true LIMIT 1`, slug).
-			Scan(&id, &pageSlug, &title, &description, &content, &isPublished, &updatedAt)
-		if err != nil {
-			return response.Error(c, 404, "Halaman tidak ditemukan.", "PAGE_NOT_FOUND")
+		if len(res.Items) > 0 {
+			response.CDNCacheControl(c, 600, 1200)
+			return c.JSON(res.Items[0])
 		}
-		response.CDNCacheControl(c, 600, 1200)
-		return c.JSON(fiber.Map{
-			"id":           id,
-			"slug":         pageSlug,
-			"title":        title,
-			"description":  description,
-			"content":      content,
-			"is_published": isPublished,
-			"updated_at":   fmtTime(updatedAt),
-		})
-	}
-
-	cur, err := pool.Query(ctx, `
-		SELECT id, slug, title, description, content, is_published, updated_at
-		FROM kemenag_website.static_pages
-		WHERE is_published = true
-		ORDER BY updated_at DESC`)
-	if err != nil {
-		return response.Error(c, 500, "Gagal mengambil halaman", "DB_ERROR")
-	}
-	defer cur.Close()
-
-	out := []fiber.Map{}
-	for cur.Next() {
-		var id, pageSlug, title, content string
-		var description any
-		var isPublished bool
-		var updatedAt *time.Time
-		if err := cur.Scan(&id, &pageSlug, &title, &description, &content, &isPublished, &updatedAt); err != nil {
-			continue
-		}
-		out = append(out, fiber.Map{
-			"id": id, "slug": pageSlug, "title": title,
-			"description": description, "content": content,
-			"is_published": isPublished, "updated_at": fmtTime(updatedAt),
-		})
+		return response.Error(c, 404, "Halaman tidak ditemukan", "PAGE_NOT_FOUND")
 	}
 
 	response.CDNCacheControl(c, 600, 1200)
-	return c.JSON(fiber.Map{"pages": out})
+	return c.JSON(fiber.Map{"pages": res.Items})
 }
 
-// SearchHandler — GET /api/search (full-text ILIKE concurrent 7 tabel)
+// SearchHandler — GET /api/search via PocketBase
 func SearchHandler(c fiber.Ctx) error {
 	query := strings.TrimSpace(c.Query("q"))
 	if len(query) < 2 {
@@ -212,247 +195,52 @@ func SearchHandler(c fiber.Ctx) error {
 
 	ctx, cancel := context.WithTimeout(c.Context(), 5*time.Second)
 	defer cancel()
-	pool := db.Get()
-	if pool == nil {
-		return response.Error(c, 503, "Database tidak tersedia", "DB_UNAVAILABLE")
-	}
 
-	pattern := "%" + query + "%"
+	pbURL := config.Cfg.PocketBaseURL
 
 	var results []fiber.Map
-	var mu sync.Mutex
-	var wg sync.WaitGroup
+	client := &http.Client{Timeout: 4 * time.Second}
 
-	appendResults := func(items []fiber.Map) {
-		if len(items) == 0 {
-			return
+	// 1. Berita search
+	filter := fmt.Sprintf("(is_published=true && (title ~ '%s' || excerpt ~ '%s'))", query, query)
+	reqURL := fmt.Sprintf("%s/api/collections/berita/records?filter=%s&perPage=%d", pbURL, url.QueryEscape(filter), limit)
+	if req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil); err == nil {
+		if resp, err := client.Do(req); err == nil {
+			defer resp.Body.Close()
+			var data struct {
+				Items []struct {
+					ID          string `json:"id"`
+					Slug        string `json:"slug"`
+					Title       string `json:"title"`
+					Excerpt     string `json:"excerpt"`
+					Category    string `json:"category"`
+					CoverImage  string `json:"cover_image"`
+					CoverFile   string `json:"cover_file"`
+					PublishedAt string `json:"published_at"`
+					Created     string `json:"created"`
+					Views       int64  `json:"views"`
+				} `json:"items"`
+			}
+			if json.NewDecoder(resp.Body).Decode(&data) == nil {
+				for _, it := range data.Items {
+					results = append(results, fiber.Map{
+						"id":           it.ID,
+						"slug":         it.Slug,
+						"title":        it.Title,
+						"excerpt":      it.Excerpt,
+						"description":  it.Excerpt,
+						"category":     it.Category,
+						"cover_image":  it.CoverImage,
+						"published_at": it.PublishedAt,
+						"views":        it.Views,
+						"type":         "berita",
+						"section":      "Berita",
+						"href":         "/berita/" + it.Slug,
+					})
+				}
+			}
 		}
-		mu.Lock()
-		results = append(results, items...)
-		mu.Unlock()
 	}
-
-	// 1. Berita
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		rows, err := pool.Query(ctx, `
-			SELECT id, slug, title, excerpt, category, cover_image, published_at, views
-			FROM kemenag_website.berita
-			WHERE is_published = true AND (title ILIKE $1 OR excerpt ILIKE $1 OR category ILIKE $1)
-			ORDER BY published_at DESC LIMIT $2`, pattern, limit)
-		if err != nil {
-			return
-		}
-		defer rows.Close()
-		var out []fiber.Map
-		for rows.Next() {
-			var id, slug, title, excerpt, category string
-			var cover any
-			var publishedAt *time.Time
-			var views int64
-			if err := rows.Scan(&id, &slug, &title, &excerpt, &category, &cover, &publishedAt, &views); err != nil {
-				continue
-			}
-			out = append(out, fiber.Map{
-				"id":           id,
-				"slug":         slug,
-				"title":        title,
-				"excerpt":      excerpt,
-				"description":  excerpt,
-				"category":     category,
-				"cover_image":  cover,
-				"published_at": fmtTime(publishedAt),
-				"views":        views,
-				"type":         "berita",
-				"section":      "Berita",
-				"href":         "/berita/" + slug,
-			})
-		}
-		appendResults(out)
-	}()
-
-	// 2. Layanan PTSP
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		rows, err := pool.Query(ctx, `
-			SELECT id, name, slug
-			FROM kemenag_ptsp.ptsp_services
-			WHERE is_active = true AND (name ILIKE $1 OR slug ILIKE $1)
-			ORDER BY sort_order ASC LIMIT $2`, pattern, limit)
-		if err != nil {
-			return
-		}
-		defer rows.Close()
-		var out []fiber.Map
-		for rows.Next() {
-			var id int64
-			var name, slug string
-			if err := rows.Scan(&id, &name, &slug); err != nil {
-				continue
-			}
-			out = append(out, fiber.Map{
-				"id":          stringify(id),
-				"title":       name,
-				"description": "Layanan Digital PTSP Kemenag Barito Utara",
-				"category":    "PTSP",
-				"slug":        slug,
-				"type":        "layanan",
-				"section":     "Layanan",
-				"href":        "https://ptsp.kemenag-baritoutara.com/",
-			})
-		}
-		appendResults(out)
-	}()
-
-	// 3. Laporan
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		rows, err := pool.Query(ctx, `
-			SELECT d.id, d.title, d.description, d.year, d.file_url, d.file_name, c.slug AS category_slug, c.title AS category_title
-			FROM kemenag_website.report_documents d
-			JOIN kemenag_website.report_categories c ON c.id = d.category_id
-			WHERE d.is_published = true AND (d.title ILIKE $1 OR d.description ILIKE $1)
-			ORDER BY d.updated_at DESC LIMIT $2`, pattern, limit)
-		if err != nil {
-			return
-		}
-		defer rows.Close()
-		var out []fiber.Map
-		for rows.Next() {
-			var id, title string
-			var description, year, fileURL, fileName, catSlug, catTitle any
-			if err := rows.Scan(&id, &title, &description, &year, &fileURL, &fileName, &catSlug, &catTitle); err != nil {
-				continue
-			}
-			out = append(out, fiber.Map{
-				"id":          id,
-				"title":       title,
-				"description": description,
-				"year":        year,
-				"category":    catTitle,
-				"slug":        catSlug,
-				"file_url":    fileURL,
-				"file_name":   fileName,
-				"type":        "laporan",
-				"section":     "Laporan",
-				"href":        "/laporan/" + stringify(catSlug),
-			})
-		}
-		appendResults(out)
-	}()
-
-	// 4. Halaman Statis
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		rows, err := pool.Query(ctx, `
-			SELECT id, slug, title, description, updated_at
-			FROM kemenag_website.static_pages
-			WHERE is_published = true AND (title ILIKE $1 OR description ILIKE $1 OR content ILIKE $1)
-			ORDER BY updated_at DESC LIMIT $2`, pattern, limit)
-		if err != nil {
-			return
-		}
-		defer rows.Close()
-		var out []fiber.Map
-		for rows.Next() {
-			var id, slug, title string
-			var description any
-			var updatedAt *time.Time
-			if err := rows.Scan(&id, &slug, &title, &description, &updatedAt); err != nil {
-				continue
-			}
-			out = append(out, fiber.Map{
-				"id":          id,
-				"slug":        slug,
-				"title":       title,
-				"description": description,
-				"updated_at":  fmtTime(updatedAt),
-				"type":        "halaman",
-				"section":     "Halaman",
-				"category":    "Informasi",
-				"href":        "/" + slug,
-			})
-		}
-		appendResults(out)
-	}()
-
-	// 5. Dokumen Publik
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		rows, err := pool.Query(ctx, `
-			SELECT id, slug, title, description, category, file_url, is_external, is_available
-			FROM kemenag_website.dokumen
-			WHERE is_published = true AND (title ILIKE $1 OR description ILIKE $1)
-			ORDER BY published_at DESC LIMIT $2`, pattern, limit)
-		if err != nil {
-			return
-		}
-		defer rows.Close()
-		var out []fiber.Map
-		for rows.Next() {
-			var id, slug, title, description, category string
-			var fileURL any
-			var isExternal, isAvailable bool
-			if err := rows.Scan(&id, &slug, &title, &description, &category, &fileURL, &isExternal, &isAvailable); err != nil {
-				continue
-			}
-			out = append(out, fiber.Map{
-				"id":           id,
-				"slug":         slug,
-				"title":        title,
-				"description":  description,
-				"category":     category,
-				"file_url":     fileURL,
-				"is_external":  isExternal,
-				"is_available": isAvailable,
-				"type":         "dokumen",
-				"section":      "Dokumen",
-				"href":         "/informasi",
-			})
-		}
-		appendResults(out)
-	}()
-
-	// 6. Seksi
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		rows, err := pool.Query(ctx, `
-			SELECT id, slug, judul, deskripsi
-			FROM kemenag_website.seksi
-			WHERE judul ILIKE $1 OR deskripsi ILIKE $1
-			ORDER BY created_at ASC LIMIT $2`, pattern, limit)
-		if err != nil {
-			return
-		}
-		defer rows.Close()
-		var out []fiber.Map
-		for rows.Next() {
-			var id, slug, judul, deskripsi string
-			if err := rows.Scan(&id, &slug, &judul, &deskripsi); err != nil {
-				continue
-			}
-			out = append(out, fiber.Map{
-				"id":          id,
-				"slug":        slug,
-				"title":       judul,
-				"judul":       judul,
-				"description": deskripsi,
-				"type":        "seksi",
-				"section":     "Layanan",
-				"category":    "Seksi & Unit",
-				"href":        "/profil/struktur-organisasi",
-			})
-		}
-		appendResults(out)
-	}()
-
-	wg.Wait()
 
 	if results == nil {
 		results = []fiber.Map{}
@@ -497,6 +285,197 @@ func MaintenanceStatusHandler(c fiber.Ctx) error {
 	c.Set("Cache-Control", "no-store")
 	c.Set("CDN-Cache-Control", "no-store")
 	return c.JSON(fiber.Map{"maintenance": false})
+}
+
+// BeritaViewIncrementHandler — POST /api/berita/:slug/view
+func BeritaViewIncrementHandler(c fiber.Ctx) error {
+	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
+	defer cancel()
+
+	slug := strings.TrimSpace(c.Params("slug"))
+	if slug == "" {
+		return response.Error(c, 400, "Slug berita diperlukan", "BAD_REQUEST")
+	}
+
+	record, err := db.GetRecordBySlug(ctx, "berita", slug)
+	if err != nil {
+		return response.Error(c, 404, "Berita tidak ditemukan", "NOT_FOUND")
+	}
+
+	id, _ := record["id"].(string)
+	if id == "" {
+		return response.Error(c, 404, "ID berita tidak valid", "NOT_FOUND")
+	}
+
+	patch := map[string]any{
+		"views+": 1,
+	}
+
+	resBytes, err := db.PatchRecord(ctx, "berita", id, patch)
+	if err != nil {
+		return response.Error(c, 500, "Gagal memperbarui view count", "INTERNAL_ERROR")
+	}
+
+	var updated map[string]any
+	_ = json.Unmarshal(resBytes, &updated)
+
+	views := 0
+	if v, ok := updated["views"].(float64); ok {
+		views = int(v)
+	}
+
+	return response.OK(c, fiber.Map{
+		"ok":    true,
+		"views": views,
+		"id":    id,
+		"slug":  slug,
+	})
+}
+
+// BeritaReactionHandler — POST /api/berita/:slug/reaction
+func BeritaReactionHandler(c fiber.Ctx) error {
+	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
+	defer cancel()
+
+	slug := strings.TrimSpace(c.Params("slug"))
+	if slug == "" {
+		return response.Error(c, 400, "Slug berita diperlukan", "BAD_REQUEST")
+	}
+
+	var body struct {
+		Action       string `json:"action"`       // "add", "remove", "switch"
+		Type         string `json:"type"`         // "bermanfaat", "inspiratif", "informatif"
+		PreviousType string `json:"previousType"` // untuk action "switch"
+	}
+
+	if err := c.Bind().Body(&body); err != nil {
+		return response.Error(c, 400, "Format request tidak valid", "BAD_REQUEST")
+	}
+
+	validTypes := map[string]bool{"bermanfaat": true, "inspiratif": true, "informatif": true}
+	if !validTypes[body.Type] {
+		return response.Error(c, 400, "Tipe reaksi tidak valid", "INVALID_TYPE")
+	}
+
+	record, err := db.GetRecordBySlug(ctx, "berita", slug)
+	if err != nil {
+		return response.Error(c, 404, "Berita tidak ditemukan", "NOT_FOUND")
+	}
+
+	id, _ := record["id"].(string)
+	if id == "" {
+		return response.Error(c, 404, "ID berita tidak valid", "NOT_FOUND")
+	}
+
+	patch := map[string]any{}
+	switch body.Action {
+	case "add":
+		patch["reaction_"+body.Type+"+"] = 1
+	case "remove":
+		patch["reaction_"+body.Type+"-"] = 1
+	case "switch":
+		if validTypes[body.PreviousType] && body.PreviousType != body.Type {
+			patch["reaction_"+body.PreviousType+"-"] = 1
+		}
+		patch["reaction_"+body.Type+"+"] = 1
+	default:
+		return response.Error(c, 400, "Aksi reaksi tidak valid", "INVALID_ACTION")
+	}
+
+	resBytes, err := db.PatchRecord(ctx, "berita", id, patch)
+	if err != nil {
+		return response.Error(c, 500, "Gagal memperbarui reaksi berita", "INTERNAL_ERROR")
+	}
+
+	var updated map[string]any
+	_ = json.Unmarshal(resBytes, &updated)
+
+	return response.OK(c, fiber.Map{
+		"ok":     true,
+		"record": updated,
+	})
+}
+
+// YoutubePublicHandler — GET /api/youtube (via PocketBase)
+func YoutubePublicHandler(c fiber.Ctx) error {
+	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
+	defer cancel()
+
+	pbURL := config.Cfg.PocketBaseURL
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pbURL+"/api/collections/youtube_videos/records?filter=(is_published=true)&sort=sort_order&perPage=50", nil)
+	if err != nil {
+		return response.Error(c, 500, "Gagal membangun request", "INTERNAL_ERROR")
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return response.Error(c, 502, "Gagal mengambil video dari PocketBase", "UPSTREAM_ERROR")
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Items []fiber.Map `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return response.Error(c, 500, "Gagal memproses response", "PARSE_ERROR")
+	}
+
+	response.CDNCacheControl(c, 300, 600)
+	return c.JSON(data.Items)
+}
+
+// SettingsHandler — GET /api/settings (via PocketBase)
+func SettingsHandler(c fiber.Ctx) error {
+	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
+	defer cancel()
+
+	pbURL := config.Cfg.PocketBaseURL
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pbURL+"/api/collections/site_settings/records?perPage=100", nil)
+	if err != nil {
+		return response.Error(c, 500, "Gagal membangun request", "INTERNAL_ERROR")
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return response.Error(c, 502, "Gagal mengambil pengaturan dari PocketBase", "UPSTREAM_ERROR")
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Items []struct {
+			Key   string `json:"key"`
+			Value any    `json:"value"`
+		} `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return response.Error(c, 500, "Gagal memproses response", "PARSE_ERROR")
+	}
+
+	settingsMap := make(map[string]any)
+	var identityObj map[string]any
+
+	for _, item := range data.Items {
+		if item.Key == "identity" {
+			if m, ok := item.Value.(map[string]any); ok {
+				identityObj = m
+			}
+		}
+		settingsMap[item.Key] = item.Value
+	}
+
+	// Fallback nilai dari identityObj jika field individual kosong
+	for k, v := range identityObj {
+		if existing, exists := settingsMap[k]; !exists || existing == "" || existing == nil {
+			settingsMap[k] = v
+		}
+	}
+
+	response.CDNCacheControl(c, 60, 300)
+	return c.JSON(settingsMap)
 }
 
 var _ = middleware.GetClientIP

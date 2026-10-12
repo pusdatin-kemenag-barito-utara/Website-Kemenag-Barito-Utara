@@ -9,26 +9,9 @@ import (
 	"time"
 
 	"kemenag-backend/internal/cache"
-	"kemenag-backend/internal/db"
 )
 
-type interfaceRows interface {
-	Close()
-	Next() bool
-	Err() error
-	Scan(dest ...any) error
-}
 
-type interfaceRow interface {
-	Scan(dest ...any) error
-}
-
-// poolQuery helper query dengan pgx pool.
-func poolQuery(ctx context.Context, pool interface {
-	Query(context.Context, string, ...any) (interfaceRows, error)
-}, sql string, args ...any) (interfaceRows, error) {
-	return pool.Query(ctx, sql, args...)
-}
 
 // datePtr helper.
 func datePtr(t time.Time) *time.Time {
@@ -66,8 +49,6 @@ func InvalidateHomeCache(ctx context.Context) {
 func cacheSet(ctx context.Context, key, value string, ttl time.Duration) error {
 	return cache.Set(ctx, key, value, ttl)
 }
-
-var _ = db.Get
 
 // newUUID menghasilkan UUID v4 acak (RFC 4122) tanpa dependency eksternal.
 func newUUID() string {

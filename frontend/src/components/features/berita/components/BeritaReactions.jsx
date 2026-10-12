@@ -1,8 +1,8 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { pushAnalyticsEvent } from "@/lib/analytics";
+import { getPocketBase } from "@/lib/pocketbase/client";
+import { getPublicBeritaBySlug } from "@/lib/pocketbase/db";
 
 export default function BeritaReactions({ slug, initialReactions }) {
   const { locale } = useLanguage();
@@ -58,32 +58,47 @@ export default function BeritaReactions({ slug, initialReactions }) {
       }
     } catch {}
 
-    // Ambil data reaksi terbaru dari server
+    // Ambil data reaksi terbaru dari PocketBase
     async function fetchReactions() {
       try {
-        const res = await fetch(`/api/berita/${slug}/react`, { cache: "no-store" });
-        if (res.ok) {
-          const data = await res.json();
-          const payload = data?.data || data;
-          if (isMounted && payload) {
-            setReactions({
-              bermanfaat: Number(payload.bermanfaat ?? payload.reaction_bermanfaat ?? 0),
-              inspiratif: Number(payload.inspiratif ?? payload.reaction_inspiratif ?? 0),
-              informatif: Number(payload.informatif ?? payload.reaction_informatif ?? 0),
-            });
-          }
+        const record = await getPublicBeritaBySlug(slug);
+        if (isMounted && record) {
+          setReactions({
+            bermanfaat: Number(record.reaction_bermanfaat ?? record.bermanfaat ?? 0),
+            inspiratif: Number(record.reaction_inspiratif ?? record.inspiratif ?? 0),
+            informatif: Number(record.reaction_informatif ?? record.informatif ?? 0),
+          });
         }
       } catch {}
     }
 
     fetchReactions();
 
-    // Background live sync setiap 15 detik
-    const interval = setInterval(fetchReactions, 15000);
+    // Native PocketBase Realtime SSE subscription
+    const pb = getPocketBase();
+    let unsubscribe = null;
+    (async () => {
+      try {
+        const record = await getPublicBeritaBySlug(slug);
+        if (record?.id && isMounted) {
+          unsubscribe = await pb.collection("berita").subscribe(record.id, (e) => {
+            if (isMounted && e.action === "update" && e.record) {
+              setReactions({
+                bermanfaat: Number(e.record.reaction_bermanfaat ?? 0),
+                inspiratif: Number(e.record.reaction_inspiratif ?? 0),
+                informatif: Number(e.record.reaction_informatif ?? 0),
+              });
+            }
+          });
+        }
+      } catch {}
+    })();
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
   }, [slug]);
 
@@ -144,27 +159,23 @@ export default function BeritaReactions({ slug, initialReactions }) {
     });
 
     try {
-      const res = await fetch(`/api/berita/${slug}/react`, {
+      const res = await fetch(`/api/berita/${encodeURIComponent(slug)}/reaction`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ type, action, previousType }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, type, previousType }),
       });
-
       if (res.ok) {
         const data = await res.json();
-        const payload = data?.data || data;
-        if (payload) {
+        if (data?.record) {
           setReactions({
-            bermanfaat: Number(payload.bermanfaat ?? payload.reaction_bermanfaat ?? 0),
-            inspiratif: Number(payload.inspiratif ?? payload.reaction_inspiratif ?? 0),
-            informatif: Number(payload.informatif ?? payload.reaction_informatif ?? 0),
+            bermanfaat: Number(data.record.reaction_bermanfaat ?? 0),
+            inspiratif: Number(data.record.reaction_inspiratif ?? 0),
+            informatif: Number(data.record.reaction_informatif ?? 0),
           });
         }
       }
     } catch (err) {
-      console.warn("Gagal sinkron reaksi ke server:", err);
+      console.warn("Gagal sinkron reaksi:", err);
     }
   };
 

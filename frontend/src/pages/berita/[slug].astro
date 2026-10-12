@@ -1,6 +1,6 @@
 ---
 import { siteInfo } from "@/data/site";
-import { apiGet } from "@/lib/api-client";
+import { getPublicBeritaBySlug, getRelatedBerita, getAdjacentBerita } from "@/lib/pocketbase/db";
 import { normalizeBerita } from "@/lib/berita-normalize";
 import { toCoverPreviewUrl } from "@/lib/cover-image";
 import BaseLayout from "@/layouts/BaseLayout.astro";
@@ -16,8 +16,7 @@ let relatedItems: any[] = [];
 let adjacent: any = {};
 
 try {
-  const res = await apiGet(`/berita/${slug}`);
-  const raw = res?.berita;
+  const raw = await getPublicBeritaBySlug(slug);
   if (raw) {
     const normalized = normalizeBerita(raw);
     if (normalized) {
@@ -28,7 +27,12 @@ try {
       berita = normalized;
     }
 
-    relatedItems = (raw.related || [])
+    const [rel, adj] = await Promise.all([
+      getRelatedBerita(raw.category, raw.id, 4),
+      getAdjacentBerita(raw.published_at, raw.id),
+    ]);
+
+    relatedItems = (rel || [])
       .map(normalizeBerita)
       .filter(Boolean);
 
@@ -45,8 +49,8 @@ try {
         : null;
 
     adjacent = {
-      older: normAdjacent(raw.prev),
-      newer: normAdjacent(raw.next),
+      older: normAdjacent(adj.prev),
+      newer: normAdjacent(adj.next),
     };
   }
 } catch (err) {

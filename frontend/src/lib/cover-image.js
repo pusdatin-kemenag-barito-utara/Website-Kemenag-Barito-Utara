@@ -1,10 +1,7 @@
-import { getSupabaseUrl } from "@/lib/env";
+import { getPocketBaseUrl } from "@/lib/env";
 
-function getSupabaseStorageMedia() {
-  const base = getSupabaseUrl();
-  return base && !base.includes("placeholder")
-    ? `${base}/storage/v1/object/public/cms-media`
-    : "/storage/v1/object/public/cms-media";
+function getMediaBaseUrl() {
+  return getPocketBaseUrl();
 }
 
 export function normalizeCoverImageUrl(value = "") {
@@ -12,12 +9,12 @@ export function normalizeCoverImageUrl(value = "") {
   if (!raw) return "";
 
   // Self-healing: if an old/cached placeholder domain was stored, extract clean media path
-  if (raw.includes("placeholder.supabase.co")) {
+  if (raw.includes("placeholder")) {
     const marker = "/storage/v1/object/public/cms-media/";
     const markerIdx = raw.indexOf(marker);
     if (markerIdx !== -1) {
       const clean = raw.slice(markerIdx + marker.length).replace(/^\/+/, "");
-      return `${getSupabaseStorageMedia()}/${clean}`;
+      return `${getMediaBaseUrl()}/api/files/${clean}`;
     }
   }
 
@@ -34,12 +31,12 @@ export function normalizeCoverImageUrl(value = "") {
   const apiStorageIdx = raw.indexOf("/api/storage/media/");
   if (apiStorageIdx !== -1) {
     const clean = raw.slice(apiStorageIdx + "/api/storage/media/".length).replace(/^\/+/, "");
-    return `${getSupabaseStorageMedia()}/${clean}`;
+    return `${getMediaBaseUrl()}/api/files/${clean}`;
   }
 
   if (raw.startsWith("/storage/")) {
     const clean = raw.replace(/^\/storage\/?/, "");
-    return `${getSupabaseStorageMedia()}/${clean}`;
+    return `${getMediaBaseUrl()}/api/files/${clean}`;
   }
 
   if (raw.startsWith("/")) {
@@ -60,7 +57,7 @@ export function toCoverPreviewUrl(value = "") {
   return normalized;
 }
 
-export function isSupabasePublicUrl(url) {
+export function isLegacyStorageUrl(url) {
   if (!url) return false;
   const path = typeof url === "string" ? url : url.pathname || "";
   return path.includes("/storage/v1/object/public/");

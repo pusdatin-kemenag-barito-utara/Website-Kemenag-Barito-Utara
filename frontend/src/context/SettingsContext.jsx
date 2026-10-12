@@ -1,7 +1,6 @@
-"use client";
-
 import React, { createContext, useContext, useMemo, useState, useEffect } from "react";
 import { siteInfo as defaultSiteInfo, siteLinks as defaultSiteLinks } from "@/data/site";
+import { getPublicSettings } from "@/lib/pocketbase/db";
 
 const SettingsContext = createContext({
   siteInfo: defaultSiteInfo,
@@ -12,10 +11,9 @@ export function SettingsProvider({ children, initialSettings }) {
   const [dbSettings, setDbSettings] = useState(initialSettings || null);
 
   useEffect(() => {
-    // Background fetch latest public settings from Go Backend
+    // Background fetch latest public settings directly from PocketBase
     let isMounted = true;
-    fetch("/api/settings")
-      .then((res) => (res.ok ? res.json() : null))
+    getPublicSettings()
       .then((data) => {
         if (isMounted && data && typeof data === "object") {
           setDbSettings(data);

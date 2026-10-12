@@ -1,5 +1,5 @@
 ---
-import { apiGet } from "@/lib/api-client";
+import { getPublicPortalData } from "@/lib/pocketbase/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import PortalShell from "@/components/features/portal/PortalShell";
 
@@ -7,10 +7,7 @@ export const prerender = false;
 
 let initialData = null;
 try {
-  const res = await apiGet("/portal");
-  if (res && res.beritaCount !== undefined) {
-    initialData = res;
-  }
+  initialData = await getPublicPortalData();
 } catch (err) {
   initialData = null;
 }

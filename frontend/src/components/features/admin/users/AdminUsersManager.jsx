@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { FloatingFeedback, DeleteConfirmModal } from "../slides/SlidesUI";
 import { EyeIcon } from "../login/LoginUI";
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 export const MODULE_DEFINITIONS = [
   {
@@ -215,15 +216,22 @@ export default function AdminUsersManager() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/users", { cache: "no-store" });
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        setUsers(data.users || []);
-      } else {
-        setFeedbackErr(data.message || "Gagal memuat daftar pengguna admin.");
-      }
+      const pb = getPocketBase();
+      const records = await pb.collection("users").getFullList({ sort: "-created" });
+      const mapped = records.map((r) => ({
+        id: r.id,
+        fullName: r.name || r.email,
+        email: r.email,
+        role: r.role || "editor",
+        status: r.status || (r.is_active !== false ? "active" : "inactive"),
+        isActive: r.is_active !== false,
+        permissions: Array.isArray(r.permissions) ? r.permissions : [],
+        createdAt: r.created,
+      }));
+      setUsers(mapped);
     } catch (err) {
-      setFeedbackErr("Koneksi gagal saat memuat daftar pengguna.");
+      if (err?.name === "AbortError" || err?.isAbort) return;
+      setFeedbackErr(err?.message || "Koneksi gagal saat memuat daftar pengguna.");
     } finally {
       setLoading(false);
     }
@@ -273,34 +281,30 @@ export default function AdminUsersManager() {
         : compileFullPermissions(createForm.selectedModules);
 
     try {
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: createForm.email,
-          fullName: createForm.fullName,
-          password: createForm.password,
-          role: createForm.role,
-          permissions: finalPermissions,
-        }),
+      const pb = getPocketBase();
+      await pb.collection("users").create({
+        email: createForm.email.trim(),
+        name: createForm.fullName.trim(),
+        password: createForm.password,
+        passwordConfirm: createForm.password,
+        role: createForm.role,
+        status: "active",
+        is_active: true,
+        permissions: finalPermissions,
       });
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        setFeedbackMsg(data.message || "Pengguna admin baru berhasil ditambahkan!");
-        setIsCreateOpen(false);
-        setCreateForm({
-          email: "",
-          fullName: "",
-          password: "",
-          role: "editor",
-          selectedModules: getRoleDefaults("editor"),
-        });
-        fetchUsers();
-      } else {
-        setFeedbackErr(data.message || "Gagal menambahkan pengguna admin.");
-      }
+
+      setFeedbackMsg("Pengguna admin baru berhasil ditambahkan!");
+      setIsCreateOpen(false);
+      setCreateForm({
+        email: "",
+        fullName: "",
+        password: "",
+        role: "editor",
+        selectedModules: getRoleDefaults("editor"),
+      });
+      fetchUsers();
     } catch (err) {
-      setFeedbackErr("Terjadi kesalahan jaringan saat menyimpan data.");
+      setFeedbackErr(err?.message || "Gagal menambahkan pengguna admin.");
     } finally {
       setSubmittingCreate(false);
     }
@@ -348,27 +352,20 @@ export default function AdminUsersManager() {
         : compileFullPermissions(editForm.selectedModules);
 
     try {
-      const res = await fetch(`/api/admin/users/${editingUser.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: editForm.fullName,
-          role: editForm.role,
-          status: editForm.status,
-          isActive: editForm.status === "active",
-          permissions: finalPermissions,
-        }),
+      const pb = getPocketBase();
+      await pb.collection("users").update(editingUser.id, {
+        name: editForm.fullName.trim(),
+        role: editForm.role,
+        status: editForm.status,
+        is_active: editForm.status === "active",
+        permissions: finalPermissions,
       });
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        setFeedbackMsg("Data dan hak akses pengguna admin berhasil diperbarui!");
-        setEditingUser(null);
-        fetchUsers();
-      } else {
-        setFeedbackErr(data.message || "Gagal memperbarui pengguna admin.");
-      }
+
+      setFeedbackMsg("Data dan hak akses pengguna admin berhasil diperbarui!");
+      setEditingUser(null);
+      fetchUsers();
     } catch (err) {
-      setFeedbackErr("Terjadi kesalahan jaringan saat memperbarui data.");
+      setFeedbackErr(err?.message || "Terjadi kesalahan jaringan saat memperbarui data.");
     } finally {
       setSubmittingEdit(false);
     }
@@ -380,19 +377,14 @@ export default function AdminUsersManager() {
 
     setSubmittingDelete(true);
     try {
-      const res = await fetch(`/api/admin/users/${deletingUser.id}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        setFeedbackMsg("Pengguna admin berhasil dihapus dari sistem!");
-        setDeletingUser(null);
-        fetchUsers();
-      } else {
-        setFeedbackErr(data.message || "Gagal menghapus pengguna.");
-      }
+      const pb = getPocketBase();
+      await pb.collection("users").delete(deletingUser.id);
+
+      setFeedbackMsg("Pengguna admin berhasil dihapus dari sistem!");
+      setDeletingUser(null);
+      fetchUsers();
     } catch (err) {
-      setFeedbackErr("Terjadi kesalahan jaringan saat menghapus pengguna.");
+      setFeedbackErr(err?.message || "Terjadi kesalahan jaringan saat menghapus pengguna.");
     } finally {
       setSubmittingDelete(false);
     }

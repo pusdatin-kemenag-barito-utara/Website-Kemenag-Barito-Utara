@@ -1,5 +1,5 @@
 ---
-import { apiGet } from "@/lib/api-client";
+import { getPublicGaleri } from "@/lib/pocketbase/db";
 import { normalizeCoverImageUrl, toCoverPreviewUrl } from "@/lib/cover-image";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import GaleriPageShell from "@/components/features/galeri/GaleriPageShell";
@@ -7,34 +7,28 @@ import { breadcrumbSchema } from "@/lib/structured-data";
 
 export const prerender = false;
 
-function mapGaleriItems(rows = []) {
+function mapGaleriItems(rows: any[] = []) {
   return rows
     .filter(Boolean)
-    .map((item) => {
-      const normalizedImage = normalizeCoverImageUrl(item?.image_url || "");
-      const previewImage = toCoverPreviewUrl(normalizedImage);
+    .map((item: any) => {
+      const normalizedThumb = normalizeCoverImageUrl(item?.thumb_url || item?.image_url || "");
+      const previewImage = toCoverPreviewUrl(normalizedThumb);
+      const fullImage = normalizeCoverImageUrl(item?.image_url || "");
       return {
         id: item?.id ?? null,
         title: item?.title || "Dokumentasi kegiatan",
         imageUrl: previewImage || "/assets/branding/kemenag.svg",
+        fullImageUrl: fullImage || previewImage || "/assets/branding/kemenag.svg",
         linkUrl: item?.link_url && item.link_url !== "#" ? item.link_url : "",
-        publishedAt: item?.published_at || item?.created_at || null,
+        publishedAt: item?.published_at || item?.created || null,
       };
     });
 }
 
-let items = [];
+let items: any[] = [];
 try {
-  const res = await apiGet("/galeri?limit=100");
-  const rows = res?.items || [];
-  const published = rows.filter(
-    (r) => r.is_published === true && r.source_type === "manual",
-  );
-  items = mapGaleriItems(
-    published.length > 0
-      ? published
-      : rows.filter((r) => r.is_published !== false && r.source_type === "manual"),
-  );
+  const res = await getPublicGaleri(1, 100);
+  items = mapGaleriItems(res.items);
 } catch (err) {
   items = [];
 }

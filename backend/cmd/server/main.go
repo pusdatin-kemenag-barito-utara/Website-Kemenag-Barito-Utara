@@ -15,7 +15,6 @@ import (
 	"kemenag-backend/internal/db"
 	"kemenag-backend/internal/handlers"
 	"kemenag-backend/internal/middleware"
-	"kemenag-backend/internal/services"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/compress"
@@ -23,7 +22,6 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/helmet"
 	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/gofiber/fiber/v3/middleware/recover"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
@@ -33,21 +31,19 @@ func main() {
 		log.Fatalf("[config] gagal load: %v", err)
 	}
 
-	// Database (wajib)
-	pool, err := db.Init(config.Cfg.DatabaseURL)
-	if err != nil {
-		log.Fatalf("[db] %v", err)
+	// PocketBase Database Engine (wajib)
+	pbTarget := config.Cfg.PocketBaseURL
+	if pbTarget == "" {
+		log.Fatalf("[pocketbase] POCKETBASE_URL / NEXT_PUBLIC_POCKETBASE_URL wajib diatur di Infisical")
 	}
-	defer pool.Close()
+	if err := db.Init(pbTarget); err != nil {
+		log.Fatalf("[pocketbase] %v", err)
+	}
+	defer db.Close()
 
 	// Redis opsional (fallback in-memory)
 	cache.Init(config.Cfg.RedisURL)
 	defer cache.Close()
-
-	// Layanan eksternal
-	services.InitSupabase()
-	services.InitStorage()
-	services.Realtime.Start()
 
 	app := fiber.New(fiber.Config{
 		AppName:         "Kemenag Barito Utara API (Golang)",
@@ -80,14 +76,14 @@ func main() {
 	ctxPing, cancelPing := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelPing()
 
-	dbLatency, poolStat, _ := db.Ping(ctxPing)
+	dbLatency, _ := db.Ping(ctxPing)
 	cacheLatency, _ := cache.Ping(ctxPing)
 
 	bootDuration := time.Since(bootStart).Round(time.Millisecond)
 	routes := app.GetRoutes(true)
 	port := config.Cfg.Port
 
-	printStartupBanner(bootDuration, port, dbLatency, poolStat, cacheLatency, len(routes))
+	printStartupBanner(bootDuration, port, dbLatency, cacheLatency, len(routes))
 
 	// Graceful shutdown context (merespon SIGTERM / SIGINT saat deploy/restart)
 	ctxShutdown, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -104,7 +100,7 @@ func main() {
 	log.Println("[server] shutdown graceful selesai, seluruh koneksi dan transaksi ditutup rapi.")
 }
 
-func printStartupBanner(bootDuration time.Duration, port string, dbLatency time.Duration, stat *pgxpool.Stat, cacheLatency time.Duration, routeCount int) {
+func printStartupBanner(bootDuration time.Duration, port string, dbLatency time.Duration, cacheLatency time.Duration, routeCount int) {
 	const (
 		reset     = "\033[0m"
 		boldGreen = "\033[1;32m"
@@ -114,13 +110,8 @@ func printStartupBanner(bootDuration time.Duration, port string, dbLatency time.
 		boldWhite = "\033[1;37m"
 	)
 
-	// Format DB info
-	var dbInfo string
-	if stat != nil {
-		dbInfo = fmt.Sprintf("%sPostgreSQL Ready%s %s(%v · pool: %d/%d conns)%s", boldGreen, reset, gray, dbLatency.Round(100*time.Microsecond), stat.TotalConns(), stat.MaxConns(), reset)
-	} else {
-		dbInfo = fmt.Sprintf("%sPostgreSQL Ready%s %s(%v)%s", boldGreen, reset, gray, dbLatency.Round(100*time.Microsecond), reset)
-	}
+	// Format PocketBase info
+	dbInfo := fmt.Sprintf("%sPocketBase Ready%s %s(%v · %s)%s", boldGreen, reset, gray, dbLatency.Round(100*time.Microsecond), db.GetURL(), reset)
 
 	// Format Cache info
 	var cacheInfo string
@@ -158,7 +149,7 @@ func printStartupBanner(bootDuration time.Duration, port string, dbLatency time.
 	fmt.Printf(" %s┃%s %-10s %shttp://localhost:%s/api/health%s\n", cyan, reset, "Health", boldWhite, port, reset)
 	fmt.Printf(" %s┃%s %-10s %s\n", cyan, reset, "Database", dbInfo)
 	fmt.Printf(" %s┃%s %-10s %s\n", cyan, reset, "Cache", cacheInfo)
-	fmt.Printf(" %s┃%s %-10s %sSupabase Auth & Storage%s %s·%s %sRealtime Hub%s\n", cyan, reset, "Services", boldGreen, reset, gray, reset, boldGreen, reset)
+	fmt.Printf(" %s┃%s %-10s %sPocketBase Live Hub%s\n", cyan, reset, "Services", boldGreen, reset)
 	fmt.Printf(" %s┃%s %-10s %s\n", cyan, reset, "AI Engine", aiStatus)
 	fmt.Printf(" %s┃%s %-10s %s%d endpoints active%s\n", cyan, reset, "Routes", boldWhite, routeCount, reset)
 	fmt.Printf("%s%s%s %swatching for file changes...%s\n\n", gray, timeStr, reset, gray, reset)

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"kemenag-backend/internal/config"
-	"kemenag-backend/internal/db"
 )
 
 // AIMessage pesan chat.
@@ -331,42 +330,56 @@ func EmbedQuery(ctx context.Context, text string) ([]float64, error) {
 	return vals, nil
 }
 
-// SearchKnowledge: RAG cosine similarity ke ai_knowledge_base (threshold 0.5, top 4).
+// SearchKnowledge: RAG context query dari PocketBase knowledge base.
 func SearchKnowledge(ctx context.Context, query string, limit int) ([]RAGResult, error) {
 	query = strings.TrimSpace(query)
 	if query == "" || limit <= 0 {
 		return nil, nil
 	}
-	embedding, err := EmbedQuery(ctx, query)
+
+	pbURL := config.Cfg.PocketBaseURL
+	searchURL := fmt.Sprintf("%s/api/collections/ai_knowledge_base/records?perPage=%d", pbURL, limit)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, searchURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
 
-	pool := db.Get()
-	if pool == nil {
-		return nil, fmt.Errorf("db tidak tersedia")
+	client := &http.Client{Timeout: 4 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, nil
 	}
 
-	embJSON, _ := json.Marshal(embedding)
-	rows, err := pool.Query(ctx, `
-		SELECT title, content_summary, source_url, 1 - (embedding <=> $1::vector) AS score
-		FROM kemenag_website.ai_knowledge_base
-		WHERE 1 - (embedding <=> $1::vector) > 0.5
-		ORDER BY embedding <=> $1::vector
-		LIMIT $2`, string(embJSON), limit)
-	if err != nil {
-		return nil, err
+	var res struct {
+		Items []struct {
+			Title          string `json:"title"`
+			ContentSummary string `json:"content_summary"`
+			SourceURL      string `json:"source_url"`
+		} `json:"items"`
 	}
-	defer rows.Close()
+
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return nil, nil
+	}
 
 	var results []RAGResult
-	for rows.Next() {
-		var r RAGResult
-		if err := rows.Scan(&r.Title, &r.Summary, &r.URL, &r.Score); err == nil {
-			results = append(results, r)
+	for _, it := range res.Items {
+		if it.Title != "" || it.ContentSummary != "" {
+			results = append(results, RAGResult{
+				Title:   it.Title,
+				Summary: it.ContentSummary,
+				URL:     it.SourceURL,
+				Score:   1.0,
+			})
 		}
 	}
-	return results, rows.Err()
+
+	return results, nil
 }
 
 // ---------- System prompt builder ----------

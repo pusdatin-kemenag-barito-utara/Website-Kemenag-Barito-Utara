@@ -34,9 +34,7 @@ export function normalizeLaporanDocument(doc = {}) {
   const id = doc?.id || "";
 
   const safeFilename = doc?.file_name || `dokumen-${id}.pdf`;
-  const viewHref = id
-    ? `/api/laporan/view/${id}/${safeFilename}`
-    : fileUrl || "#";
+  const viewHref = fileUrl || (id ? `/api/laporan/view/${id}/${safeFilename}` : "#");
 
   return {
     id,

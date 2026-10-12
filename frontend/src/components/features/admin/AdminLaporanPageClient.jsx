@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState } from "react";
 import AdminLaporanCategoryManager from "./AdminLaporanCategoryManager";
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 const DEFAULT_CATEGORIES = [
     { slug: "sop", title: "SOP dan Standar Pelayanan", description: "Standar Operasional Prosedur dan standar pelayanan untuk setiap layanan publik Kemenag Barito Utara." },
@@ -19,28 +20,19 @@ export default function AdminLaporanPageClient() {
     const [error, setError] = useState("");
 
     useEffect(() => {
-        const controller = new AbortController();
-
         async function loadData() {
             try {
-                const res = await fetch("/api/admin/laporan", {
-                    method: "GET",
-                    cache: "no-store",
-                    credentials: "include",
-                    signal: controller.signal,
+                const pb = getPocketBase();
+                const records = await pb.collection("report_categories").getFullList({
+                    sort: "sort_order",
+                    requestKey: null,
                 });
 
-                const json = await res.json();
-
-                if (!res.ok) {
-                    throw new Error(json?.message || "Gagal memuat data laporan admin.");
-                }
-
-                if (Array.isArray(json?.categories) && json.categories.length > 0) {
-                    setCategories(json.categories);
+                if (Array.isArray(records) && records.length > 0) {
+                    setCategories(records);
                 }
             } catch (err) {
-                if (err?.name === "AbortError") return;
+                if (err?.name === "AbortError" || err?.isAbort) return;
                 setError(err?.message || "Gagal memuat data laporan admin.");
             }
         }

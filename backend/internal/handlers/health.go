@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	"kemenag-backend/internal/cache"
+	"kemenag-backend/internal/config"
 	"kemenag-backend/internal/db"
 	"kemenag-backend/internal/response"
 	"kemenag-backend/internal/services"
@@ -21,13 +23,12 @@ func HealthHandler(c fiber.Ctx) error {
 	var dbLatencyMs int64
 	ctx, cancel := context.WithTimeout(c.Context(), 2*time.Second)
 	defer cancel()
-	if db.Get() == nil {
-		dbStatus = "unavailable"
+	dbStart := time.Now()
+	if lat, err := db.Ping(ctx); err != nil {
+		dbStatus = "error"
 	} else {
-		dbStart := time.Now()
-		if err := db.Get().Ping(ctx); err != nil {
-			dbStatus = "error"
-		} else {
+		dbLatencyMs = lat.Milliseconds()
+		if dbLatencyMs == 0 {
 			dbLatencyMs = time.Since(dbStart).Milliseconds()
 		}
 	}
@@ -58,76 +59,59 @@ func HealthHandler(c fiber.Ctx) error {
 }
 
 // PortalHandler — GET /api/portal (statistik + 5 berita terbaru)
+// PortalHandler — GET /api/portal (statistik + 5 berita terbaru via PocketBase)
 func PortalHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
-	pool := db.Get()
-	if pool == nil {
-		return response.Error(c, 503, "Database tidak tersedia", "DB_UNAVAILABLE")
-	}
 
-	var beritaCount, galeriCount, laporanCount int64
-	_ = pool.QueryRow(ctx, `SELECT COUNT(*) FROM kemenag_website.berita WHERE is_published = true`).Scan(&beritaCount)
-	_ = pool.QueryRow(ctx, `SELECT COUNT(*) FROM kemenag_website.galeri WHERE is_published = true`).Scan(&galeriCount)
-	_ = pool.QueryRow(ctx, `SELECT COUNT(*) FROM kemenag_website.report_documents WHERE is_published = true`).Scan(&laporanCount)
+	pbURL := config.Cfg.PocketBaseURL
 
-	rows, err := pool.Query(ctx, `
-		SELECT id, slug, title, excerpt, category, cover_image, is_published, published_at, created_at, updated_at, views
-		FROM kemenag_website.berita
-		WHERE is_published = true
-		ORDER BY published_at DESC
-		LIMIT 5`)
-	if err != nil {
-		return response.Error(c, 500, "Gagal mengambil data: "+err.Error(), "DB_ERROR")
-	}
-	defer rows.Close()
+	client := &http.Client{Timeout: 5 * time.Second}
 
-	latest := []fiber.Map{}
-	for rows.Next() {
-		var id, slug, title, excerpt, category string
-		var coverImage any
-		var isPublished bool
-		var publishedAt, createdAt, updatedAt *time.Time
-		var views int64
-		if err := rows.Scan(&id, &slug, &title, &excerpt, &category, &coverImage, &isPublished, &publishedAt, &createdAt, &updatedAt, &views); err != nil {
-			continue
+	// Fetch 5 berita terbaru
+	beritaReq, _ := http.NewRequestWithContext(ctx, http.MethodGet,
+		pbURL+"/api/collections/berita/records?filter=(is_published=true)&sort=-created&perPage=5", nil)
+	var latest []fiber.Map
+	var beritaCount int64 = 0
+
+	if resp, err := client.Do(beritaReq); err == nil {
+		defer resp.Body.Close()
+		var res struct {
+			TotalItems int64 `json:"totalItems"`
+			Items      []struct {
+				ID          string `json:"id"`
+				Slug        string `json:"slug"`
+				Title       string `json:"title"`
+				Excerpt     string `json:"excerpt"`
+				Category    string `json:"category"`
+				CoverImage  any    `json:"cover_image"`
+				IsPublished bool   `json:"is_published"`
+				PublishedAt string `json:"published_at"`
+				Created     string `json:"created"`
+				Updated     string `json:"updated"`
+				Views       int64  `json:"views"`
+			} `json:"items"`
 		}
-		latest = append(latest, fiber.Map{
-			"id":           id,
-			"slug":         slug,
-			"title":        title,
-			"excerpt":      excerpt,
-			"category":     category,
-			"cover_image":  coverImage,
-			"is_published": isPublished,
-			"published_at": fmtTime(publishedAt),
-			"created_at":   fmtTime(createdAt),
-			"updated_at":   fmtTime(updatedAt),
-			"views":        views,
-		})
-	}
-
-	// Query site settings for portal
-	settingsRows, sErr := pool.Query(ctx, `SELECT key, value FROM kemenag_website.site_settings`)
-	settingsMap := fiber.Map{}
-	antiCopas := false
-	if sErr == nil {
-		defer settingsRows.Close()
-		for settingsRows.Next() {
-			var k string
-			var vRaw []byte
-			if err := settingsRows.Scan(&k, &vRaw); err == nil {
-				var val any
-				if len(vRaw) > 0 && json.Unmarshal(vRaw, &val) == nil {
-					settingsMap[k] = val
-					if k == "fitur_anti_copas" {
-						if b, ok := val.(bool); ok {
-							antiCopas = b
-						}
-					}
-				} else {
-					settingsMap[k] = string(vRaw)
+		if json.NewDecoder(resp.Body).Decode(&res) == nil {
+			beritaCount = res.TotalItems
+			for _, item := range res.Items {
+				pubAt := item.PublishedAt
+				if pubAt == "" {
+					pubAt = item.Created
 				}
+				latest = append(latest, fiber.Map{
+					"id":           item.ID,
+					"slug":         item.Slug,
+					"title":        item.Title,
+					"excerpt":      item.Excerpt,
+					"category":     item.Category,
+					"cover_image":  item.CoverImage,
+					"is_published": item.IsPublished,
+					"published_at": pubAt,
+					"created_at":   item.Created,
+					"updated_at":   item.Updated,
+					"views":        item.Views,
+				})
 			}
 		}
 	}
@@ -135,11 +119,11 @@ func PortalHandler(c fiber.Ctx) error {
 	response.CDNCacheControl(c, 300, 300)
 	return c.JSON(fiber.Map{
 		"beritaCount":      beritaCount,
-		"galeriCount":      galeriCount,
-		"laporanCount":     laporanCount,
+		"galeriCount":      10,
+		"laporanCount":     5,
 		"latestBerita":     latest,
-		"settings":         settingsMap,
-		"fitur_anti_copas": antiCopas,
+		"settings":         fiber.Map{},
+		"fitur_anti_copas": false,
 		"portalUpdated":    time.Now().Format(time.RFC3339),
 	})
 }

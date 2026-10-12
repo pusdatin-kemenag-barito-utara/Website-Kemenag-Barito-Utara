@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import Image from "@/components/common/NextImage";
 import { User } from "lucide-react";
 import PageBanner from "@/components/common/PageBanner";
-import { createClient } from "@/lib/supabase/client";
+import { getPublicSeksiList } from "@/lib/pocketbase/db";
+import { buildLeadershipData } from "@/lib/seksi-normalize";
 
 
 // Sub-component for individual Profile Cards
@@ -62,21 +63,15 @@ export default function StrukturOrganisasiUI({ breadcrumb, leadershipData = [] }
   }, [leadershipData]);
 
   // Fungsi untuk mengambil data terbaru dari API publik
-  const abortRef = useRef(null);
-
   const fetchLatestData = async () => {
-    if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
     try {
-      const res = await fetch("/api/seksi", { cache: "no-store", signal: controller.signal });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        setLeadershipList(data);
+      const seksi = await getPublicSeksiList();
+      if (Array.isArray(seksi) && seksi.length > 0) {
+        const mapped = buildLeadershipData(seksi);
+        setLeadershipList(mapped);
       }
     } catch (e) {
-      if (e?.name === "AbortError") return;
+      // silent
     }
   };
 
@@ -84,28 +79,25 @@ export default function StrukturOrganisasiUI({ breadcrumb, leadershipData = [] }
     // 1. Polling periodik setiap 5 detik sebagai fallback handal
     const interval = setInterval(fetchLatestData, 5000);
 
-    // 2. Supabase Realtime: dengarkan sinyal broadcast dari admin
-    let supabase;
-    let channel;
+    // 2. PocketBase Realtime SSE: dengarkan update dari seksi
+    let unsubscribe;
     try {
-      supabase = createClient();
-      channel = supabase.channel("site-updates");
-      channel
-        .on("broadcast", { event: "refresh-content" }, (payload) => {
-          const entity = payload?.payload?.entity;
-          if (!entity || entity === "seksi" || entity === "content") {
-            fetchLatestData();
-          }
-        })
-        .subscribe();
+      import("@/lib/pocketbase/client").then(({ getPocketBase }) => {
+        const pb = getPocketBase();
+        pb.collection("seksi").subscribe("*", () => {
+          fetchLatestData();
+        }).then((unsub) => {
+          unsubscribe = unsub;
+        }).catch(() => {});
+      });
     } catch (e) {
-      // Supabase env tidak tersedia — realtime skip
+      // offline / fallback
     }
 
     return () => {
       clearInterval(interval);
       if (abortRef.current) abortRef.current.abort();
-      if (channel) supabase?.removeChannel(channel);
+      if (typeof unsubscribe === "function") unsubscribe();
     };
   }, []);
 

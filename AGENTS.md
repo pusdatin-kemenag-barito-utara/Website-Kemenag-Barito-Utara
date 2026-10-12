@@ -2,10 +2,9 @@
 
 ## Stack
 
-- **Astro 7** (SSR via `@astrojs/node` v11), React 19 islands (`@astrojs/react` v6), Tailwind CSS 4, Vite 8 (Rolldown/Oxc engine), Rust Compiler
+- **Astro 7** (v7.3.8, SSR via `@astrojs/node` v11.1.7), React 19 islands (`@astrojs/react` v7), Tailwind CSS 4, Vite 8 (Rolldown/Oxc engine), Rust Compiler
 - **Go Fiber 3** backend (API) — lihat `backend/` (bukan Next.js API routes)
-- **Supabase** for Auth & Storage only
-- **Supabase Storage** for file/media storage
+- **PocketBase** for Database, Auth & File Storage (injected via Infisical Cloud)
 - **Vitest** (unit), **Playwright** (E2E)
 - **Google Gemini / Groq / Mistral / OpenRouter** — multi-model AI chatbot fallback (dipanggil lewat backend Go)
 - Monorepo root: `npm run dev` menjalankan BE (Fiber, port 8080) + FE (Astro, port 3000) dengan injeksi Infisical Cloud secara concurrent
@@ -18,14 +17,14 @@
 
 ## Commands (Windows PowerShell — use `;` not `&&`)
 
-| Action     | Command                                       |
-| ---------- | --------------------------------------------- |
-| Dev (root) | `npm run dev` (BE 8080 + FE 3000 via Infisical) |
-| Dev FE     | `npm run dev:fe` (Astro via Infisical)        |
-| Dev BE     | `npm run dev:be` (Go via Infisical)           |
-| Build      | `npm run build` (BE + FE)                     |
-| Lint       | `npm run lint` (frontend saja)                |
-| Unit tests | `npm test` (Vitest; `tests/**/*.test.{js,jsx}`) |
+| Action     | Command                                                  |
+| ---------- | -------------------------------------------------------- |
+| Dev (root) | `npm run dev` (BE 8080 + FE 3000 via Infisical)          |
+| Dev FE     | `npm run dev:fe` (Astro via Infisical)                   |
+| Dev BE     | `npm run dev:be` (Go via Infisical)                      |
+| Build      | `npm run build` (BE + FE)                                |
+| Lint       | `npm run lint` (frontend saja)                           |
+| Unit tests | `npm test` (Vitest; `tests/**/*.test.{js,jsx}`)          |
 | E2E tests  | `npm run test:e2e` (Playwright; `tests/e2e/`, port 3000) |
 
 Tidak ada script `typecheck`, `test:watch`, `test:coverage`, atau `db:push` di workspace FE (sudah dibersihkan dari era Next.js).
@@ -34,7 +33,7 @@ Tidak ada script `typecheck`, `test:watch`, `test:coverage`, atau `db:push` di w
 
 - **Alias**: `@/*` → `./src/*` (jsconfig.json + vitest.config.mjs + astro.config.mjs)
 - **Layout**: `src/layouts/BaseLayout.astro` — 5 island widget (`client:load`): RealtimeSync, PageViewTracker, PwaRegister, ChatWidget, AccessibilityWidget
-- **Pages**: `src/pages/` — Halaman Astro (admin/*, login rahasia `pusdatin/auth.astro`, `404.astro`, home `index`/`beranda`, dll)
+- **Pages**: `src/pages/` — Halaman Astro (admin/\*, login rahasia `pusdatin/auth.astro`, `404.astro`, home `index`/`beranda`, dll)
 - **Server API**: semua endpoint API dilayani **backend Go** (`../backend/internal/`), prefix `/api/`; FE memanggil via proxy vite (`/api` → `http://localhost:8080`) saat dev, atau reverse-proxy di production
 - **Env**: Dikelola terpusat di **Infisical Cloud** (folder `/website-kemenag`); tidak ada lagi file `.env` fisik di workspace
 - **SEO structured data**: `src/lib/structured-data.ts` — `organizationSchema()`, `websiteSchema()`, `newsArticleSchema()`, `breadcrumbSchema()`, `contactPageSchema()`, `navigationSchema()`
@@ -75,12 +74,11 @@ Tidak ada script `typecheck`, `test:watch`, `test:coverage`, atau `db:push` di w
 ## Environment
 
 - `.env.local` (root monorepo, gitignored)
-- Required: `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (dipakai backend Go)
+- Required: `POCKETBASE_URL` / `NEXT_PUBLIC_POCKETBASE_URL` (dikelola via Infisical Cloud `/website-kemenag`)
 - AI keys (backend): `GEMINI_API_KEY`, `GROQ_API_KEY`, `MISTRAL_API_KEY`, `OPENROUTER_API_KEY`
 - Turnstile: `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`
-- Supabase CMS bucket: `NEXT_PUBLIC_SUPABASE_CMS_BUCKET` (default `cms-media`)
 - Optional: `NEXT_PUBLIC_SITE_URL` (default `https://baritoutara.kemenag.go.id`)
-- Session admin: cookie `sb-website-auth-token` (ditetapkan backend Go saat login, dibaca ulang untuk otorisasi halaman admin)
+- Session admin: cookie `pb_auth` (dikelola oleh PocketBase SDK AuthStore)
 
 ## Notes
 

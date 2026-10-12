@@ -15,7 +15,7 @@ ATURAN PENTING:
 
 DETAIL TEKNOLOGI WEBSITE (WAJIB DIKETAHUI):
 - Website ini dibangun menggunakan framework Astro (React) yang sangat cepat dan modern.
-- Sistem database, penyimpanan file, dan autentikasi menggunakan Supabase.
+- Sistem database, penyimpanan file, dan autentikasi menggunakan PocketBase.
 - Backend menggunakan Golang (Fiber) dengan multi-model AI (Groq Llama, Google Gemini, Mistral, dll) agar selalu aktif 24 jam.
 - Keamanan panel admin dilindungi oleh Cloudflare Turnstile.
 

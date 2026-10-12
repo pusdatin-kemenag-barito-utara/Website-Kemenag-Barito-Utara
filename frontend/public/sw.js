@@ -60,6 +60,13 @@ function isStaticAsset(url) {
   );
 }
 
+function isPocketBaseMedia(url) {
+  return (
+    (url.hostname.includes("kemenag-baritoutara.com") || url.hostname.includes("localhost")) &&
+    url.pathname.includes("/api/files/")
+  );
+}
+
 function isApiRequest(url) {
   return url.pathname.startsWith("/api/");
 }
@@ -69,6 +76,28 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
+
+  // Caching untuk media/gambar PocketBase (Cache-First dengan background revalidate)
+  if (isPocketBaseMedia(url)) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(STATIC_CACHE);
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        try {
+          const fresh = await fetch(request);
+          if (fresh && fresh.ok) {
+            cache.put(request, fresh.clone());
+          }
+          return fresh;
+        } catch {
+          return cached || Response.error();
+        }
+      })(),
+    );
+    return;
+  }
+
   if (url.origin !== self.location.origin) return;
 
   // Jangan pakai SW untuk admin (agar selalu fresh).

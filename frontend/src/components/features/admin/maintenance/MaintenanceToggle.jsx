@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from "react";
 import { AlertTriangle, ShieldCheck, ArrowLeft, Loader2 } from "lucide-react";
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 function FloatingFeedback({ message, type, onClose }) {
   const bg =
@@ -97,17 +98,30 @@ export default function MaintenanceToggle({ initialStatus }) {
     setLoading(true);
     setShowConfirm(false);
     try {
-      const res = await fetch("/api/admin/maintenance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ active: !active, message }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      setActive(data.active);
-      setFeedback({ type: "success", message: data.message });
+      const nextActive = !active;
+      const pb = getPocketBase();
+
+      // Upsert maintenance_active
+      try {
+        const itemActive = await pb.collection("site_settings").getFirstListItem('key = "maintenance_active"');
+        await pb.collection("site_settings").update(itemActive.id, { value: String(nextActive) });
+      } catch {
+        await pb.collection("site_settings").create({ key: "maintenance_active", value: String(nextActive) });
+      }
+
+      // Upsert maintenance_message
+      try {
+        const itemMsg = await pb.collection("site_settings").getFirstListItem('key = "maintenance_message"');
+        await pb.collection("site_settings").update(itemMsg.id, { value: message });
+      } catch {
+        await pb.collection("site_settings").create({ key: "maintenance_message", value: message });
+      }
+
+      setActive(nextActive);
+      const msg = nextActive ? "Mode pemeliharaan berhasil diaktifkan." : "Mode pemeliharaan dinonaktifkan. Situs kembali normal.";
+      setFeedback({ type: "success", message: msg });
     } catch (err) {
-      setFeedback({ type: "error", message: err.message || "Gagal." });
+      setFeedback({ type: "error", message: err.message || "Gagal mengubah mode pemeliharaan." });
     } finally {
       setLoading(false);
     }

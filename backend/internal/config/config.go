@@ -13,10 +13,9 @@ import (
 // Sumber utama: Infisical Cloud (diinjeksi ke memory proses via Infisical CLI / Universal Auth).
 type Config struct {
 	SiteURL        string
-	SupabaseURL    string
-	SupabaseAnon   string
-	ServiceRoleKey string
-	DatabaseURL    string
+	PocketBaseURL  string
+	PocketBaseSuperuserEmail    string
+	PocketBaseSuperuserPassword string
 	RedisURL       string
 	HasRedis       bool
 
@@ -76,10 +75,9 @@ func Load() error {
 	}
 
 	Cfg.SiteURL = strings.TrimSpace(os.Getenv("NEXT_PUBLIC_SITE_URL"))
-	Cfg.SupabaseURL = strings.TrimSuffix(firstNonEmpty(os.Getenv("NEXT_PUBLIC_SUPABASE_URL"), os.Getenv("SUPABASE_URL")), "/")
-	Cfg.SupabaseAnon = firstNonEmpty(os.Getenv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"), os.Getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY"), os.Getenv("SUPABASE_ANON_KEY"))
-	Cfg.ServiceRoleKey = os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
-	Cfg.DatabaseURL = os.Getenv("DATABASE_URL")
+	Cfg.PocketBaseURL = strings.TrimSuffix(firstNonEmpty(os.Getenv("POCKETBASE_URL"), os.Getenv("NEXT_PUBLIC_POCKETBASE_URL")), "/")
+	Cfg.PocketBaseSuperuserEmail = firstNonEmpty(os.Getenv("POCKETBASE_SUPERUSER_EMAIL"), os.Getenv("SUPER_ADMIN_EMAIL"))
+	Cfg.PocketBaseSuperuserPassword = strings.TrimSpace(os.Getenv("POCKETBASE_SUPERUSER_PASSWORD"))
 	Cfg.RedisURL = os.Getenv("REDIS_URL")
 	Cfg.HasRedis = Cfg.RedisURL != ""
 	Cfg.SuperAdminEmail = strings.ToLower(strings.TrimSpace(os.Getenv("SUPER_ADMIN_EMAIL")))

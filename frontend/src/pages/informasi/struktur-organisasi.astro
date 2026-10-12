@@ -1,5 +1,5 @@
 ---
-import { apiGet } from "@/lib/api-client";
+import { getPublicSeksiList } from "@/lib/pocketbase/db";
 import { buildLeadershipData } from "@/lib/seksi-normalize";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import StrukturOrganisasiShell from "@/components/features/informasi/StrukturOrganisasiShell";
@@ -7,18 +7,16 @@ import { breadcrumbSchema } from "@/lib/structured-data";
 
 export const prerender = false;
 
-const breadcrumb = [
+const breadcrumb: any[] = [
   { label: "Beranda", href: "/beranda" },
   { label: "Informasi Publik", href: "/informasi" },
   { label: "Struktur Organisasi" },
 ];
 
-let leadershipData = [];
+let leadershipData: any[] = [];
 try {
-  const res = await apiGet("/seksi");
-  if (res?.seksi) {
-    leadershipData = buildLeadershipData(res.seksi);
-  }
+  const seksi = await getPublicSeksiList();
+  leadershipData = buildLeadershipData(seksi);
 } catch (err) {
   leadershipData = [];
 }

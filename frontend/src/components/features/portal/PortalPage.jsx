@@ -6,6 +6,7 @@ import Image from "@/components/common/NextImage";
 import { DesktopClockSection, MobileClockSection } from "./ClockSection";
 import HeroBackground from "./HeroBackground";
 import { useSiteSettings } from "@/context/SettingsContext";
+import { getPublicPortalData } from "@/lib/pocketbase/db";
 import {
   Globe,
   FolderOpen,
@@ -330,8 +331,7 @@ export default function PortalPage({ initialData }) {
 
   useEffect(() => {
     if (initialData) return;
-    fetch("/api/portal")
-      .then((res) => res.json())
+    getPublicPortalData()
       .then((data) => {
         if (data?.beritaCount !== undefined) setPortalData(data);
         else setPortalError(true);
@@ -367,6 +367,8 @@ export default function PortalPage({ initialData }) {
       initialData?.fitur_anti_copas ??
       initialData?.settings?.fitur_anti_copas
   );
+
+  const latestBerita = portalData?.latestBerita || portalData?.berita || [];
 
   useEffect(() => {
     if (!isAntiCopas) return;
@@ -564,7 +566,7 @@ export default function PortalPage({ initialData }) {
                 </span>
               </div>
             ) : (
-              portalData?.latestBerita?.length > 0 && (
+              latestBerita.length > 0 && (
                 <div
                   className="animate-fade-in w-full mt-1 overflow-hidden"
                   style={{ animationDelay: "0.15s" }}
@@ -575,7 +577,7 @@ export default function PortalPage({ initialData }) {
                     </span>
                     <div className="overflow-hidden relative flex-1 flex items-center self-stretch select-none group">
                       <div className="flex shrink-0 items-center gap-0 animate-marquee whitespace-nowrap">
-                        {[...portalData.latestBerita, ...portalData.latestBerita].map((item, i) => (
+                        {[...latestBerita, ...latestBerita].map((item, i) => (
                           <React.Fragment key={`d1-${item.slug}-${i}`}>
                             <Link
                               href={`/berita/${item.slug}`}
@@ -590,7 +592,7 @@ export default function PortalPage({ initialData }) {
                         ))}
                       </div>
                       <div className="flex shrink-0 items-center gap-0 animate-marquee whitespace-nowrap" aria-hidden="true">
-                        {[...portalData.latestBerita, ...portalData.latestBerita].map((item, i) => (
+                        {[...latestBerita, ...latestBerita].map((item, i) => (
                           <React.Fragment key={`d2-${item.slug}-${i}`}>
                             <Link
                               href={`/berita/${item.slug}`}
@@ -834,7 +836,7 @@ export default function PortalPage({ initialData }) {
                 </span>
               </div>
             ) : (
-              portalData?.latestBerita?.length > 0 && (
+              latestBerita.length > 0 && (
                 <div
                   className="animate-fade-in w-full mt-1 overflow-hidden"
                   style={{ animationDelay: "0.15s" }}
@@ -845,7 +847,7 @@ export default function PortalPage({ initialData }) {
                     </span>
                     <div className="overflow-hidden relative flex-1 flex items-center self-stretch select-none group">
                       <div className="flex shrink-0 items-center gap-0 animate-marquee whitespace-nowrap">
-                        {[...portalData.latestBerita, ...portalData.latestBerita].map((item, i) => (
+                        {[...latestBerita, ...latestBerita].map((item, i) => (
                           <React.Fragment key={`m1-${item.slug}-${i}`}>
                             <Link
                               href={`/berita/${item.slug}`}
@@ -860,7 +862,7 @@ export default function PortalPage({ initialData }) {
                         ))}
                       </div>
                       <div className="flex shrink-0 items-center gap-0 animate-marquee whitespace-nowrap" aria-hidden="true">
-                        {[...portalData.latestBerita, ...portalData.latestBerita].map((item, i) => (
+                        {[...latestBerita, ...latestBerita].map((item, i) => (
                           <React.Fragment key={`m2-${item.slug}-${i}`}>
                             <Link
                               href={`/berita/${item.slug}`}

@@ -18,6 +18,7 @@ import AntiCopasGuard from "@/components/common/AntiCopasGuard.jsx";
 import {
   getEnv,
   getSiteUrl,
+  getPocketBaseUrl,
   getGaId,
   getGtmId,
   getOneSignalAppId,
@@ -63,15 +64,12 @@ const googleSiteVerification = getGoogleSiteVerification();
 
 const publicEnv = {
   NEXT_PUBLIC_SITE_URL: getEnv("NEXT_PUBLIC_SITE_URL", BASE),
-  NEXT_PUBLIC_SUPABASE_URL: getEnv("NEXT_PUBLIC_SUPABASE_URL"),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: getEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
+  NEXT_PUBLIC_POCKETBASE_URL: getPocketBaseUrl(),
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: getEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY"),
   NEXT_PUBLIC_GA_ID: gaId,
   NEXT_PUBLIC_GTM_ID: gtmId,
   NEXT_PUBLIC_ONESIGNAL_APP_ID: oneSignalAppId,
   NEXT_PUBLIC_PUSDATIN_URL: getEnv("NEXT_PUBLIC_PUSDATIN_URL"),
-  NEXT_PUBLIC_SUPABASE_CMS_BUCKET: getEnv("NEXT_PUBLIC_SUPABASE_CMS_BUCKET", "cms-media"),
   PUBLIC_API_URL: getEnv("PUBLIC_API_URL"),
 };
 
@@ -88,13 +86,15 @@ const imageUrl = image.startsWith("http")
   ? image
   : `${BASE}${image.startsWith("/") ? image : "/" + image}`;
 
-const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL");
-let supabaseOrigin = "";
+const pocketbaseUrl = getEnv("NEXT_PUBLIC_POCKETBASE_URL");
+let pocketbaseOrigin = "";
 try {
-  if (supabaseUrl) {
-    supabaseOrigin = new URL(supabaseUrl).origin;
+  if (pocketbaseUrl) {
+    pocketbaseOrigin = new URL(pocketbaseUrl).origin;
   }
 } catch {}
+
+
 
 const siteDomain = new URL(BASE || "https://baritoutara.kemenag.go.id").hostname;
 const imageMimeType = imageUrl.endsWith(".png")
@@ -181,12 +181,13 @@ const imageMimeType = imageUrl.endsWith(".png")
 
     <!-- Resource Hints & Priority Preconnects -->
     <link rel="preconnect" href={BASE} />
-    {supabaseOrigin && (
+    {pocketbaseOrigin && (
       <>
-        <link rel="preconnect" href={supabaseOrigin} crossorigin />
-        <link rel="dns-prefetch" href={supabaseOrigin} />
+        <link rel="preconnect" href={pocketbaseOrigin} crossorigin />
+        <link rel="dns-prefetch" href={pocketbaseOrigin} />
       </>
     )}
+
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />

@@ -29,7 +29,14 @@ export default function Image({
   if (objectFit) baseStyle.objectFit = objectFit;
   if (objectPosition) baseStyle.objectPosition = objectPosition;
 
-  const attrs = { src, alt, className, style: baseStyle, loading };
+  const attrs = {
+    src,
+    alt,
+    className,
+    style: baseStyle,
+    loading: loading || (priority ? "eager" : "lazy"),
+    decoding: priority ? "sync" : "async",
+  };
   if (width && !fill) attrs.width = width;
   if (height && !fill) attrs.height = height;
   if (onError) attrs.onError = onError;

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "@/hooks/useNextNavigation";
+import { getPocketBase } from "@/lib/pocketbase/client";
 
 const SHELL_CACHE_KEY = "kemenag_admin_shell_session";
 
@@ -24,68 +25,81 @@ export function useAdminShell() {
 
   useEffect(() => {
     let active = true;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      if (active) setLoading(false);
-      controller.abort();
-    }, 10000);
+    const pb = getPocketBase();
 
     async function loadSession() {
       try {
-        const [sessionRes, permRes] = await Promise.all([
-          fetch("/api/admin/session", { signal: controller.signal }).catch(() => null),
-          fetch("/api/admin/my-permissions", { signal: controller.signal }).catch(() => null),
-        ]);
+        if (!pb.authStore.isValid || !pb.authStore.record) {
+          try {
+            await pb.collection("users").authRefresh();
+          } catch {
+            if (!active) return;
+            try { sessionStorage.removeItem(SHELL_CACHE_KEY); } catch {}
+            setSessionData(null);
+            setPermissionContext(null);
+            setLoading(false);
+            if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) {
+              window.location.replace("/pusdatin/auth");
+            }
+            return;
+          }
+        }
 
         if (!active) return;
 
-        if (!sessionRes || !sessionRes.ok) {
-          try { sessionStorage.removeItem(SHELL_CACHE_KEY); } catch {}
-          setSessionData(null);
-          setPermissionContext(null);
-          setLoading(false);
-          if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) {
-            window.location.replace("/pusdatin/auth");
-          }
-          return;
+        const user = pb.authStore.record;
+        if (!user) {
+          throw new Error("No user record");
         }
 
-        const session = await sessionRes.json().catch(() => null);
-        const perm = permRes && permRes.ok ? await permRes.json().catch(() => null) : null;
+        const role = user.role || "super_admin";
+        const session = {
+          authenticated: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name || "Admin",
+            full_name: user.name || "Admin",
+            role: role,
+            avatar_url: user.avatar ? pb.files.getURL(user, user.avatar) : "",
+          },
+          permissions: {
+            isAdmin: role === "super_admin" || role === "admin",
+            isEditor: role === "editor",
+            hasAdminPanelAccess: true,
+            role: role,
+          },
+        };
 
-        const hasAdminPanelAccess =
-          session?.authenticated === true ||
-          session?.permissions?.isAdmin ||
-          session?.permissions?.isEditor ||
-          session?.permissions?.hasAdminPanelAccess;
-
-        if (!hasAdminPanelAccess) {
-          try { sessionStorage.removeItem(SHELL_CACHE_KEY); } catch {}
-          setSessionData(null);
-          setPermissionContext(null);
-          setLoading(false);
-          if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) {
-            window.location.replace("/pusdatin/auth");
-          }
-          return;
-        }
+        const perm = {
+          role: role,
+          email: user.email,
+          isSuperAdmin: role === "super_admin",
+          isAdmin: role === "super_admin" || role === "admin",
+          isEditor: role === "editor",
+          isActive: true,
+          approved: true,
+        };
 
         setSessionData(session);
-        setPermissionContext(perm?.permissionContext || null);
+        setPermissionContext(perm);
 
         try {
           sessionStorage.setItem(
             SHELL_CACHE_KEY,
-            JSON.stringify({ session, perm: perm?.permissionContext || null })
+            JSON.stringify({ session, perm })
           );
         } catch {}
       } catch {
-        if (active && !cached?.session) {
+        if (active) {
+          try { sessionStorage.removeItem(SHELL_CACHE_KEY); } catch {}
           setSessionData(null);
           setPermissionContext(null);
+          if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) {
+            window.location.replace("/pusdatin/auth");
+          }
         }
       } finally {
-        clearTimeout(timeoutId);
         if (active) setLoading(false);
       }
     }
@@ -94,8 +108,6 @@ export function useAdminShell() {
 
     return () => {
       active = false;
-      clearTimeout(timeoutId);
-      controller.abort();
     };
   }, []);
 

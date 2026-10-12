@@ -25,7 +25,7 @@ export function getPdfEmbedUrl(fileUrl) {
       navigator.userAgent
     );
 
-  // Jika file berada di domain eksternal publik (misal Supabase / HTTPS publik)
+  // Jika file berada di domain eksternal publik (misal PocketBase / HTTPS publik)
   if (isMobile && isAbsolute) {
     return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(absoluteUrl)}`;
   }

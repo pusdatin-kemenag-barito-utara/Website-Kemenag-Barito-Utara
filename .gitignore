@@ -79,7 +79,7 @@ bin/
 tmp/
 **/tmp/
 .air/
-backend/.air/
+**/.air/
 
 # Delve Debugger & Go Crash Dumps
 __debug_bin*
@@ -125,28 +125,31 @@ $RECYCLE.BIN/
 # 7. IDEs, Editors & Developer Settings
 # ----------------------------------------------------------------
 .idea/
+**/.idea/
 *.sublime-project
 *.sublime-workspace
 *.swp
 *.swo
 
-# VS Code (Pertahankan konfigurasi shared jika ada, abaikan sesi user)
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+# VS Code
+.vscode/
+**/.vscode/
 *.code-workspace
 
 # ----------------------------------------------------------------
 # 8. AI Assistants & Temporary Scratchpads
 # ----------------------------------------------------------------
 .gemini/
+**/.gemini/
 .agents/
+**/.agents/
 .claude/
+**/.claude/
 .opencode/
+**/.opencode/
 .antigravitycli/
 scratch/
 **/scratch/
 devlog*.txt
 *.log
+**/*.log

@@ -6,7 +6,10 @@ import Footer from "@/components/layout/Footer/Footer";
 import PageBanner from "@/components/common/PageBanner";
 import LaporanDocumentsClient from "./LaporanDocumentsClient";
 
-export default function LaporanCategoryShell({ slug, category, documents = [] }) {
+/**
+ * @param {{ slug?: any, category?: any, documents?: any[], allCategories?: any[] }} props
+ */
+export default function LaporanCategoryShell({ slug, category, documents = [], allCategories = [] }) {
   const displayTitle =
     slug === "sop" ? "Standar Operasional Prosedur (SOP)" : category?.title || "Laporan";
   const displayDesc =
@@ -33,8 +36,35 @@ export default function LaporanCategoryShell({ slug, category, documents = [] })
             <div className="absolute -left-20 -top-20 h-96 w-96 rounded-full bg-emerald-100/50 blur-[120px] dark:bg-emerald-900/10" />
           </div>
 
-          <section className="relative z-10 w-full px-6 py-12 sm:px-10 lg:px-16 xl:px-20">
-            <div className="mb-10 flex flex-wrap items-center justify-between gap-6">
+          <section className="relative z-10 w-full px-6 py-10 sm:px-10 lg:px-16 xl:px-20">
+            {/* ── Category Quick Navigation Tabs ── */}
+            {allCategories && allCategories.length > 0 && (
+              <div className="mb-10 overflow-x-auto pb-2 scrollbar-none">
+                <div className="flex items-center gap-2.5 min-w-max">
+                  {allCategories.map((cat) => {
+                    const isActive = cat.slug === slug;
+                    return (
+                      <a
+                        key={cat.id || cat.slug}
+                        href={`/laporan/${cat.slug}`}
+                        className={`inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-xs font-bold transition-all duration-300 ${
+                          isActive
+                            ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 ring-2 ring-emerald-500/20"
+                            : "border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-emerald-700 dark:hover:bg-slate-800/80"
+                        }`}
+                      >
+                        <span>{cat.title}</span>
+                        {isActive && (
+                          <span className="flex h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                        )}
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="mb-8 flex flex-wrap items-center justify-between gap-6">
               <div className="flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 dark:bg-emerald-900/10">
                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
@@ -71,7 +101,7 @@ export default function LaporanCategoryShell({ slug, category, documents = [] })
               </div>
             </div>
 
-            <div className={slug === "sop" ? "" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"}>
+            <div className="w-full">
               <LaporanDocumentsClient documents={documents} categorySlug={slug} />
             </div>
           </section>

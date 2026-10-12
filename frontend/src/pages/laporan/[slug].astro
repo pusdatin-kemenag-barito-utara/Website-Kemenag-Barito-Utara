@@ -1,5 +1,5 @@
 ---
-import { apiGet } from "@/lib/api-client";
+import { getLaporanCategoryBySlug, getAllLaporanCategories } from "@/lib/pocketbase/db";
 import { normalizeLaporanCategory } from "@/lib/laporan-normalize";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import LaporanCategoryShell from "@/components/features/laporan/LaporanCategoryShell";
@@ -9,29 +9,40 @@ export const prerender = false;
 
 const { slug } = Astro.params;
 
-let category = null;
-let documents = [];
+let category: any = null;
+let documents: any[] = [];
+let allCategories: any[] = [];
 
 try {
-  const res = await apiGet(`/laporan/${slug}`);
+  const [res, cats] = await Promise.all([
+    getLaporanCategoryBySlug(slug),
+    getAllLaporanCategories(),
+  ]);
+
+  allCategories = cats || [];
+
   if (res?.category) {
     category = normalizeLaporanCategory(res.category, res.documents || []);
-    documents = category.documents;
+    documents = category.documents || [];
   }
 } catch (err) {
+  console.error(`[Laporan] Error loading category ${slug}:`, err);
   category = null;
 }
 
 if (!category) {
-  return Astro.redirect("/laporan/sop", 404);
+  if (slug !== "sop") {
+    return Astro.redirect("/laporan/sop", 302);
+  }
+  return Astro.redirect("/404", 404);
 }
 ---
 
 <BaseLayout
-  title={`${category.title} | Laporan dan Akuntabilitas`}
+  title={`${category.title} | Laporan dan Akuntabilitas Kemenag Barito Utara`}
   description={
     category.description ||
-    `Daftar dokumen ${category.title} Kementerian Agama Kabupaten Barito Utara.`
+    `Daftar dokumen ${category.title} resmi Kementerian Agama Kabupaten Barito Utara.`
   }
   canonical={`/laporan/${category.slug}`}
   jsonLd={[
@@ -47,5 +58,6 @@ if (!category) {
     slug={category.slug}
     category={category}
     documents={documents}
+    allCategories={allCategories}
   />
 </BaseLayout>

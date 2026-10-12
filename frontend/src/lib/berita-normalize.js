@@ -1,5 +1,6 @@
 import { toCoverPreviewUrl } from "@/lib/cover-image";
 import { formatDate } from "@/lib/date-utils";
+import { getPocketBaseFileUrl } from "@/lib/pocketbase/client";
 
 export function normalizeBerita(item = {}) {
   if (!item) return null;
@@ -8,7 +9,12 @@ export function normalizeBerita(item = {}) {
   const createdAt = item.created_at || null;
   const updatedAt = item.updated_at || null;
   const isoDate = publishedAt || createdAt;
-  const rawCoverImage = item.cover_image || "";
+  let rawCoverImage = item.cover_image || "";
+  if (!rawCoverImage && item.cover_file) {
+    try {
+      rawCoverImage = getPocketBaseFileUrl(item, item.cover_file);
+    } catch {}
+  }
 
   const isPublished = Boolean(item.is_published);
 
@@ -44,7 +50,12 @@ export function normalizeBerita(item = {}) {
 
 export function normalizeHomepageSlide(item = {}) {
   if (!item) return null;
-  const rawImage = item.image_url || "";
+  let rawImage = item.image_url || "";
+  if (!rawImage && item.image_file) {
+    try {
+      rawImage = getPocketBaseFileUrl(item, item.image_file);
+    } catch {}
+  }
   const imageUrl = toCoverPreviewUrl(rawImage);
   return {
     id: item.id,
@@ -61,7 +72,12 @@ export function normalizeHomepageSlide(item = {}) {
 
 export function normalizeGaleriItem(item = {}) {
   if (!item) return null;
-  const rawImage = item.image_url || "";
+  let rawImage = item.image_url || "";
+  if (!rawImage && item.image_file) {
+    try {
+      rawImage = getPocketBaseFileUrl(item, item.image_file);
+    } catch {}
+  }
   const imageUrl = toCoverPreviewUrl(rawImage);
   return {
     id: item.id,
@@ -72,5 +88,15 @@ export function normalizeGaleriItem(item = {}) {
     linkUrl: item.link_url || "",
     published_at: item.published_at || null,
     publishedAt: item.published_at || null,
+  };
+}
+
+export function normalizePtspService(item = {}) {
+  if (!item) return null;
+  return {
+    id: item.id || item.slug || "",
+    name: item.name || item.title || "",
+    slug: item.slug || "",
+    sort_order: Number(item.sort_order || 0),
   };
 }
