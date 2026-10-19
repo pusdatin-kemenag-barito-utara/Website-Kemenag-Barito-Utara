@@ -13,28 +13,28 @@ import (
 
 
 
-// datePtr helper.
-func datePtr(t time.Time) *time.Time {
+// DatePtr helper.
+func DatePtr(t time.Time) *time.Time {
 	return &t
 }
 
-// base64StdEncode encode bytes ke base64.
-func base64StdEncode(data []byte) string {
+// Base64StdEncode encode bytes ke base64.
+func Base64StdEncode(data []byte) string {
 	return base64.StdEncoding.EncodeToString(data)
 }
 
-// cacheGet ambil dari cache (Redis / in-memory).
-func cacheGet(ctx context.Context, key string) (string, error) {
+// CacheGet ambil dari cache (Redis / in-memory).
+func CacheGet(ctx context.Context, key string) (string, error) {
 	return cache.Get(ctx, key)
 }
 
-// cacheDel hapus dari cache.
-func cacheDel(ctx context.Context, key string) error {
+// CacheDel hapus dari cache.
+func CacheDel(ctx context.Context, key string) error {
 	return cache.Del(ctx, key)
 }
 
-// cacheDelPrefix hapus semua key berawalan prefix.
-func cacheDelPrefix(ctx context.Context, prefix string) error {
+// CacheDelPrefix hapus semua key berawalan prefix.
+func CacheDelPrefix(ctx context.Context, prefix string) error {
 	return cache.DelPrefix(ctx, prefix)
 }
 
@@ -45,13 +45,13 @@ func InvalidateHomeCache(ctx context.Context) {
 	_ = cache.DelPrefix(ctx, "galeri:")
 }
 
-// cacheSet set dengan TTL.
-func cacheSet(ctx context.Context, key, value string, ttl time.Duration) error {
+// CacheSet set dengan TTL.
+func CacheSet(ctx context.Context, key, value string, ttl time.Duration) error {
 	return cache.Set(ctx, key, value, ttl)
 }
 
-// newUUID menghasilkan UUID v4 acak (RFC 4122) tanpa dependency eksternal.
-func newUUID() string {
+// NewUUID menghasilkan UUID v4 acak (RFC 4122) tanpa dependency eksternal.
+func NewUUID() string {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
 		return fmt.Sprintf("%d", time.Now().UnixNano())

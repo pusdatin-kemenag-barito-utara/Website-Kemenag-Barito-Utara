@@ -19,6 +19,7 @@
     "@astrojs/node": "^11.1.7",
     "@astrojs/react": "^7.0.1",
     "@astrojs/sitemap": "^3.7.4",
+    "@sentry/astro": "^11.8.0",
     "astro": "^7.3.8",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.19.0",

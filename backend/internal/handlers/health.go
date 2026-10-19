@@ -58,15 +58,13 @@ func HealthHandler(c fiber.Ctx) error {
 	})
 }
 
-// PortalHandler — GET /api/portal (statistik + 5 berita terbaru)
-// PortalHandler — GET /api/portal (statistik + 5 berita terbaru via PocketBase)
+// PortalHandler — GET /api/portal (statistik + 5 berita terbaru via PocketBase dengan stale fallback)
 func PortalHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
 
 	pbURL := config.Cfg.PocketBaseURL
-
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := db.Client()
 
 	// Fetch 5 berita terbaru
 	beritaReq, _ := http.NewRequestWithContext(ctx, http.MethodGet,
@@ -74,50 +72,53 @@ func PortalHandler(c fiber.Ctx) error {
 	var latest []fiber.Map
 	var beritaCount int64 = 0
 
+	fetchSuccess := false
 	if resp, err := client.Do(beritaReq); err == nil {
 		defer resp.Body.Close()
-		var res struct {
-			TotalItems int64 `json:"totalItems"`
-			Items      []struct {
-				ID          string `json:"id"`
-				Slug        string `json:"slug"`
-				Title       string `json:"title"`
-				Excerpt     string `json:"excerpt"`
-				Category    string `json:"category"`
-				CoverImage  any    `json:"cover_image"`
-				IsPublished bool   `json:"is_published"`
-				PublishedAt string `json:"published_at"`
-				Created     string `json:"created"`
-				Updated     string `json:"updated"`
-				Views       int64  `json:"views"`
-			} `json:"items"`
-		}
-		if json.NewDecoder(resp.Body).Decode(&res) == nil {
-			beritaCount = res.TotalItems
-			for _, item := range res.Items {
-				pubAt := item.PublishedAt
-				if pubAt == "" {
-					pubAt = item.Created
+		if resp.StatusCode == 200 {
+			var res struct {
+				TotalItems int64 `json:"totalItems"`
+				Items      []struct {
+					ID          string `json:"id"`
+					Slug        string `json:"slug"`
+					Title       string `json:"title"`
+					Excerpt     string `json:"excerpt"`
+					Category    string `json:"category"`
+					CoverImage  any    `json:"cover_image"`
+					IsPublished bool   `json:"is_published"`
+					PublishedAt string `json:"published_at"`
+					Created     string `json:"created"`
+					Updated     string `json:"updated"`
+					Views       int64  `json:"views"`
+				} `json:"items"`
+			}
+			if json.NewDecoder(resp.Body).Decode(&res) == nil {
+				fetchSuccess = true
+				beritaCount = res.TotalItems
+				for _, item := range res.Items {
+					pubAt := item.PublishedAt
+					if pubAt == "" {
+						pubAt = item.Created
+					}
+					latest = append(latest, fiber.Map{
+						"id":           item.ID,
+						"slug":         item.Slug,
+						"title":        item.Title,
+						"excerpt":      item.Excerpt,
+						"category":     item.Category,
+						"cover_image":  item.CoverImage,
+						"is_published": item.IsPublished,
+						"published_at": pubAt,
+						"created_at":   item.Created,
+						"updated_at":   item.Updated,
+						"views":        item.Views,
+					})
 				}
-				latest = append(latest, fiber.Map{
-					"id":           item.ID,
-					"slug":         item.Slug,
-					"title":        item.Title,
-					"excerpt":      item.Excerpt,
-					"category":     item.Category,
-					"cover_image":  item.CoverImage,
-					"is_published": item.IsPublished,
-					"published_at": pubAt,
-					"created_at":   item.Created,
-					"updated_at":   item.Updated,
-					"views":        item.Views,
-				})
 			}
 		}
 	}
 
-	response.CDNCacheControl(c, 300, 300)
-	return c.JSON(fiber.Map{
+	payload := fiber.Map{
 		"beritaCount":      beritaCount,
 		"galeriCount":      10,
 		"laporanCount":     5,
@@ -125,15 +126,28 @@ func PortalHandler(c fiber.Ctx) error {
 		"settings":         fiber.Map{},
 		"fitur_anti_copas": false,
 		"portalUpdated":    time.Now().Format(time.RFC3339),
-	})
+	}
+
+	if fetchSuccess && len(latest) > 0 {
+		if b, err := json.Marshal(payload); err == nil {
+			_ = cache.Set(ctx, "cache:portal:data", string(b), 24*time.Hour)
+		}
+	} else {
+		// Fallback ke stale cache jika PocketBase bermasalah
+		if cachedStr, errC := cache.Get(ctx, "cache:portal:data"); errC == nil && cachedStr != "" {
+			var cachedPayload fiber.Map
+			if json.Unmarshal([]byte(cachedStr), &cachedPayload) == nil {
+				c.Set("X-Cache-Status", "STALE-FALLBACK")
+				response.CDNCacheControl(c, 60, 60)
+				return c.JSON(cachedPayload)
+			}
+		}
+	}
+
+	response.CDNCacheControl(c, 300, 300)
+	return c.JSON(payload)
 }
 
-func fmtTime(t *time.Time) any {
-	if t == nil {
-		return nil
-	}
-	return t.Format(time.RFC3339)
-}
 
 // CacheVersionHandler — GET /api/cache-version (untuk invalidasi FE)
 func CacheVersionHandler(c fiber.Ctx) error {

@@ -5,6 +5,7 @@ echo "[STARTUP] Inisialisasi Kemenag Barito Utara Production Container..."
 
 # Supervisor Go Backend (auto-restart jika proses backend crash/exit)
 (
+  set +e
   while true; do
     echo "[SUPERVISOR] Menjalankan Go backend server di port 8080..."
     PORT=8080 /app/backend/server

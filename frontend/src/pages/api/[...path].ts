@@ -28,18 +28,35 @@ export const ALL: APIRoute = async ({ request, params }) => {
 
   try {
     const hasBody = request.method !== "GET" && request.method !== "HEAD";
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-    const response = await fetch(target, {
-      method: request.method,
-      headers: reqHeaders,
-      body: hasBody ? request.body : undefined,
-      signal: controller.signal,
-      // @ts-ignore
-      duplex: "half",
-    });
-    clearTimeout(timeoutId);
+    const executeFetch = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      try {
+        return await fetch(target, {
+          method: request.method,
+          headers: reqHeaders,
+          body: hasBody ? request.body : undefined,
+          signal: controller.signal,
+          // @ts-ignore
+          duplex: "half",
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    let response: Response;
+    try {
+      response = await executeFetch();
+    } catch (firstErr: any) {
+      if (request.method === "GET") {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        response = await executeFetch();
+      } else {
+        throw firstErr;
+      }
+    }
 
     const resHeaders = new Headers();
     response.headers.forEach((val, key) => {
@@ -79,6 +96,25 @@ export const ALL: APIRoute = async ({ request, params }) => {
       headers: resHeaders,
     });
   } catch (err: any) {
+    if (params.path === "health") {
+      return new Response(
+        JSON.stringify({
+          status: "degraded",
+          frontend: "ok",
+          backend: "reconnecting",
+          message: err?.message,
+          timestamp: new Date().toISOString(),
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache, no-store",
+          },
+        },
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: "Backend proxy error", message: err?.message }),
       {

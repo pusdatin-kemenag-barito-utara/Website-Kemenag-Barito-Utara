@@ -33,7 +33,18 @@ func Init(pocketbaseURL string) error {
 
 	mu.Lock()
 	baseURL = strings.TrimRight(pocketbaseURL, "/")
-	client = &http.Client{Timeout: 10 * time.Second}
+	transport := &http.Transport{
+		MaxIdleConns:          100,
+		MaxIdleConnsPerHost:   25,
+		MaxConnsPerHost:       100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+	client = &http.Client{
+		Transport: transport,
+		Timeout:   15 * time.Second,
+	}
 	mu.Unlock()
 
 	const maxAttempts = 3
@@ -57,11 +68,30 @@ func Init(pocketbaseURL string) error {
 	}
 
 	if lastErr != nil {
-		return fmt.Errorf("ping pocketbase gagal setelah %d percobaan: %w", maxAttempts, lastErr)
+		log.Printf("[pocketbase] PERINGATAN: ping awal ke PocketBase gagal setelah %d percobaan: %v. Server tetap berjalan dan akan reconnect otomatis saat database siap.", maxAttempts, lastErr)
+		return nil
 	}
 
 	log.Printf("[pocketbase] koneksi PocketBase berhasil terhubung ke %s (ping: %v)", baseURL, pingDuration.Round(100*time.Microsecond))
 	return nil
+}
+
+// Client mengembalikan instance *http.Client terpusat dengan connection pooling.
+func Client() *http.Client {
+	mu.RLock()
+	defer mu.RUnlock()
+	if client == nil {
+		return http.DefaultClient
+	}
+	return client
+}
+
+// InvalidateSuperuserToken menghapus token superuser dari cache jika expired atau di-revoke (HTTP 401).
+func InvalidateSuperuserToken() {
+	tokenMu.Lock()
+	defer tokenMu.Unlock()
+	superToken = ""
+	tokenExp = time.Time{}
 }
 
 // Ping mengecek endpoint /api/health dari PocketBase.
@@ -223,6 +253,10 @@ func PatchRecord(ctx context.Context, collection, id string, data any) ([]byte, 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.StatusCode == 401 {
+		InvalidateSuperuserToken()
 	}
 
 	if resp.StatusCode >= 400 {

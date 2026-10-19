@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"kemenag-backend/internal/config"
+	"kemenag-backend/internal/db"
 	"kemenag-backend/internal/response"
 
 	"github.com/gofiber/fiber/v3"
@@ -73,7 +73,7 @@ func ImageProxyHandler(c fiber.Ctx) error {
 	}
 	req.Header.Set("User-Agent", "KemenagBarut-CMS/1.0")
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := db.Client()
 	resp, err := client.Do(req)
 	if err != nil {
 		return response.Error(c, 502, "Gagal mengambil gambar.", "UPSTREAM_ERROR")
@@ -136,7 +136,7 @@ func StorageMediaHandler(c fiber.Ctx) error {
 	}
 	req.Header.Set("User-Agent", "KemenagBarut-CMS/1.0")
 
-	client := &http.Client{Timeout: 60 * time.Second}
+	client := db.Client()
 	resp, err := client.Do(req)
 	if err != nil {
 		return response.Error(c, 502, "Gagal mengambil file.", "UPSTREAM_ERROR")

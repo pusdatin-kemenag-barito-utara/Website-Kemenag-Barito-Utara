@@ -10,6 +10,6 @@
     "module": "ESNext",
     "skipLibCheck": true
   },
-  "include": ["src/**/*", ".astro/types.d.ts", "astro.config.mjs"],
+  "include": ["src/**/*", ".astro/types.d.ts", "astro.config.mjs", "sentry.*.ts"],
   "exclude": ["src/app/**", "src/db/**", "tests/**", "dist/**"]
 }

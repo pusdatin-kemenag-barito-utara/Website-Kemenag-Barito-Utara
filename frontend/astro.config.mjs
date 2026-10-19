@@ -1,5 +1,6 @@
 // @ts-check
 import { defineConfig } from "astro/config";
+import sentry from "@sentry/astro";
 import react from "@astrojs/react";
 import node from "@astrojs/node";
 import sitemap from "@astrojs/sitemap";
@@ -47,6 +48,7 @@ export default defineConfig({
   adapter: node({ mode: "standalone" }),
   site: siteUrl,
   integrations: [
+    sentry(),
     react(),
     sitemap({
       filter: (p) => !p.includes("/admin") && !p.includes("/login") && !p.includes("/pusdatin"),
@@ -92,6 +94,9 @@ export default defineConfig({
       ),
       "process.env.NEXT_PUBLIC_PUSDATIN_URL": JSON.stringify(
         process.env.NEXT_PUBLIC_PUSDATIN_URL || "",
+      ),
+      "process.env.PUBLIC_SENTRY_DSN": JSON.stringify(
+        process.env.PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN || "",
       ),
     },
     server: {

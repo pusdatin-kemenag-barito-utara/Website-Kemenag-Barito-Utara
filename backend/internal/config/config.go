@@ -22,6 +22,7 @@ type Config struct {
 	SuperAdminEmail string
 	CRONSecret      string
 	TurnstileSecret string
+	SentryDSN       string
 
 	GeminiAPIKey     string
 	GroqAPIKey       string
@@ -40,7 +41,8 @@ type Config struct {
 
 var Cfg Config
 
-func boolEnv(key string, def bool) bool {
+// BoolEnv membaca boolean dari environment variable dengan nilai default.
+func BoolEnv(key string, def bool) bool {
 	v := strings.TrimSpace(os.Getenv(key))
 	if v == "" {
 		return def
@@ -91,6 +93,7 @@ func Load() error {
 	Cfg.OneSignalAppID = firstNonEmpty(os.Getenv("PUBLIC_ONESIGNAL_APP_ID"), os.Getenv("NEXT_PUBLIC_ONESIGNAL_APP_ID"), os.Getenv("ONESIGNAL_APP_ID"))
 	Cfg.Port = firstNonEmpty(os.Getenv("BACKEND_PORT"), os.Getenv("PORT"), "8080")
 	Cfg.CDNBase = strings.TrimSuffix(firstNonEmpty(os.Getenv("CDN_BASE"), Cfg.SiteURL), "/")
+	Cfg.SentryDSN = firstNonEmpty(os.Getenv("PUBLIC_SENTRY_DSN"), os.Getenv("SENTRY_DSN"))
 	return nil
 }
 

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"kemenag-backend/internal/cache"
 	"kemenag-backend/internal/config"
 	"kemenag-backend/internal/db"
 	"kemenag-backend/internal/middleware"
@@ -19,63 +20,79 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// SeksiPublicHandler — GET /api/seksi (via PocketBase)
+// SeksiPublicHandler — GET /api/seksi (via PocketBase dengan stale fallback)
 func SeksiPublicHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
 
 	pbURL := config.Cfg.PocketBaseURL
+	client := db.Client()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pbURL+"/api/collections/seksi/records?perPage=50", nil)
 	if err != nil {
 		return response.Error(c, 500, "Gagal membangun request", "INTERNAL_ERROR")
 	}
 
-	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
-	if err != nil {
-		return response.Error(c, 502, "Gagal mengambil data seksi dari PocketBase", "UPSTREAM_ERROR")
-	}
-	defer resp.Body.Close()
-
 	var data struct {
 		Items []fiber.Map `json:"items"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return response.Error(c, 500, "Gagal memproses response", "PARSE_ERROR")
-	}
-
-	// Agregasi jumlah pegawai_seksi per seksi
-	pegawaiReq, errP := http.NewRequestWithContext(ctx, http.MethodGet, pbURL+"/api/collections/pegawai_seksi/records?perPage=200&sort=sort_order", nil)
-	if errP == nil {
-		if respP, errPDo := client.Do(pegawaiReq); errPDo == nil {
-			defer respP.Body.Close()
-			var dataP struct {
-				Items []fiber.Map `json:"items"`
-			}
-			if json.NewDecoder(respP.Body).Decode(&dataP) == nil {
-				counts := make(map[string]int)
-				for _, p := range dataP.Items {
-					if sid, ok := p["seksi_id"].(string); ok && sid != "" {
-						counts[sid]++
-					}
-				}
-				for i, s := range data.Items {
-					sid, _ := s["id"].(string)
-					origID, _ := s["original_id"].(string)
-					cnt := counts[sid]
-					if origID != "" && origID != sid {
-						cnt += counts[origID]
-					}
-					s["pegawai_count"] = cnt
-					data.Items[i] = s
-				}
-			}
+	fetchSuccess := false
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == 200 && json.NewDecoder(resp.Body).Decode(&data) == nil {
+			fetchSuccess = true
 		}
 	}
 
-	response.CDNCacheControl(c, 600, 1200)
-	return c.JSON(fiber.Map{"seksi": data.Items})
+	if fetchSuccess {
+		// Agregasi jumlah pegawai_seksi per seksi
+		pegawaiReq, errP := http.NewRequestWithContext(ctx, http.MethodGet, pbURL+"/api/collections/pegawai_seksi/records?perPage=200&sort=sort_order", nil)
+		if errP == nil {
+			if respP, errPDo := client.Do(pegawaiReq); errPDo == nil {
+				defer respP.Body.Close()
+				var dataP struct {
+					Items []fiber.Map `json:"items"`
+				}
+				if json.NewDecoder(respP.Body).Decode(&dataP) == nil {
+					counts := make(map[string]int)
+					for _, p := range dataP.Items {
+						if sid, ok := p["seksi_id"].(string); ok && sid != "" {
+							counts[sid]++
+						}
+					}
+					for i, s := range data.Items {
+						sid, _ := s["id"].(string)
+						origID, _ := s["original_id"].(string)
+						cnt := counts[sid]
+						if origID != "" && origID != sid {
+							cnt += counts[origID]
+						}
+						s["pegawai_count"] = cnt
+						data.Items[i] = s
+					}
+				}
+			}
+		}
+
+		if b, errM := json.Marshal(data.Items); errM == nil {
+			_ = cache.Set(ctx, "cache:seksi:data", string(b), 24*time.Hour)
+		}
+		response.CDNCacheControl(c, 600, 1200)
+		return c.JSON(fiber.Map{"seksi": data.Items})
+	}
+
+	// Fallback ke stale cache jika PocketBase bermasalah
+	if cachedStr, errC := cache.Get(ctx, "cache:seksi:data"); errC == nil && cachedStr != "" {
+		var cachedItems []fiber.Map
+		if json.Unmarshal([]byte(cachedStr), &cachedItems) == nil {
+			c.Set("X-Cache-Status", "STALE-FALLBACK")
+			response.CDNCacheControl(c, 60, 60)
+			return c.JSON(fiber.Map{"seksi": cachedItems})
+		}
+	}
+
+	return response.Error(c, 502, "Gagal mengambil data seksi dari PocketBase", "UPSTREAM_ERROR")
 }
 
 // SeksiDetailPublicHandler — GET /api/seksi/:slug
@@ -93,7 +110,7 @@ func SeksiDetailPublicHandler(c fiber.Ctx) error {
 	reqURL := fmt.Sprintf("%s/api/collections/seksi/records?filter=(slug='%s')&perPage=1", pbURL, url.QueryEscape(slug))
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := db.Client()
 	resp, err := client.Do(req)
 	if err != nil {
 		return response.Error(c, 502, "Upstream error", "UPSTREAM_ERROR")
@@ -158,7 +175,7 @@ func StaticPagesHandler(c fiber.Ctx) error {
 	}
 
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := db.Client()
 	resp, err := client.Do(req)
 	if err != nil {
 		return response.Error(c, 502, "Upstream error", "UPSTREAM_ERROR")
@@ -199,7 +216,7 @@ func SearchHandler(c fiber.Ctx) error {
 	pbURL := config.Cfg.PocketBaseURL
 
 	var results []fiber.Map
-	client := &http.Client{Timeout: 4 * time.Second}
+	client := db.Client()
 
 	// 1. Berita search
 	filter := fmt.Sprintf("(is_published=true && (title ~ '%s' || excerpt ~ '%s'))", query, query)
@@ -408,7 +425,7 @@ func YoutubePublicHandler(c fiber.Ctx) error {
 		return response.Error(c, 500, "Gagal membangun request", "INTERNAL_ERROR")
 	}
 
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := db.Client()
 	resp, err := client.Do(req)
 	if err != nil {
 		return response.Error(c, 502, "Gagal mengambil video dari PocketBase", "UPSTREAM_ERROR")
@@ -426,56 +443,73 @@ func YoutubePublicHandler(c fiber.Ctx) error {
 	return c.JSON(data.Items)
 }
 
-// SettingsHandler — GET /api/settings (via PocketBase)
+// SettingsHandler — GET /api/settings (via PocketBase dengan stale fallback)
 func SettingsHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 	defer cancel()
 
 	pbURL := config.Cfg.PocketBaseURL
+	client := db.Client()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pbURL+"/api/collections/site_settings/records?perPage=100", nil)
 	if err != nil {
 		return response.Error(c, 500, "Gagal membangun request", "INTERNAL_ERROR")
 	}
 
-	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
-	if err != nil {
-		return response.Error(c, 502, "Gagal mengambil pengaturan dari PocketBase", "UPSTREAM_ERROR")
-	}
-	defer resp.Body.Close()
-
 	var data struct {
 		Items []struct {
 			Key   string `json:"key"`
 			Value any    `json:"value"`
 		} `json:"items"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return response.Error(c, 500, "Gagal memproses response", "PARSE_ERROR")
+	fetchSuccess := false
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == 200 && json.NewDecoder(resp.Body).Decode(&data) == nil {
+			fetchSuccess = true
+		}
 	}
 
-	settingsMap := make(map[string]any)
-	var identityObj map[string]any
+	if fetchSuccess {
+		settingsMap := make(map[string]any)
+		var identityObj map[string]any
 
-	for _, item := range data.Items {
-		if item.Key == "identity" {
-			if m, ok := item.Value.(map[string]any); ok {
-				identityObj = m
+		for _, item := range data.Items {
+			if item.Key == "identity" {
+				if m, ok := item.Value.(map[string]any); ok {
+					identityObj = m
+				}
+			}
+			settingsMap[item.Key] = item.Value
+		}
+
+		// Fallback nilai dari identityObj jika field individual kosong
+		for k, v := range identityObj {
+			if existing, exists := settingsMap[k]; !exists || existing == "" || existing == nil {
+				settingsMap[k] = v
 			}
 		}
-		settingsMap[item.Key] = item.Value
+
+		if b, errM := json.Marshal(settingsMap); errM == nil {
+			_ = cache.Set(ctx, "cache:settings:data", string(b), 24*time.Hour)
+		}
+
+		response.CDNCacheControl(c, 60, 300)
+		return c.JSON(settingsMap)
 	}
 
-	// Fallback nilai dari identityObj jika field individual kosong
-	for k, v := range identityObj {
-		if existing, exists := settingsMap[k]; !exists || existing == "" || existing == nil {
-			settingsMap[k] = v
+	// Fallback ke stale cache jika PocketBase bermasalah
+	if cachedStr, errC := cache.Get(ctx, "cache:settings:data"); errC == nil && cachedStr != "" {
+		var cachedSettings map[string]any
+		if json.Unmarshal([]byte(cachedStr), &cachedSettings) == nil {
+			c.Set("X-Cache-Status", "STALE-FALLBACK")
+			response.CDNCacheControl(c, 60, 60)
+			return c.JSON(cachedSettings)
 		}
 	}
 
-	response.CDNCacheControl(c, 60, 300)
-	return c.JSON(settingsMap)
+	return response.Error(c, 502, "Gagal mengambil pengaturan dari PocketBase", "UPSTREAM_ERROR")
 }
 
 var _ = middleware.GetClientIP

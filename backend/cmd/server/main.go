@@ -53,6 +53,10 @@ func main() {
 		ServerHeader:    "",
 	})
 
+	if config.Cfg.SentryDSN != "" {
+		app.Use(middleware.InitSentry(config.Cfg.SentryDSN))
+	}
+
 	app.Use(recover.New())
 	app.Use(helmet.New())
 	app.Use(middleware.SecurityHeaders())
@@ -76,14 +80,14 @@ func main() {
 	ctxPing, cancelPing := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelPing()
 
-	dbLatency, _ := db.Ping(ctxPing)
+	dbLatency, dbErr := db.Ping(ctxPing)
 	cacheLatency, _ := cache.Ping(ctxPing)
 
 	bootDuration := time.Since(bootStart).Round(time.Millisecond)
 	routes := app.GetRoutes(true)
 	port := config.Cfg.Port
 
-	printStartupBanner(bootDuration, port, dbLatency, cacheLatency, len(routes))
+	printStartupBanner(bootDuration, port, dbLatency, dbErr == nil, cacheLatency, len(routes))
 
 	// Graceful shutdown context (merespon SIGTERM / SIGINT saat deploy/restart)
 	ctxShutdown, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -100,7 +104,7 @@ func main() {
 	log.Println("[server] shutdown graceful selesai, seluruh koneksi dan transaksi ditutup rapi.")
 }
 
-func printStartupBanner(bootDuration time.Duration, port string, dbLatency time.Duration, cacheLatency time.Duration, routeCount int) {
+func printStartupBanner(bootDuration time.Duration, port string, dbLatency time.Duration, isDbOk bool, cacheLatency time.Duration, routeCount int) {
 	const (
 		reset     = "\033[0m"
 		boldGreen = "\033[1;32m"
@@ -111,7 +115,12 @@ func printStartupBanner(bootDuration time.Duration, port string, dbLatency time.
 	)
 
 	// Format PocketBase info
-	dbInfo := fmt.Sprintf("%sPocketBase Ready%s %s(%v · %s)%s", boldGreen, reset, gray, dbLatency.Round(100*time.Microsecond), db.GetURL(), reset)
+	var dbInfo string
+	if isDbOk {
+		dbInfo = fmt.Sprintf("%sPocketBase Ready%s %s(%v · %s)%s", boldGreen, reset, gray, dbLatency.Round(100*time.Microsecond), db.GetURL(), reset)
+	} else {
+		dbInfo = fmt.Sprintf("%sPocketBase Connecting...%s %s(%s)%s", yellow, reset, gray, db.GetURL(), reset)
+	}
 
 	// Format Cache info
 	var cacheInfo string
