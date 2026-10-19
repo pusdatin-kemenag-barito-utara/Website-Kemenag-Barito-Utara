@@ -96,7 +96,9 @@ export default defineConfig({
         process.env.NEXT_PUBLIC_PUSDATIN_URL || "",
       ),
       "process.env.PUBLIC_SENTRY_DSN": JSON.stringify(
-        process.env.PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN || "",
+        process.env.PUBLIC_SENTRY_DSN ||
+          process.env.SENTRY_DSN ||
+          "https://309b64e0510ceade35ab656271c4f9c4@o4512255825346560.ingest.de.sentry.io/4512280955125840",
       ),
     },
     server: {

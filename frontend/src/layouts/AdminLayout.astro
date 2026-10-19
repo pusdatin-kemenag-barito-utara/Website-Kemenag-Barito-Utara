@@ -26,6 +26,7 @@ const publicEnv = {
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: getTurnstileSiteKey(),
   PUBLIC_API_URL: getPublicApiUrl(),
   NEXT_PUBLIC_PUSDATIN_URL: getEnv("NEXT_PUBLIC_PUSDATIN_URL"),
+  PUBLIC_SENTRY_DSN: getEnv("PUBLIC_SENTRY_DSN", "https://309b64e0510ceade35ab656271c4f9c4@o4512255825346560.ingest.de.sentry.io/4512280955125840"),
 };
 const pageTitle = title && typeof title === "string" && !title.includes(siteInfo.shortName)
   ? `${title} | ${siteInfo.shortName}`
