@@ -68,7 +68,7 @@ func PortalHandler(c fiber.Ctx) error {
 
 	// Fetch 5 berita terbaru
 	beritaReq, _ := http.NewRequestWithContext(ctx, http.MethodGet,
-		pbURL+"/api/collections/berita/records?filter=(is_published=true)&sort=-created&perPage=5", nil)
+		pbURL+"/api/collections/berita/records?filter=(is_published=true)&sort=-published_at&perPage=5", nil)
 	var latest []fiber.Map
 	var beritaCount int64 = 0
 

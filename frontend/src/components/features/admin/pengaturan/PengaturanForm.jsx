@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { FloatingFeedback, ToggleSwitch } from "@/components/features/admin/slides/SlidesUI";
+import { FloatingFeedback } from "@/components/features/admin/slides/SlidesUI";
 import { getPocketBase } from "@/lib/pocketbase/client";
+import { readAdminCache, writeAdminCache, bustAdminAndPublicCache } from "@/lib/admin-cache";
+
+const SETTINGS_CACHE_KEY = "admin_settings_v1";
 
 const defaultSettings = {
   nama_kantor: "Kementerian Agama Kabupaten Barito Utara",
@@ -23,11 +26,21 @@ const defaultSettings = {
 };
 
 export default function PengaturanForm({ initialSettings }) {
-  const [formData, setFormData] = useState({
+  const initialCacheRef = React.useRef(undefined);
+  if (initialCacheRef.current === undefined) {
+    initialCacheRef.current = readAdminCache(SETTINGS_CACHE_KEY);
+  }
+  const initialCached = initialCacheRef.current && typeof initialCacheRef.current === "object"
+    ? initialCacheRef.current
+    : null;
+
+  const [formData, setFormData] = useState(() => ({
     ...defaultSettings,
+    ...(initialCached || {}),
     ...(initialSettings || {}),
-  });
-  const [loading, setLoading] = useState(true);
+  }));
+  const [loading, setLoading] = useState(() => !(initialCached || initialSettings));
+  const hasSettingsRef = React.useRef(Boolean(initialCached || initialSettings));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -36,7 +49,9 @@ export default function PengaturanForm({ initialSettings }) {
   // Fetch settings from PocketBase
   const fetchSettings = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!hasSettingsRef.current) {
+        setLoading(true);
+      }
       setError("");
       const pb = getPocketBase();
       const records = await pb.collection("site_settings").getFullList({ requestKey: null });
@@ -66,15 +81,22 @@ export default function PengaturanForm({ initialSettings }) {
         }
       }
 
-      setFormData((prev) => ({
-        ...defaultSettings,
-        ...prev,
-        ...map,
-      }));
+      setFormData((prev) => {
+        const merged = {
+          ...defaultSettings,
+          ...prev,
+          ...map,
+        };
+        writeAdminCache(SETTINGS_CACHE_KEY, merged);
+        hasSettingsRef.current = true;
+        return merged;
+      });
       setLastUpdated(new Date().toISOString());
     } catch (err) {
       if (err.name === "AbortError" || err.isAbort) return;
-      setError(err.message || "Terjadi kesalahan saat memuat pengaturan.");
+      if (!hasSettingsRef.current) {
+        setError(err.message || "Terjadi kesalahan saat memuat pengaturan.");
+      }
     } finally {
       setLoading(false);
     }
@@ -134,6 +156,8 @@ export default function PengaturanForm({ initialSettings }) {
 
       // Eksekusi semua secara paralel berkecepatan tinggi
       await Promise.all(operations);
+      bustAdminAndPublicCache(SETTINGS_CACHE_KEY, "settings");
+      writeAdminCache(SETTINGS_CACHE_KEY, formData);
 
       setMessage("Pengaturan identitas kantor berhasil disimpan.");
       setLastUpdated(new Date().toISOString());

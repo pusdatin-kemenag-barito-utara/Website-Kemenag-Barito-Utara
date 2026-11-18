@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "@/hooks/useNextNavigation";
 import { getPocketBase } from "@/lib/pocketbase/client";
+import { getRolePermissions } from "@/lib/permissions";
 
 function encodeSavedEmail(email) {
   try {
@@ -83,12 +84,32 @@ export function useAdminLogin(initialUnauthorized) {
 
     setSubmitting(true);
     try {
+      const turnstileRes = await fetch("/api/auth/verify-turnstile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: turnstileToken }),
+      });
+      if (!turnstileRes.ok) {
+        const turnstileData = await turnstileRes.json().catch(() => ({}));
+        throw new Error(
+          turnstileData?.error ||
+            turnstileData?.message ||
+            "Verifikasi keamanan Turnstile gagal. Silakan coba lagi."
+        );
+      }
+
       const authData = await pb
         .collection("users")
         .authWithPassword(email.trim().toLowerCase(), password);
 
       if (!authData || !authData.record) {
         throw new Error("Autentikasi gagal. Record tidak ditemukan.");
+      }
+
+      const user = authData.record;
+      if (user.is_active === false || user.status === "inactive") {
+        pb.authStore.clear();
+        throw new Error("Akun Anda dinonaktifkan. Hubungi Super Admin.");
       }
 
       // 1. Ekspor dan sinkronkan cookie secara instan
@@ -106,8 +127,12 @@ export function useAdminLogin(initialUnauthorized) {
       }
 
       // 2. Pre-cache session & permission ke sessionStorage agar useAdminShell di /admin langsung instant tanpa loading
-      const user = authData.record;
-      const role = user.role || "super_admin";
+      const role = user.role || "editor";
+      const resolvedPermissions =
+        Array.isArray(user.permissions) && user.permissions.length > 0
+          ? user.permissions
+          : getRolePermissions(role);
+
       const session = {
         authenticated: true,
         user: {
@@ -123,6 +148,7 @@ export function useAdminLogin(initialUnauthorized) {
           isEditor: role === "editor",
           hasAdminPanelAccess: true,
           role: role,
+          list: resolvedPermissions,
         },
       };
 
@@ -134,6 +160,7 @@ export function useAdminLogin(initialUnauthorized) {
         isEditor: role === "editor",
         isActive: true,
         approved: true,
+        permissions: resolvedPermissions,
       };
 
       try {

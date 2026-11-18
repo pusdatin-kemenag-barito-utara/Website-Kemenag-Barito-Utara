@@ -118,22 +118,52 @@ export function FloatingFeedback({ message, error, onClose }) {
   );
 }
 
-export function ToggleSwitch({ checked, onChange, label, description }) {
+export function ToggleSwitch({ checked, onChange, label, description, disabled = false, size = "md" }) {
+  const isCompact = size === "sm" || (!label && !description);
+  const trackClass = isCompact ? "h-6 w-11" : "h-8 w-14";
+  const thumbClass = isCompact ? "h-4 w-4" : "h-6 w-6";
+  const thumbTranslate = isCompact
+    ? checked
+      ? "translate-x-6"
+      : "translate-x-1"
+    : checked
+      ? "translate-x-7"
+      : "translate-x-1";
+
+  const switchButton = (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={Boolean(checked)}
+      disabled={disabled}
+      onClick={() => !disabled && onChange && onChange(!checked)}
+      className={`relative inline-flex ${trackClass} shrink-0 items-center rounded-full transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50 ${
+        checked
+          ? "bg-emerald-600 dark:bg-emerald-500"
+          : "bg-slate-300 dark:bg-slate-700"
+      }`}
+    >
+      <span
+        className={`${thumbClass} rounded-full bg-white shadow-md transition-transform duration-300 ${thumbTranslate}`}
+      />
+    </button>
+  );
+
+  if (!label && !description) {
+    return switchButton;
+  }
+
   return (
     <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-900 dark:border-slate-800 dark:bg-slate-800/50 dark:hover:border-white">
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">{label}</p>
-        <p className="mt-1 text-[10px] font-medium text-slate-400">{description}</p>
+        {label && (
+          <p className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">{label}</p>
+        )}
+        {description && (
+          <p className="mt-1 text-[10px] font-medium text-slate-400">{description}</p>
+        )}
       </div>
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-slate-900/5 ${checked ? "bg-slate-900 dark:bg-white" : "bg-slate-200 dark:bg-slate-800"}`}
-      >
-        <span
-          className={`h-6 w-6 rounded-full shadow-lg transition-all duration-300 ${checked ? "translate-x-7 bg-white dark:bg-slate-900" : "translate-x-1 bg-white dark:bg-slate-400"}`}
-        />
-      </button>
+      {switchButton}
     </div>
   );
 }

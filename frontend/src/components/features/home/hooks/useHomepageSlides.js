@@ -1,13 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
 
 export function useHomepageSlides(slides) {
-  const normalizedSlides = useMemo(
-    () =>
-      Array.isArray(slides)
-        ? slides.filter((item) => item?.image_url && item?.title)
-        : [],
-    [slides],
-  );
+  const normalizedSlides = useMemo(() => {
+    if (!Array.isArray(slides)) return [];
+    return slides
+      .filter((item) => item?.image_url && item?.title)
+      .map((item) => ({
+        ...item,
+        category: String(item.category || "utama").toLowerCase().trim() || "utama",
+        sort_order: Number(item.sort_order || 0),
+      }))
+      .sort((a, b) => a.sort_order - b.sort_order);
+  }, [slides]);
 
   // Grouping slides by category
   const katolikSlides = useMemo(
@@ -26,10 +30,10 @@ export function useHomepageSlides(slides) {
     () => normalizedSlides.filter((s) => s.category === "hindu"),
     [normalizedSlides],
   );
-  const sliderSlides = useMemo(
-    () => normalizedSlides.filter((s) => s.category === "utama"),
-    [normalizedSlides],
-  );
+  const sliderSlides = useMemo(() => {
+    const religiousSlots = new Set(["katolik", "kristen", "islam", "hindu"]);
+    return normalizedSlides.filter((s) => !religiousSlots.has(s.category));
+  }, [normalizedSlides]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("utama");

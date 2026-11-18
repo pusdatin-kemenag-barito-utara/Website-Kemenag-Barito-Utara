@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import Image from "@/components/common/NextImage";
+import { buildCleanInfografisFileName } from "@/hooks/useSlidesManager";
 import { ToggleSwitch } from "./SlidesUI";
 
 export function SlideFormModal({
@@ -14,6 +15,7 @@ export function SlideFormModal({
   onClose,
   onChange,
   onFileChange,
+  onRemoveSelectedImage,
   onImageDragOver,
   onImageDragLeave,
   onImageDrop,
@@ -21,11 +23,9 @@ export function SlideFormModal({
 }) {
   const fileInputRef = useRef(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [isCustomMode, setIsCustomMode] = useState(false);
-  const [customCategoryInput, setCustomCategoryInput] = useState("");
   const dropdownRef = useRef(null);
 
-  // Close custom dropdown when clicking outside
+  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -38,19 +38,12 @@ export function SlideFormModal({
     }
   }, [dropdownOpen]);
 
-  // Sync custom category state on open / edit
+  // Close dropdown when modal opens/closes
   useEffect(() => {
     if (open) {
-      const isKnown = categories.some((c) => c.id === form.category);
-      if (!isKnown && form.category && form.category !== "utama") {
-        setIsCustomMode(true);
-        setCustomCategoryInput(form.category);
-      } else {
-        setIsCustomMode(false);
-        setCustomCategoryInput("");
-      }
+      setDropdownOpen(false);
     }
-  }, [open, form.category, categories]);
+  }, [open]);
 
   // Modal keyboard shortcuts: Escape to close
   useEffect(() => {
@@ -66,12 +59,19 @@ export function SlideFormModal({
 
   if (!open) return null;
 
+  const normalizedCat = String(form.category || "utama").toLowerCase().trim() || "utama";
   const currentCategory =
-    categories.find((c) => c.id === (form.category || "utama")) || {
-      id: form.category || "utama",
-      label: form.category ? form.category.toUpperCase() : "Utama",
+    categories.find((c) => c.id === normalizedCat) || {
+      id: normalizedCat,
+      label: normalizedCat.toUpperCase(),
+      shortLabel: normalizedCat.toUpperCase(),
       color: "bg-emerald-500",
     };
+
+  const displayFileName = buildCleanInfografisFileName(
+    form.title,
+    form.image_upload_name || String(form.image_url || "").split("?")[0].split("/").pop()
+  );
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
@@ -151,141 +151,128 @@ export function SlideFormModal({
           </div>
 
           {/* Section: Kategori, Urutan & Status (Grid 3 Kolom) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Dynamic Category Selector */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+            {/* Official Slot Category Selector */}
             <div className="relative" ref={dropdownRef}>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center mb-1.5 h-4">
                 <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Kategori
+                  Kategori Slot
                 </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCustomMode(!isCustomMode);
-                    if (!isCustomMode) {
-                      setDropdownOpen(false);
-                    }
-                  }}
-                  className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
-                >
-                  {isCustomMode ? "← Pilih Kategori" : "+ Kustom"}
-                </button>
               </div>
 
-              {isCustomMode ? (
-                <input
-                  type="text"
-                  placeholder="Ketik nama kategori baru..."
-                  value={form.category || ""}
-                  onChange={(e) =>
-                    onChange({
-                      target: { name: "category", value: e.target.value },
-                    })
-                  }
-                  className="h-12 w-full rounded-2xl border border-emerald-500 bg-white px-4 text-xs font-bold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:ring-4 focus:ring-emerald-500/10 dark:border-emerald-500 dark:bg-slate-800 dark:text-white"
-                />
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 text-left text-xs font-bold text-slate-800 flex items-center justify-between transition-all focus:border-emerald-600 focus:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <span className={`h-2.5 w-2.5 rounded-full ${currentCategory.color || "bg-emerald-500"} shrink-0`} />
-                      <span className="truncate">{currentCategory.label || currentCategory.id}</span>
-                    </div>
-                    <svg
-                      className={`h-4 w-4 text-slate-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
+              <button
+                type="button"
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 text-left text-xs font-bold text-slate-800 flex items-center justify-between transition-all focus:border-emerald-600 focus:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200"
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <span className={`h-2.5 w-2.5 rounded-full ${currentCategory.color || "bg-emerald-500"} shrink-0`} />
+                  <span className="truncate">{currentCategory.shortLabel || currentCategory.label || currentCategory.id}</span>
+                </div>
+                <svg
+                  className={`h-4 w-4 text-slate-400 shrink-0 transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <p className="mt-1.5 text-[10px] font-medium text-slate-400">
+                Posisi di beranda: {currentCategory.slotDesc || "Slider Utama (Tengah)"}
+              </p>
 
-                  {/* Dropdown Menu */}
-                  {dropdownOpen && (
-                    <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150 dark:border-slate-800 dark:bg-slate-800 max-h-56 overflow-y-auto custom-scrollbar">
-                      {categories.map((cat) => {
-                        const isSelected = (form.category || "utama") === cat.id;
-                        return (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => {
-                              onChange({ target: { name: "category", value: cat.id } });
-                              setDropdownOpen(false);
-                            }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all ${
-                              isSelected
-                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
-                                : "text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700/50"
-                            }`}
-                          >
-                            <span className={`h-2.5 w-2.5 rounded-full ${cat.color || "bg-indigo-500"} shrink-0`} />
-                            <span className="truncate flex-1">{cat.label || cat.id}</span>
-                            {isSelected && (
-                              <svg className="h-4 w-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
+              {/* Dropdown Menu */}
+              {dropdownOpen && (
+                <div className="absolute left-0 right-0 top-[68px] z-50 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150 dark:border-slate-800 dark:bg-slate-800 max-h-64 overflow-y-auto custom-scrollbar">
+                  {categories
+                    .filter((c) => !c.isCustom)
+                    .map((cat) => {
+                      const isSelected = normalizedCat === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => {
+                            onChange({ target: { name: "category", value: cat.id } });
+                            setDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all ${
+                            isSelected
+                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                              : "text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700/50"
+                          }`}
+                        >
+                          <span className={`h-2.5 w-2.5 rounded-full ${cat.color || "bg-indigo-500"} shrink-0`} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate">{cat.shortLabel || cat.label || cat.id}</p>
+                            {cat.slotDesc && (
+                              <p className="text-[10px] font-medium text-slate-400 truncate">
+                                Posisi: {cat.slotDesc}
+                              </p>
                             )}
-                          </button>
-                        );
-                      })}
-
-                      <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsCustomMode(true);
-                          setDropdownOpen(false);
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
-                      >
-                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span>Tulis Kategori Baru...</span>
-                      </button>
-                    </div>
-                  )}
-                </>
+                          </div>
+                          {isSelected && (
+                            <svg className="h-4 w-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
+                      );
+                    })}
+                </div>
               )}
             </div>
 
             {/* Urutan Tampil */}
             <div>
-              <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                Urutan Slider
-              </label>
+              <div className="flex items-center mb-1.5 h-4">
+                <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Urutan Slider
+                </label>
+              </div>
               <input
                 type="number"
                 name="sort_order"
                 value={form.sort_order}
                 onChange={onChange}
-                min="0"
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 text-xs font-bold text-slate-900 outline-none transition-all focus:border-emerald-600 focus:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:text-white"
+                min="1"
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 text-xs font-bold text-slate-900 outline-none transition-all focus:border-emerald-600 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 dark:border-slate-800 dark:bg-slate-800/50 dark:text-white"
               />
+              <p className="mt-1.5 text-[10px] font-medium text-slate-400">
+                Urutan tampil pada kategori &ldquo;{currentCategory.shortLabel || currentCategory.label || currentCategory.id}&rdquo;
+              </p>
             </div>
 
             {/* Status Publikasi */}
             <div>
-              <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                Status Tayang
-              </label>
-              <div className="h-12 flex items-center justify-between px-4 rounded-2xl border border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/50">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {form.is_published ? "🟢 Tayang" : "⚪ Draft"}
-                </span>
+              <div className="flex items-center mb-1.5 h-4">
+                <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Status Tayang
+                </label>
+              </div>
+              <div className="h-12 flex items-center justify-between gap-3 px-4 rounded-2xl border border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/50">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={`h-2 w-2 rounded-full shrink-0 ${
+                      form.is_published ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                    }`}
+                  />
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
+                    {form.is_published ? "Tayang" : "Draft"}
+                  </span>
+                </div>
                 <ToggleSwitch
+                  size="sm"
                   checked={Boolean(form.is_published)}
                   onChange={(val) =>
                     onChange({ target: { name: "is_published", type: "checkbox", checked: val } })
                   }
                 />
               </div>
+              <p className="mt-1.5 text-[10px] font-medium text-slate-400">
+                {form.is_published ? "Tampil di halaman depan" : "Disimpan sebagai draft"}
+              </p>
             </div>
           </div>
 
@@ -298,44 +285,59 @@ export function SlideFormModal({
             {imagePreview ? (
               /* Preview Area when image is selected */
               <div className="relative flex flex-col sm:flex-row items-center gap-5 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
-                <div className="relative aspect-[4/3] w-36 sm:w-44 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm dark:border-slate-800">
+                <div className="relative aspect-[4/5] w-32 sm:w-36 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm dark:border-slate-800 dark:bg-slate-800">
                   <Image
                     src={imagePreview}
                     alt="Preview"
                     fill
-                    sizes="12rem"
-                    className="object-cover"
+                    sizes="9rem"
+                    className="object-contain"
                     unoptimized
                   />
                 </div>
 
-                <div className="flex flex-1 flex-col justify-between space-y-3 w-full">
-                  <div>
+                <div className="flex flex-1 min-w-0 flex-col justify-between space-y-3 w-full">
+                  <div className="min-w-0">
                     <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
-                      Gambar Siap Disimpan
+                      {form.image_upload_base64 ? "Gambar Baru Siap Diunggah" : "Gambar Terpasang"}
                     </span>
-                    <p className="mt-1 text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                      {form.image_upload_name || "Gambar Terpilih"}
+                    <p
+                      className="mt-1.5 text-xs font-bold text-slate-800 dark:text-slate-200 truncate"
+                      title={displayFileName}
+                    >
+                      {displayFileName}
                     </p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Format terkompresi otomatis (&lt; 500KB) untuk pemuatan halaman cepat.
+                      Format gambar dioptimalkan otomatis (&lt; 500KB) agar pemuatan halaman tetap ringan dan cepat.
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      disabled={uploadingImage || saving}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
-                      <span>Ganti Gambar</span>
+                      <span>{uploadingImage ? "Memproses..." : "Ganti Gambar"}</span>
                     </button>
+
+                    {form.image_upload_base64 && onRemoveSelectedImage && (
+                      <button
+                        type="button"
+                        onClick={onRemoveSelectedImage}
+                        disabled={saving}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-600 hover:bg-rose-100 active:scale-95 disabled:opacity-50 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-400"
+                      >
+                        <span>Batal Ganti</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -346,7 +348,7 @@ export function SlideFormModal({
                 onDragLeave={onImageDragLeave}
                 onDrop={onImageDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`relative flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all ${
+                className={`relative flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all ${
                   isDraggingImage
                     ? "border-emerald-500 bg-emerald-500/10 scale-[1.01]"
                     : "border-slate-300 bg-slate-50/70 hover:border-emerald-600 hover:bg-emerald-50/20 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-emerald-500"

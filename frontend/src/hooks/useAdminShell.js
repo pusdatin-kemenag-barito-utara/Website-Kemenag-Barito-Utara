@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "@/hooks/useNextNavigation";
 import { getPocketBase } from "@/lib/pocketbase/client";
+import { getRolePermissions } from "@/lib/permissions";
 
 const SHELL_CACHE_KEY = "kemenag_admin_shell_session";
 
@@ -52,7 +53,24 @@ export function useAdminShell() {
           throw new Error("No user record");
         }
 
-        const role = user.role || "super_admin";
+        if (user.is_active === false || user.status === "inactive") {
+          pb.authStore.clear();
+          try { sessionStorage.removeItem(SHELL_CACHE_KEY); } catch {}
+          setSessionData(null);
+          setPermissionContext(null);
+          setLoading(false);
+          if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) {
+            window.location.replace("/pusdatin/auth?unauthorized=1");
+          }
+          return;
+        }
+
+        const role = user.role || "editor";
+        const resolvedPermissions =
+          Array.isArray(user.permissions) && user.permissions.length > 0
+            ? user.permissions
+            : getRolePermissions(role);
+
         const session = {
           authenticated: true,
           user: {
@@ -68,6 +86,7 @@ export function useAdminShell() {
             isEditor: role === "editor",
             hasAdminPanelAccess: true,
             role: role,
+            list: resolvedPermissions,
           },
         };
 
@@ -79,6 +98,7 @@ export function useAdminShell() {
           isEditor: role === "editor",
           isActive: true,
           approved: true,
+          permissions: resolvedPermissions,
         };
 
         setSessionData(session);

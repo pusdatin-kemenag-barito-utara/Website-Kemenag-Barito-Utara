@@ -20,6 +20,9 @@ import {
 import { compressImageToBase64 } from "@/lib/image-compress";
 import { toCoverPreviewUrl, normalizeCoverImageUrl } from "@/lib/cover-image";
 import { getPocketBase, getPocketBaseFileUrl } from "@/lib/pocketbase/client";
+import { readAdminCache, writeAdminCache, bustAdminAndPublicCache } from "@/lib/admin-cache";
+
+const BERITA_CACHE_KEY = "admin_berita_v1";
 
 function dataURLtoFile(dataurl, filename) {
   const arr = dataurl.split(",");
@@ -80,8 +83,15 @@ const emptyForm = {
 export function useBeritaManager() {
   const editorRef = useRef(null);
 
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const initialCacheRef = useRef(undefined);
+  if (initialCacheRef.current === undefined) {
+    initialCacheRef.current = readAdminCache(BERITA_CACHE_KEY);
+  }
+  const initialCached = Array.isArray(initialCacheRef.current) ? initialCacheRef.current : null;
+
+  const [items, setItems] = useState(() => initialCached || []);
+  const [loading, setLoading] = useState(() => !(initialCached && initialCached.length > 0));
+  const hasItemsRef = useRef(Boolean(initialCached && initialCached.length > 0));
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -115,9 +125,15 @@ export function useBeritaManager() {
 
   const loadItemsAbortRef = useRef(null);
 
+  useEffect(() => {
+    hasItemsRef.current = items.length > 0;
+  }, [items.length]);
+
   async function loadItems(signal) {
     try {
-      setLoading(true);
+      if (!hasItemsRef.current) {
+        setLoading(true);
+      }
       setError("");
 
       const pb = getPocketBase();
@@ -135,11 +151,14 @@ export function useBeritaManager() {
       }));
 
       setItems(list);
+      writeAdminCache(BERITA_CACHE_KEY, list);
       preloadNewsImages(list);
     } catch (err) {
       if (err.name === "AbortError" || err.isAbort) return;
-      setError(err.message || "Gagal memuat daftar berita.");
-      setItems([]);
+      if (!hasItemsRef.current) {
+        setError(err.message || "Gagal memuat daftar berita.");
+        setItems([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -894,6 +913,7 @@ export function useBeritaManager() {
       }
 
       const isPublished = Boolean(payload.is_published);
+      bustAdminAndPublicCache(BERITA_CACHE_KEY, "berita");
       setMessage(
         editingId
           ? (isPublished ? "Berita berhasil diperbarui & diterbitkan." : "Draft berita berhasil diperbarui.")
@@ -924,6 +944,7 @@ export function useBeritaManager() {
 
       const pb = getPocketBase();
       await pb.collection("berita").delete(deleteTarget.id);
+      bustAdminAndPublicCache(BERITA_CACHE_KEY, "berita");
 
       setMessage("Berita berhasil dihapus.");
       await loadItems();

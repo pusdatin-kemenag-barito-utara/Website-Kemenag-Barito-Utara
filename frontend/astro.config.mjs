@@ -106,6 +106,11 @@ export default defineConfig({
         "/api": {
           target: process.env.PUBLIC_API_URL || `http://127.0.0.1:${process.env.PORT || "8080"}`,
           changeOrigin: true,
+          bypass: (req) => {
+            if (req.url && req.url.startsWith("/api/cache-bust")) {
+              return req.url;
+            }
+          },
           configure: (proxy) => {
             proxy.on("error", (err) => {
               const code = err && typeof err === "object" && "code" in err ? err.code : undefined;

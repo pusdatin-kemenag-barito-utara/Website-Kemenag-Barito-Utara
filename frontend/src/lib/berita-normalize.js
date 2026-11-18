@@ -9,11 +9,14 @@ export function normalizeBerita(item = {}) {
   const createdAt = item.created_at || null;
   const updatedAt = item.updated_at || null;
   const isoDate = publishedAt || createdAt;
-  let rawCoverImage = item.cover_image || "";
-  if (!rawCoverImage && item.cover_file) {
+  let rawCoverImage = "";
+  if (item.cover_file) {
     try {
       rawCoverImage = getPocketBaseFileUrl(item, item.cover_file);
     } catch {}
+  }
+  if (!rawCoverImage) {
+    rawCoverImage = item.cover_image || "";
   }
 
   const isPublished = Boolean(item.is_published);
@@ -50,11 +53,14 @@ export function normalizeBerita(item = {}) {
 
 export function normalizeHomepageSlide(item = {}) {
   if (!item) return null;
-  let rawImage = item.image_url || "";
-  if (!rawImage && item.image_file) {
+  let rawImage = "";
+  if (item.image_file) {
     try {
       rawImage = getPocketBaseFileUrl(item, item.image_file);
     } catch {}
+  }
+  if (!rawImage) {
+    rawImage = item.image_url || "";
   }
   const imageUrl = toCoverPreviewUrl(rawImage);
   return {
@@ -63,7 +69,7 @@ export function normalizeHomepageSlide(item = {}) {
     caption: item.caption || "",
     image_url: imageUrl,
     imageUrl: imageUrl,
-    category: item.category || "utama",
+    category: String(item.category || "utama").toLowerCase().trim() || "utama",
     is_published: Boolean(item.is_published),
     sort_order: Number(item.sort_order || 0),
     updated_at: item.updated_at || null,
@@ -72,11 +78,14 @@ export function normalizeHomepageSlide(item = {}) {
 
 export function normalizeGaleriItem(item = {}) {
   if (!item) return null;
-  let rawImage = item.image_url || "";
-  if (!rawImage && item.image_file) {
+  let rawImage = "";
+  if (item.image_file) {
     try {
       rawImage = getPocketBaseFileUrl(item, item.image_file);
     } catch {}
+  }
+  if (!rawImage) {
+    rawImage = item.image_url || "";
   }
   const imageUrl = toCoverPreviewUrl(rawImage);
   return {

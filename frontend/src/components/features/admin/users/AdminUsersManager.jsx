@@ -32,6 +32,9 @@ import {
 import { FloatingFeedback, DeleteConfirmModal } from "../slides/SlidesUI";
 import { EyeIcon } from "../login/LoginUI";
 import { getPocketBase } from "@/lib/pocketbase/client";
+import { readAdminCache, writeAdminCache } from "@/lib/admin-cache";
+
+const USERS_CACHE_KEY = "admin_users_v1";
 
 export const MODULE_DEFINITIONS = [
   {
@@ -178,8 +181,15 @@ function compileFullPermissions(selectedModuleIds) {
 }
 
 export default function AdminUsersManager() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const initialCacheRef = React.useRef(undefined);
+  if (initialCacheRef.current === undefined) {
+    initialCacheRef.current = readAdminCache(USERS_CACHE_KEY);
+  }
+  const initialCached = Array.isArray(initialCacheRef.current) ? initialCacheRef.current : null;
+
+  const [users, setUsers] = useState(() => initialCached || []);
+  const [loading, setLoading] = useState(() => !(initialCached && initialCached.length > 0));
+  const hasUsersRef = React.useRef(Boolean(initialCached && initialCached.length > 0));
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("all");
 
@@ -213,11 +223,17 @@ export default function AdminUsersManager() {
   const [deletingUser, setDeletingUser] = useState(null);
   const [submittingDelete, setSubmittingDelete] = useState(false);
 
+  useEffect(() => {
+    hasUsersRef.current = users.length > 0;
+  }, [users.length]);
+
   const fetchUsers = useCallback(async () => {
-    setLoading(true);
+    if (!hasUsersRef.current) {
+      setLoading(true);
+    }
     try {
       const pb = getPocketBase();
-      const records = await pb.collection("users").getFullList({ sort: "-created" });
+      const records = await pb.collection("users").getFullList({ sort: "-created", requestKey: null });
       const mapped = records.map((r) => ({
         id: r.id,
         fullName: r.name || r.email,
@@ -229,9 +245,12 @@ export default function AdminUsersManager() {
         createdAt: r.created,
       }));
       setUsers(mapped);
+      writeAdminCache(USERS_CACHE_KEY, mapped);
     } catch (err) {
       if (err?.name === "AbortError" || err?.isAbort) return;
-      setFeedbackErr(err?.message || "Koneksi gagal saat memuat daftar pengguna.");
+      if (!hasUsersRef.current) {
+        setFeedbackErr(err?.message || "Koneksi gagal saat memuat daftar pengguna.");
+      }
     } finally {
       setLoading(false);
     }

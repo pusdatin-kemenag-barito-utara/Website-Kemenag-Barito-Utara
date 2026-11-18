@@ -4,8 +4,8 @@
   "private": true,
   "description": "Website resmi Kementerian Agama Kabupaten Barito Utara — Monorepo (Astro + Go Fiber)",
   "scripts": {
-    "install:all": "npm install --no-workspaces && npm --prefix frontend install && go -C backend mod download",
-    "install:fe": "npm --prefix frontend install",
+    "install:all": "npm install --no-workspaces && npm --prefix frontend install --no-workspaces && go -C backend mod download",
+    "install:fe": "npm --prefix frontend install --no-workspaces",
     "install:be": "go -C backend mod download",
     "dev": "infisical run --env=dev --path=/website-kemenag -- concurrently -k -n FE,BE -c cyan,green \"npm --prefix frontend run dev\" \"go -C backend run github.com/air-verse/air@latest -c .air.toml\"",
     "dev:prod": "infisical run --env=prod --path=/website-kemenag -- concurrently -k -n FE,BE -c cyan,green \"npm --prefix frontend run dev\" \"go -C backend run github.com/air-verse/air@latest -c .air.toml\"",
@@ -26,9 +26,5 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
-  },
-  "workspaces": [
-    "frontend",
-    "backend"
-  ]
+  }
 }

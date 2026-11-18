@@ -443,6 +443,79 @@ func YoutubePublicHandler(c fiber.Ctx) error {
 	return c.JSON(data.Items)
 }
 
+// HomepageSlidesPublicHandler — GET /api/homepage-slides (via PocketBase dengan cache + stale fallback)
+func HomepageSlidesPublicHandler(c fiber.Ctx) error {
+	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
+	defer cancel()
+
+	pbURL := strings.TrimRight(config.Cfg.PocketBaseURL, "/")
+	client := db.Client()
+
+	reqURL := pbURL + "/api/collections/homepage_slides/records?filter=" + url.QueryEscape("(is_published=true)") + "&sort=sort_order&perPage=100"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return response.Error(c, 500, "Gagal membangun request", "INTERNAL_ERROR")
+	}
+
+	resp, err := client.Do(req)
+	var data struct {
+		Items []fiber.Map `json:"items"`
+	}
+	fetchSuccess := false
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == 200 && json.NewDecoder(resp.Body).Decode(&data) == nil {
+			fetchSuccess = true
+		}
+	}
+
+	if fetchSuccess {
+		items := make([]fiber.Map, 0, len(data.Items))
+		for _, item := range data.Items {
+			id, _ := item["id"].(string)
+			colID, _ := item["collectionId"].(string)
+			if colID == "" {
+				colID = "homepage_slides"
+			}
+			imgFile, _ := item["image_file"].(string)
+			imgURL, _ := item["image_url"].(string)
+
+			if imgFile != "" && (imgURL == "" || !strings.HasSuffix(imgURL, "/"+imgFile)) {
+				imgURL = fmt.Sprintf("%s/api/files/%s/%s/%s", pbURL, colID, id, url.PathEscape(imgFile))
+				item["image_url"] = imgURL
+			}
+			if cat, ok := item["category"].(string); ok {
+				cat = strings.ToLower(strings.TrimSpace(cat))
+				if cat == "" {
+					cat = "utama"
+				}
+				item["category"] = cat
+			}
+			if strings.TrimSpace(imgURL) == "" {
+				continue
+			}
+			items = append(items, item)
+		}
+
+		if b, errM := json.Marshal(items); errM == nil {
+			_ = cache.Set(ctx, "cache:slides:data", string(b), 24*time.Hour)
+		}
+		response.CDNCacheControl(c, 300, 600)
+		return c.JSON(fiber.Map{"items": items, "total": len(items)})
+	}
+
+	if cachedStr, errC := cache.Get(ctx, "cache:slides:data"); errC == nil && cachedStr != "" {
+		var cachedItems []fiber.Map
+		if json.Unmarshal([]byte(cachedStr), &cachedItems) == nil {
+			c.Set("X-Cache-Status", "STALE-FALLBACK")
+			response.CDNCacheControl(c, 60, 60)
+			return c.JSON(fiber.Map{"items": cachedItems, "total": len(cachedItems)})
+		}
+	}
+
+	return response.Error(c, 502, "Gagal mengambil data infografis dari PocketBase", "UPSTREAM_ERROR")
+}
+
 // SettingsHandler — GET /api/settings (via PocketBase dengan stale fallback)
 func SettingsHandler(c fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
@@ -512,4 +585,71 @@ func SettingsHandler(c fiber.Ctx) error {
 	return response.Error(c, 502, "Gagal mengambil pengaturan dari PocketBase", "UPSTREAM_ERROR")
 }
 
-var _ = middleware.GetClientIP
+// VerifyTurnstileHandler — POST /api/auth/verify-turnstile
+func VerifyTurnstileHandler(c fiber.Ctx) error {
+	var body struct {
+		Token string `json:"token"`
+	}
+	if err := c.Bind().Body(&body); err != nil {
+		return response.Error(c, 400, "Format request tidak valid.", "BAD_REQUEST")
+	}
+
+	token := strings.TrimSpace(body.Token)
+	secret := strings.TrimSpace(config.Cfg.TurnstileSecret)
+	if secret == "" || token == "1x00000000000000000000AA" {
+		return response.OK(c, fiber.Map{"ok": true})
+	}
+	if token == "" {
+		return response.Error(c, 400, "Token verifikasi keamanan wajib diisi.", "TOKEN_REQUIRED")
+	}
+
+	ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
+	defer cancel()
+
+	form := url.Values{}
+	form.Set("secret", secret)
+	form.Set("response", token)
+	if ip := middleware.GetClientIP(c); ip != "" {
+		form.Set("remoteip", ip)
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		"https://challenges.cloudflare.com/turnstile/v0/siteverify",
+		strings.NewReader(form.Encode()),
+	)
+	if err != nil {
+		return response.Error(c, 500, "Gagal memvalidasi Turnstile.", "INTERNAL_ERROR")
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := db.Client().Do(req)
+	if err != nil {
+		return response.Error(c, 502, "Gagal menghubungi layanan verifikasi Turnstile.", "UPSTREAM_ERROR")
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Success bool `json:"success"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil || !result.Success {
+		return response.Error(c, 400, "Verifikasi keamanan Turnstile tidak valid atau kedaluwarsa.", "TURNSTILE_FAILED")
+	}
+
+	return response.OK(c, fiber.Map{"ok": true})
+}
+
+// CacheBustHandler — POST /api/cache-bust
+func CacheBustHandler(c fiber.Ctx) error {
+	ctx, cancel := context.WithTimeout(c.Context(), 3*time.Second)
+	defer cancel()
+
+	services.CacheBust()
+	_ = cache.Del(ctx, "cache:settings:data", "cache:seksi:data", "cache:slides:data", "cache:portal:data")
+
+	return response.OK(c, fiber.Map{
+		"ok":      true,
+		"version": services.CacheVersion(),
+	})
+}

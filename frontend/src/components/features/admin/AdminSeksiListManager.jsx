@@ -19,8 +19,11 @@ import {
 import { FloatingFeedback, DeleteConfirmModal } from "./slides/SlidesUI";
 import { logWarn, logError } from "@/lib/logger";
 import { normalizeCoverImageUrl, isImageCached, markImageCached, preloadImages, getAlternativeStorageUrl } from "@/lib/cover-image";
-import { compressImageToBase64 } from "@/lib/image-compress";
-import { getPocketBase } from "@/lib/pocketbase/client";
+import { compressImageToBase64, dataURLtoFile } from "@/lib/image-compress";
+import { getPocketBase, getPocketBaseFileUrl } from "@/lib/pocketbase/client";
+import { readAdminCache, writeAdminCache, bustAdminAndPublicCache } from "@/lib/admin-cache";
+
+const SEKSI_CACHE_KEY = "admin_seksi_v1";
 
 function SeksiAvatarThumb({ src, alt, objectPositionY = 50 }) {
   const normalized = normalizeCoverImageUrl(src);
@@ -92,8 +95,15 @@ function SeksiAvatarThumb({ src, alt, objectPositionY = 50 }) {
 }
 
 export default function AdminSeksiListManager() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const initialCacheRef = useRef(undefined);
+  if (initialCacheRef.current === undefined) {
+    initialCacheRef.current = readAdminCache(SEKSI_CACHE_KEY);
+  }
+  const initialCached = Array.isArray(initialCacheRef.current) ? initialCacheRef.current : null;
+
+  const [items, setItems] = useState(() => initialCached || []);
+  const [loading, setLoading] = useState(() => !(initialCached && initialCached.length > 0));
+  const hasItemsRef = useRef(Boolean(initialCached && initialCached.length > 0));
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -133,6 +143,10 @@ export default function AdminSeksiListManager() {
   };
 
   useEffect(() => {
+    hasItemsRef.current = items.length > 0;
+  }, [items.length]);
+
+  useEffect(() => {
     try {
       const pb = getPocketBase();
       setIsSuperAdmin(pb?.authStore?.record?.role === "super_admin");
@@ -141,7 +155,9 @@ export default function AdminSeksiListManager() {
   }, []);
 
   const fetchSeksi = async () => {
-    setLoading(true);
+    if (!hasItemsRef.current) {
+      setLoading(true);
+    }
     setError("");
     try {
       const pb = getPocketBase();
@@ -180,7 +196,7 @@ export default function AdminSeksiListManager() {
 
       const enriched = (records || []).map((s) => {
         const count = (countMap[s.id] || 0) + (s.original_id ? (countMap[s.original_id] || 0) : 0);
-        const fotoUrl = s.foto_kepala || (s.foto_kepala_file ? `https://dbb.kemenag-baritoutara.com/api/files/seksi/${s.id}/${s.foto_kepala_file}` : "");
+        const fotoUrl = s.foto_kepala_file ? getPocketBaseFileUrl(s, s.foto_kepala_file) : (s.foto_kepala || "");
         return {
           ...s,
           foto_kepala: fotoUrl,
@@ -197,11 +213,14 @@ export default function AdminSeksiListManager() {
       });
 
       setItems(sorted);
+      writeAdminCache(SEKSI_CACHE_KEY, sorted);
       preloadImages(sorted.map((it) => it.foto_kepala).filter(Boolean));
     } catch (err) {
       if (err?.name === "AbortError" || err?.isAbort) return;
       logError("seksi_list_fetch_error", { error: err?.message });
-      setError(err?.message || "Terjadi kesalahan koneksi saat memuat data.");
+      if (!hasItemsRef.current) {
+        setError(err?.message || "Terjadi kesalahan koneksi saat memuat data.");
+      }
     } finally {
       setLoading(false);
     }
@@ -307,24 +326,38 @@ export default function AdminSeksiListManager() {
 
     try {
       const pb = getPocketBase();
-      const payload = {
-        judul: seksiForm.judul.trim(),
-        slug: slugToUse,
-        nama_kepala: seksiForm.nama_kepala.trim(),
-        nip_kepala: seksiForm.nip_kepala.trim(),
-        deskripsi: seksiForm.deskripsi.trim(),
-        foto_kepala: fotoKepalaBase64 || seksiForm.foto_kepala || "",
-        foto_kepala_y: Number(seksiForm.foto_kepala_y ?? 50),
-      };
+      const formData = new FormData();
+      formData.append("judul", seksiForm.judul.trim());
+      formData.append("slug", slugToUse);
+      formData.append("nama_kepala", seksiForm.nama_kepala.trim());
+      formData.append("nip_kepala", seksiForm.nip_kepala.trim());
+      formData.append("deskripsi", seksiForm.deskripsi.trim());
+      formData.append("foto_kepala_y", String(Number(seksiForm.foto_kepala_y ?? 50)));
 
-      if (editingSeksi) {
-        await pb.collection("seksi").update(editingSeksi.id, payload);
-        setMessage(`Bidang "${payload.judul}" berhasil diperbarui.`);
-      } else {
-        await pb.collection("seksi").create(payload);
-        setMessage(`Bidang baru "${payload.judul}" berhasil ditambahkan.`);
+      const hasNewPhoto = Boolean(fotoKepalaBase64 && fotoKepalaBase64.startsWith("data:"));
+      if (hasNewPhoto) {
+        formData.append("foto_kepala_file", dataURLtoFile(fotoKepalaBase64, `kasi-${slugToUse}.webp`));
+      } else if (seksiForm.foto_kepala) {
+        formData.append("foto_kepala", seksiForm.foto_kepala);
       }
 
+      let record;
+      if (editingSeksi) {
+        record = await pb.collection("seksi").update(editingSeksi.id, formData);
+        setMessage(`Bidang "${seksiForm.judul.trim()}" berhasil diperbarui.`);
+      } else {
+        record = await pb.collection("seksi").create(formData);
+        setMessage(`Bidang baru "${seksiForm.judul.trim()}" berhasil ditambahkan.`);
+      }
+
+      if (hasNewPhoto && record?.foto_kepala_file) {
+        const publicUrl = pb.files.getURL(record, record.foto_kepala_file);
+        if (publicUrl && record.foto_kepala !== publicUrl) {
+          await pb.collection("seksi").update(record.id, { foto_kepala: publicUrl });
+        }
+      }
+
+      bustAdminAndPublicCache(SEKSI_CACHE_KEY, "seksi");
       setOpenSeksiModal(false);
       await fetchSeksi();
     } catch (err) {
@@ -350,7 +383,23 @@ export default function AdminSeksiListManager() {
 
     try {
       const pb = getPocketBase();
+      const targetSeksi = items.find((s) => s.id === id);
+      const filterExpr = targetSeksi?.original_id
+        ? `seksi_id = "${id}" || seksi_id = "${targetSeksi.original_id}"`
+        : `seksi_id = "${id}"`;
+      const relatedPegawai = await pb
+        .collection("pegawai_seksi")
+        .getFullList({ filter: filterExpr, fields: "id", requestKey: null })
+        .catch(() => []);
+
+      if (relatedPegawai.length > 0) {
+        await Promise.all(
+          relatedPegawai.map((p) => pb.collection("pegawai_seksi").delete(p.id))
+        );
+      }
+
       await pb.collection("seksi").delete(id);
+      bustAdminAndPublicCache(SEKSI_CACHE_KEY, "seksi");
 
       setMessage("Seksi berhasil dihapus.");
       await fetchSeksi();

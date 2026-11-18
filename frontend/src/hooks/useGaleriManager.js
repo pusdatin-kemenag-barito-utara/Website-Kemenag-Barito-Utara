@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { compressImageToBase64 } from "@/lib/image-compress";
+import { compressImageToBase64, dataURLtoFile } from "@/lib/image-compress";
 import { preloadImages } from "@/lib/cover-image";
 import { getPocketBase, getPocketBaseFileUrl } from "@/lib/pocketbase/client";
+import { bustAdminAndPublicCache } from "@/lib/admin-cache";
 
 const ITEMS_PER_PAGE = 12;
 const GALERI_CACHE_PREFIX = "kemenag_galeri_cache_v2_";
@@ -76,18 +77,6 @@ function clearGaleriCache() {
       // Abaikan
     }
   }
-}
-
-function dataURLtoFile(dataurl, filename) {
-  const arr = dataurl.split(",");
-  const mime = arr[0].match(/:(.*?);/)?.[1] || "image/webp";
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new File([u8arr], filename, { type: mime });
 }
 
 const emptyForm = {
@@ -389,37 +378,55 @@ export function useGaleriManager() {
 
       if (editingId) {
         if (form.gallery_upload_base64 && form.gallery_upload_base64.startsWith("data:")) {
-          const file = dataURLtoFile(form.gallery_upload_base64, `galeri_edit_${Date.now()}.webp`);
+          const file = dataURLtoFile(form.gallery_upload_base64, `galeri-edit-${Date.now()}.webp`);
           const formData = new FormData();
           formData.append("image_file", file);
           formData.append(
             "published_at",
             form.published_at ? new Date(form.published_at).toISOString() : new Date().toISOString()
           );
-          await pb.collection("galeri").update(editingId, formData);
+          const updated = await pb.collection("galeri").update(editingId, formData);
+          if (updated?.image_file) {
+            const publicUrl = pb.files.getURL(updated, updated.image_file);
+            if (publicUrl && updated.image_url !== publicUrl) {
+              await pb.collection("galeri").update(updated.id, { image_url: publicUrl });
+            }
+          }
         } else {
           await pb.collection("galeri").update(editingId, {
             published_at: form.published_at ? new Date(form.published_at).toISOString() : new Date().toISOString(),
           });
         }
       } else if (Array.isArray(form.gallery_uploads) && form.gallery_uploads.length > 0) {
+        const pubIso = form.published_at
+          ? new Date(form.published_at).toISOString()
+          : new Date().toISOString();
+        const defaultTitle =
+          String(form.title || "").trim() || "Dokumentasi Kegiatan Kemenag Barito Utara";
+
         for (let i = 0; i < form.gallery_uploads.length; i++) {
           const up = form.gallery_uploads[i];
           const base64Str = typeof up === "string" ? up : (up?.base64 || up?.image_url || "");
           if (base64Str && base64Str.startsWith("data:")) {
-            const file = dataURLtoFile(base64Str, `galeri_${Date.now()}_${i + 1}.webp`);
+            const file = dataURLtoFile(base64Str, `galeri-${Date.now()}-${i + 1}.webp`);
             const formData = new FormData();
+            formData.append("title", defaultTitle);
             formData.append("image_file", file);
             formData.append("is_published", "true");
             formData.append("source_type", "manual");
-            formData.append(
-              "published_at",
-              form.published_at ? new Date(form.published_at).toISOString() : new Date().toISOString()
-            );
-            await pb.collection("galeri").create(formData);
+            formData.append("published_at", pubIso);
+            const created = await pb.collection("galeri").create(formData);
+            if (created?.image_file) {
+              const publicUrl = pb.files.getURL(created, created.image_file);
+              if (publicUrl && created.image_url !== publicUrl) {
+                await pb.collection("galeri").update(created.id, { image_url: publicUrl });
+              }
+            }
           }
         }
       }
+
+      bustAdminAndPublicCache("admin_galeri", "galeri");
 
       // Bersihkan cache agar data baru termuat
       clearGaleriCache();
@@ -450,6 +457,7 @@ export function useGaleriManager() {
       setDeletingId(deleteTarget.id);
       const pb = getPocketBase();
       await pb.collection("galeri").delete(deleteTarget.id);
+      bustAdminAndPublicCache("admin_galeri", "galeri");
 
       // Bersihkan cache agar data baru termuat
       clearGaleriCache();

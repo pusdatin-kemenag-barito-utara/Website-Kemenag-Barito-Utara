@@ -4,6 +4,9 @@
 import React, { useEffect, useState } from "react";
 import AdminLaporanCategoryManager from "./AdminLaporanCategoryManager";
 import { getPocketBase } from "@/lib/pocketbase/client";
+import { readAdminCache, writeAdminCache } from "@/lib/admin-cache";
+
+const LAPORAN_CATS_CACHE_KEY = "admin_laporan_cats_v1";
 
 const DEFAULT_CATEGORIES = [
     { slug: "sop", title: "SOP dan Standar Pelayanan", description: "Standar Operasional Prosedur dan standar pelayanan untuk setiap layanan publik Kemenag Barito Utara." },
@@ -16,10 +19,14 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export default function AdminLaporanPageClient() {
-    const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+    const [categories, setCategories] = useState(() => {
+        const cached = readAdminCache(LAPORAN_CATS_CACHE_KEY);
+        return Array.isArray(cached) && cached.length > 0 ? cached : DEFAULT_CATEGORIES;
+    });
     const [error, setError] = useState("");
 
     useEffect(() => {
+        let isMounted = true;
         async function loadData() {
             try {
                 const pb = getPocketBase();
@@ -28,18 +35,21 @@ export default function AdminLaporanPageClient() {
                     requestKey: null,
                 });
 
-                if (Array.isArray(records) && records.length > 0) {
+                if (isMounted && Array.isArray(records) && records.length > 0) {
                     setCategories(records);
+                    writeAdminCache(LAPORAN_CATS_CACHE_KEY, records);
                 }
             } catch (err) {
-                if (err?.name === "AbortError" || err?.isAbort) return;
+                if (!isMounted || err?.name === "AbortError" || err?.isAbort) return;
                 setError(err?.message || "Gagal memuat data laporan admin.");
             }
         }
 
         loadData();
 
-        return () => controller.abort();
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     const initialCategory = categories[0] || DEFAULT_CATEGORIES[0];

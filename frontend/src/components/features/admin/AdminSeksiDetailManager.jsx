@@ -16,10 +16,11 @@ import {
   X,
 } from "lucide-react";
 import { FloatingFeedback, DeleteConfirmModal } from "./slides/SlidesUI";
-import { compressImageToBase64 } from "@/lib/image-compress";
+import { compressImageToBase64, dataURLtoFile } from "@/lib/image-compress";
 import { logError } from "@/lib/logger";
 import { preloadImages } from "@/lib/cover-image";
-import { getPocketBase } from "@/lib/pocketbase/client";
+import { getPocketBase, getPocketBaseFileUrl } from "@/lib/pocketbase/client";
+import { bustAdminAndPublicCache } from "@/lib/admin-cache";
 
 export default function AdminSeksiDetailManager({ id }) {
   const router = useRouter();
@@ -100,10 +101,10 @@ export default function AdminSeksiDetailManager({ id }) {
 
       const pegawais = (rawPegawais || []).map((p) => ({
         ...p,
-        foto: p.foto || (p.foto_file ? `https://dbb.kemenag-baritoutara.com/api/files/pegawai_seksi/${p.id}/${p.foto_file}` : ""),
+        foto: p.foto_file ? getPocketBaseFileUrl(p, p.foto_file) : (p.foto || ""),
       }));
 
-      const fotoKepalaUrl = seksi.foto_kepala || (seksi.foto_kepala_file ? `https://dbb.kemenag-baritoutara.com/api/files/seksi/${seksi.id}/${seksi.foto_kepala_file}` : "");
+      const fotoKepalaUrl = seksi.foto_kepala_file ? getPocketBaseFileUrl(seksi, seksi.foto_kepala_file) : (seksi.foto_kepala || "");
 
       setSeksiData(seksi);
       setSeksiForm({
@@ -142,18 +143,36 @@ export default function AdminSeksiDetailManager({ id }) {
 
     try {
       const pb = getPocketBase();
-      const payload = {
-        judul: seksiForm.judul,
-        deskripsi: seksiForm.deskripsi,
-        nama_kepala: seksiForm.nama_kepala,
-        nip_kepala: seksiForm.nip_kepala,
-        foto_kepala: fotoKepalaBase64 || seksiForm.foto_kepala,
-        foto_kepala_y: seksiForm.foto_kepala_y,
-      };
-
       const targetId = seksiData?.id || id;
-      const updated = await pb.collection("seksi").update(targetId, payload);
+      const formData = new FormData();
+      formData.append("judul", seksiForm.judul.trim());
+      formData.append("deskripsi", seksiForm.deskripsi || "");
+      formData.append("nama_kepala", seksiForm.nama_kepala || "");
+      formData.append("nip_kepala", seksiForm.nip_kepala || "");
+      formData.append("foto_kepala_y", String(Number(seksiForm.foto_kepala_y ?? 50)));
 
+      const hasNewPhoto = Boolean(fotoKepalaBase64 && fotoKepalaBase64.startsWith("data:"));
+      if (hasNewPhoto) {
+        const safeSlug = String(seksiData?.slug || targetId).replace(/[^a-z0-9-_]/gi, "-").toLowerCase();
+        formData.append("foto_kepala_file", dataURLtoFile(fotoKepalaBase64, `kasi-${safeSlug}.webp`));
+      } else if (seksiForm.foto_kepala) {
+        formData.append("foto_kepala", seksiForm.foto_kepala);
+      }
+
+      let updated = await pb.collection("seksi").update(targetId, formData);
+
+      if (hasNewPhoto && updated?.foto_kepala_file) {
+        const publicUrl = pb.files.getURL(updated, updated.foto_kepala_file);
+        if (publicUrl && updated.foto_kepala !== publicUrl) {
+          updated = await pb.collection("seksi").update(updated.id, { foto_kepala: publicUrl });
+        }
+        if (publicUrl) {
+          setSeksiForm((prev) => ({ ...prev, foto_kepala: publicUrl }));
+          setFotoKepalaPreview(publicUrl);
+        }
+      }
+
+      bustAdminAndPublicCache("admin_seksi_v1", "seksi");
       setSeksiData((prev) => ({ ...prev, ...updated }));
       setFotoKepalaBase64("");
       setMessage("Profil seksi berhasil diperbarui.");
@@ -329,33 +348,63 @@ export default function AdminSeksiDetailManager({ id }) {
 
     try {
       const pb = getPocketBase();
-      const payload = {
-        nama: pegawaiForm.nama,
-        nip: pegawaiForm.nip || "",
-        jabatan: pegawaiForm.jabatan,
-        sort_order: Number(pegawaiForm.sort_order || 0),
-        foto: fotoPegawaiBase64 || pegawaiForm.foto || "",
-        foto_y: pegawaiForm.foto_y ?? 50,
-        seksi_id: seksiData?.id || id,
-      };
+      const formData = new FormData();
+      formData.append("nama", pegawaiForm.nama.trim());
+      formData.append("nip", pegawaiForm.nip || "");
+      formData.append("jabatan", pegawaiForm.jabatan.trim());
+      formData.append("sort_order", String(Number(pegawaiForm.sort_order || 0)));
+      formData.append("foto_y", String(Number(pegawaiForm.foto_y ?? 50)));
+      formData.append("seksi_id", seksiData?.id || id);
+
+      const hasNewPhoto = Boolean(fotoPegawaiBase64 && fotoPegawaiBase64.startsWith("data:"));
+      if (hasNewPhoto) {
+        const safeName =
+          pegawaiForm.nama
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "") || "pegawai";
+        formData.append("foto_file", dataURLtoFile(fotoPegawaiBase64, `${safeName}.webp`));
+      } else if (pegawaiForm.foto) {
+        formData.append("foto", pegawaiForm.foto);
+      }
 
       let resultRecord;
       if (editingPegawai) {
-        resultRecord = await pb.collection("pegawai_seksi").update(editingPegawai.id, payload);
+        resultRecord = await pb.collection("pegawai_seksi").update(editingPegawai.id, formData);
+      } else {
+        resultRecord = await pb.collection("pegawai_seksi").create(formData);
+      }
+
+      if (hasNewPhoto && resultRecord?.foto_file) {
+        const publicUrl = pb.files.getURL(resultRecord, resultRecord.foto_file);
+        if (publicUrl && resultRecord.foto !== publicUrl) {
+          resultRecord = await pb.collection("pegawai_seksi").update(resultRecord.id, { foto: publicUrl });
+        }
+      }
+
+      const normalizedRecord = {
+        ...resultRecord,
+        foto: resultRecord.foto_file
+          ? getPocketBaseFileUrl(resultRecord, resultRecord.foto_file)
+          : (resultRecord.foto || ""),
+      };
+
+      if (editingPegawai) {
         setPegawaiList((prev) =>
           prev
-            .map((p) => (p.id === editingPegawai.id ? { ...p, ...resultRecord } : p))
+            .map((p) => (p.id === editingPegawai.id ? { ...p, ...normalizedRecord } : p))
             .sort((a, b) => a.sort_order - b.sort_order),
         );
         setMessage("Data staf pegawai berhasil diperbarui.");
       } else {
-        resultRecord = await pb.collection("pegawai_seksi").create(payload);
         setPegawaiList((prev) =>
-          [...prev, resultRecord].sort((a, b) => a.sort_order - b.sort_order),
+          [...prev, normalizedRecord].sort((a, b) => a.sort_order - b.sort_order),
         );
         setMessage("Staf pegawai baru berhasil ditambahkan.");
       }
 
+      bustAdminAndPublicCache("admin_seksi_v1", "seksi");
       setOpenPegawaiModal(false);
     } catch (err) {
       logError("seksi_detail_pegawai_save_error", { error: err?.message });
@@ -386,6 +435,7 @@ export default function AdminSeksiDetailManager({ id }) {
     try {
       const pb = getPocketBase();
       await pb.collection("pegawai_seksi").delete(deletingPegawaiId);
+      bustAdminAndPublicCache("admin_seksi_v1", "seksi");
 
       setPegawaiList((prev) => prev.filter((p) => p.id !== deletingPegawaiId));
       setMessage(`Staf pegawai "${deletingPegawaiName}" berhasil dihapus.`);

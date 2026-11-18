@@ -19,6 +19,10 @@ func RegisterRoutes(app fiber.Router) {
 	api.Get("/portal", PortalHandler)
 	api.Get("/maintenance-status", MaintenanceStatusHandler)
 	api.Get("/cache-version", CacheVersionHandler)
+	api.Post("/cache-bust", CacheBustHandler)
+
+	// ── Auth Security Verification ───────────────────────────
+	api.Post("/auth/verify-turnstile", VerifyTurnstileHandler)
 
 	// ── Pencarian Cepat Publik (PocketBase Engine) ───────────
 	api.Get("/search", SearchHandler)
@@ -38,8 +42,9 @@ func RegisterRoutes(app fiber.Router) {
 	api.Post("/berita/:slug/view", BeritaViewIncrementHandler)
 	api.Post("/berita/:slug/reaction", BeritaReactionHandler)
 
-	// ── YouTube Videos ───────────────────────────────────────
+	// ── YouTube Videos & Infografis ──────────────────────────
 	api.Get("/youtube", YoutubePublicHandler)
+	api.Get("/homepage-slides", HomepageSlidesPublicHandler)
 
 	// ── Pengaturan Situs & Identitas ─────────────────────────
 	api.Get("/settings", SettingsHandler)

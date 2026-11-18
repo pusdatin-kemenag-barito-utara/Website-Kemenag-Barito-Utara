@@ -8,6 +8,9 @@ import {
   StatusPill,
 } from "../slides/SlidesUI";
 import { getPocketBase } from "@/lib/pocketbase/client";
+import { readAdminCache, writeAdminCache, bustAdminAndPublicCache } from "@/lib/admin-cache";
+
+const YOUTUBE_CACHE_KEY = "admin_youtube_v1";
 
 // Helper to extract 11-char YouTube ID from any format (watch, youtu.be, shorts, embed, live)
 function extractYoutubeId(raw = "") {
@@ -297,8 +300,15 @@ function YoutubeFormModal({
 }
 
 export default function YoutubeManager() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const initialCacheRef = React.useRef(undefined);
+  if (initialCacheRef.current === undefined) {
+    initialCacheRef.current = readAdminCache(YOUTUBE_CACHE_KEY);
+  }
+  const initialCached = Array.isArray(initialCacheRef.current) ? initialCacheRef.current : null;
+
+  const [items, setItems] = useState(() => initialCached || []);
+  const [loading, setLoading] = useState(() => !(initialCached && initialCached.length > 0));
+  const hasItemsRef = React.useRef(Boolean(initialCached && initialCached.length > 0));
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -324,18 +334,29 @@ export default function YoutubeManager() {
     is_published: true,
   });
 
+  useEffect(() => {
+    hasItemsRef.current = items.length > 0;
+  }, [items.length]);
+
   const fetchItems = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!hasItemsRef.current) {
+        setLoading(true);
+      }
       setError("");
       const pb = getPocketBase();
       const records = await pb.collection("youtube_videos").getFullList({
         sort: "sort_order",
+        requestKey: null,
       });
-      setItems(Array.isArray(records) ? records : []);
+      const safeRecords = Array.isArray(records) ? records : [];
+      setItems(safeRecords);
+      writeAdminCache(YOUTUBE_CACHE_KEY, safeRecords);
     } catch (err) {
       if (err.name === "AbortError" || err.isAbort) return;
-      setError(err.message || "Terjadi kesalahan saat memuat data video YouTube.");
+      if (!hasItemsRef.current) {
+        setError(err.message || "Terjadi kesalahan saat memuat data video YouTube.");
+      }
     } finally {
       setLoading(false);
     }
@@ -456,6 +477,7 @@ export default function YoutubeManager() {
         await pb.collection("youtube_videos").create(payload);
       }
 
+      bustAdminAndPublicCache(YOUTUBE_CACHE_KEY, "youtube");
       setMessage(editingId ? "Video YouTube berhasil diperbarui." : "Video YouTube baru berhasil ditambahkan.");
       setOpenForm(false);
       fetchItems();
@@ -471,6 +493,7 @@ export default function YoutubeManager() {
     try {
       const pb = getPocketBase();
       await pb.collection("youtube_videos").delete(deletingId);
+      bustAdminAndPublicCache(YOUTUBE_CACHE_KEY, "youtube");
 
       setMessage("Video YouTube berhasil dihapus.");
       fetchItems();
@@ -493,6 +516,7 @@ export default function YoutubeManager() {
     try {
       const pb = getPocketBase();
       await pb.collection("youtube_videos").update(item.id, { is_published: nextState });
+      bustAdminAndPublicCache(YOUTUBE_CACHE_KEY, "youtube");
       setMessage(nextState ? "Video sekarang tayang di beranda." : "Video dialihkan ke draf.");
     } catch (err) {
       setError(err.message || "Gagal mengubah status.");
@@ -504,32 +528,42 @@ export default function YoutubeManager() {
 
   const handleMove = async (localIndex, direction) => {
     const globalIndex = (currentPage - 1) * itemsPerPage + localIndex;
-    if (direction === "up" && globalIndex === 0) return;
-    if (direction === "down" && globalIndex === items.length - 1) return;
+    const targetFilteredIndex = direction === "up" ? globalIndex - 1 : globalIndex + 1;
+    if (targetFilteredIndex < 0 || targetFilteredIndex >= filteredItems.length) return;
 
-    const targetGlobalIndex = direction === "up" ? globalIndex - 1 : globalIndex + 1;
-    const newItems = [...items];
+    const sourceItem = filteredItems[globalIndex];
+    const targetItem = filteredItems[targetFilteredIndex];
+    if (!sourceItem || !targetItem) return;
 
-    const itemA = { ...newItems[globalIndex] };
-    const itemB = { ...newItems[targetGlobalIndex] };
+    const idxA = items.findIndex((it) => it.id === sourceItem.id);
+    const idxB = items.findIndex((it) => it.id === targetItem.id);
+    if (idxA === -1 || idxB === -1) return;
 
-    const tempSort = itemA.sort_order;
-    itemA.sort_order = itemB.sort_order;
-    itemB.sort_order = tempSort;
+    const prevSnapshot = items;
+    const reordered = [...items];
+    [reordered[idxA], reordered[idxB]] = [reordered[idxB], reordered[idxA]];
 
-    newItems[globalIndex] = itemB;
-    newItems[targetGlobalIndex] = itemA;
+    const updates = [];
+    const normalizedList = reordered.map((it, idx) => {
+      const nextOrder = idx + 1;
+      if (Number(it.sort_order) !== nextOrder) {
+        updates.push({ id: it.id, sort_order: nextOrder });
+      }
+      return { ...it, sort_order: nextOrder };
+    });
 
-    setItems(newItems);
+    setItems(normalizedList);
 
     try {
       const pb = getPocketBase();
-      await Promise.all([
-        pb.collection("youtube_videos").update(itemA.id, { sort_order: itemA.sort_order }),
-        pb.collection("youtube_videos").update(itemB.id, { sort_order: itemB.sort_order }),
-      ]);
+      await Promise.all(
+        updates.map((u) => pb.collection("youtube_videos").update(u.id, { sort_order: u.sort_order }))
+      );
+      bustAdminAndPublicCache(YOUTUBE_CACHE_KEY, "youtube");
+      writeAdminCache(YOUTUBE_CACHE_KEY, normalizedList);
     } catch (err) {
-      fetchItems();
+      setItems(prevSnapshot);
+      setError(err?.message || "Gagal memperbarui urutan video.");
     }
   };
 
@@ -767,7 +801,7 @@ export default function YoutubeManager() {
                           <button
                             type="button"
                             onClick={() => handleMove(index, "down")}
-                            disabled={globalIndex === items.length - 1}
+                            disabled={globalIndex >= filteredItems.length - 1}
                             title="Pindah ke Bawah"
                             className="flex h-5 w-5 items-center justify-center rounded-md text-slate-400 hover:bg-white hover:text-emerald-600 hover:shadow-xs disabled:opacity-20 transition-all dark:hover:bg-slate-700"
                           >

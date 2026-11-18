@@ -21,7 +21,10 @@ function getCachedData() {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed && parsed.data) {
-      return parsed.data;
+      return {
+        data: parsed.data,
+        visitors: parsed.visitors || { total: 0, today: 0 },
+      };
     }
   } catch {
     return null;
@@ -40,10 +43,12 @@ export default function AdminDashboardClient() {
     const controller = new AbortController();
 
     async function load() {
+      const startTime = typeof performance !== "undefined" ? performance.now() : Date.now();
       try {
         const pb = getPocketBase();
-        const [visitorRes, beritaPub, beritaDraft, yt, reports, slides, galeri, allBeritaPub] = await Promise.all([
+        const [visitorRes, healthRes, beritaPub, beritaDraft, yt, reports, slides, galeri, allBeritaPub] = await Promise.all([
           fetch("/api/visitors", { signal: controller.signal }).catch(() => null),
+          fetch("/api/health", { signal: controller.signal }).catch(() => null),
           pb.collection("berita").getList(1, 1, { filter: "is_published = true", requestKey: null }).catch(() => ({ totalItems: 0 })),
           pb.collection("berita").getList(1, 1, { filter: "is_published = false", requestKey: null }).catch(() => ({ totalItems: 0 })),
           pb.collection("youtube_videos").getList(1, 1, { requestKey: null }).catch(() => ({ totalItems: 0 })),
@@ -59,6 +64,7 @@ export default function AdminDashboardClient() {
         ]);
 
         const visitors = visitorRes ? await visitorRes.json().catch(() => null) : null;
+        const healthJson = healthRes ? await healthRes.json().catch(() => null) : null;
         const totalPublished = beritaPub.totalItems || 0;
         const totalDraft = beritaDraft.totalItems || 0;
         const totalBerita = totalPublished + totalDraft;
@@ -113,13 +119,14 @@ export default function AdminDashboardClient() {
           }))
           .sort((a, b) => b.count - a.count);
 
+        const endTime = typeof performance !== "undefined" ? performance.now() : Date.now();
         const newData = {
           summary: {
             totalBerita,
             totalPublished,
             totalDraft,
             totalViews,
-            recent7: recent7 || totalPublished,
+            recent7,
             totalYoutubeVideos: yt.totalItems || 0,
             totalReportDocs: reports.totalItems || 0,
             totalSlides: slides.totalItems || 0,
@@ -128,8 +135,8 @@ export default function AdminDashboardClient() {
           trend,
           topBerita,
           categoryDistribution,
-          responseTimeMs: 12,
-          redisActive: false,
+          responseTimeMs: Math.max(1, Math.round(endTime - startTime)),
+          redisActive: healthJson?.cache === "redis",
         };
 
         const newVisitors =

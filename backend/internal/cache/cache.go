@@ -3,6 +3,8 @@ package cache
 import (
 	"context"
 	"log"
+	neturl "net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -16,10 +18,21 @@ var (
 	rdbMu    sync.RWMutex
 	rdbURL   string
 
+	reconnectMu     sync.Mutex
+	reconnectCancel context.CancelFunc
+
 	memoryStore = struct {
 		sync.RWMutex
 		data map[string]memoryEntry
 	}{data: map[string]memoryEntry{}}
+)
+
+const (
+	l1CacheMaxTTL        = 60 * time.Second
+	redisDialTimeout     = 2500 * time.Millisecond
+	redisRWTimeout       = 1500 * time.Millisecond
+	reconnectInterval    = 15 * time.Second
+	maxReconnectAttempts = 20
 )
 
 type memoryEntry struct {
@@ -46,36 +59,134 @@ func startMemoryCleanup() {
 	}()
 }
 
-// Init membuat koneksi Redis opsional. Gagal → fallback in-memory.
+// isInternalDockerHostOnLocalMachine mendeteksi hostname internal container Docker/Coolify
+// yang dijalankan langsung di mesin development lokal (di luar Docker).
+func isInternalDockerHostOnLocalMachine(rawURL string) bool {
+	u, err := neturl.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	host := strings.ToLower(strings.TrimSpace(u.Hostname()))
+	if host == "" || host == "localhost" || host == "127.0.0.1" || host == "::1" {
+		return false
+	}
+	if strings.Contains(host, ".") {
+		return false
+	}
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return false
+	}
+	if os.Getenv("COOLIFY_URL") != "" || os.Getenv("COOLIFY_FQDN") != "" || os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+		return false
+	}
+	return true
+}
+
+func isL1CacheEligible(key string) bool {
+	return !strings.HasPrefix(key, "visitor:") &&
+		!strings.HasPrefix(key, "rl:") &&
+		!strings.HasPrefix(key, "cache:v")
+}
+
+func connectRedis(rawURL string) (*redis.Client, time.Duration, error) {
+	opts, err := redis.ParseURL(rawURL)
+	if err != nil {
+		return nil, 0, err
+	}
+	opts.DialTimeout = redisDialTimeout
+	opts.ReadTimeout = redisRWTimeout
+	opts.WriteTimeout = redisRWTimeout
+
+	client := redis.NewClient(opts)
+	ctx, cancel := context.WithTimeout(context.Background(), redisDialTimeout)
+	defer cancel()
+
+	startPing := time.Now()
+	if err := client.Ping(ctx).Err(); err != nil {
+		_ = client.Close()
+		return nil, 0, err
+	}
+	return client, time.Since(startPing), nil
+}
+
+func startReconnectLoop(rawURL string) {
+	reconnectMu.Lock()
+	if reconnectCancel != nil {
+		reconnectCancel()
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	reconnectCancel = cancel
+	reconnectMu.Unlock()
+
+	go func() {
+		ticker := time.NewTicker(reconnectInterval)
+		defer ticker.Stop()
+
+		for attempt := 1; attempt <= maxReconnectAttempts; attempt++ {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+
+			client, pingDur, err := connectRedis(rawURL)
+			if err != nil {
+				continue
+			}
+
+			rdbMu.Lock()
+			if rdb != nil {
+				_ = rdb.Close()
+			}
+			rdb = client
+			rdbURL = rawURL
+			rdbMu.Unlock()
+
+			log.Printf("[cache] koneksi Redis tersambung kembali pada percobaan #%d (ping: %v) — mode Hybrid L1+L2 aktif",
+				attempt, pingDur.Round(100*time.Microsecond))
+			return
+		}
+	}()
+}
+
+// Init membuat koneksi Redis opsional. Gagal → fallback L1 in-memory + auto-reconnect di container.
 func Init(url string) {
 	cleanupOnce.Do(startMemoryCleanup)
+
+	rdbMu.Lock()
 	rdbSetup = true
-	if url == "" {
-		log.Println("[cache] Redis tidak dikonfigurasi — memakai in-memory store")
-		return
-	}
-
-	opts, err := redis.ParseURL(url)
-	if err != nil {
-		log.Printf("[cache] REDIS_URL tidak valid (%v) — memakai in-memory store", err)
-		return
-	}
-
-	opts.DialTimeout = 800 * time.Millisecond
-	opts.ReadTimeout = 800 * time.Millisecond
-	opts.WriteTimeout = 800 * time.Millisecond
-	rdb = redis.NewClient(opts)
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-	startPing := time.Now()
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		log.Printf("[cache] koneksi Redis gagal (%v) — memakai in-memory store", err)
-		rdb = nil
-		return
-	}
-	pingDuration := time.Since(startPing)
 	rdbURL = url
-	log.Printf("[cache] koneksi Redis berhasil (ping: %v)", pingDuration.Round(100*time.Microsecond))
+	rdbMu.Unlock()
+
+	if url == "" {
+		log.Println("[cache] Redis tidak dikonfigurasi — memakai L1 In-Memory Store (<1ms)")
+		return
+	}
+
+	if _, err := redis.ParseURL(url); err != nil {
+		log.Printf("[cache] REDIS_URL tidak valid (%v) — memakai L1 In-Memory Store", err)
+		return
+	}
+
+	if isInternalDockerHostOnLocalMachine(url) {
+		log.Println("[cache] Mode lokal terdeteksi (host internal Coolify) — memakai L1 In-Memory Store (<1ms)")
+		return
+	}
+
+	client, pingDuration, err := connectRedis(url)
+	if err != nil {
+		log.Printf("[cache] koneksi Redis gagal (%v) — memakai L1 In-Memory Store (auto-reconnect aktif)", err)
+		rdbMu.Lock()
+		rdb = nil
+		rdbMu.Unlock()
+		startReconnectLoop(url)
+		return
+	}
+
+	rdbMu.Lock()
+	rdb = client
+	rdbMu.Unlock()
+	log.Printf("[cache] koneksi Redis berhasil (ping: %v) — Hybrid L1+L2 Cache aktif", pingDuration.Round(100*time.Microsecond))
 }
 
 // Ping mengecek status koneksi Redis dan mengembalikan latensi. Jika in-memory, mengembalikan 0.
@@ -91,47 +202,65 @@ func Ping(ctx context.Context) (time.Duration, error) {
 	return time.Since(start), err
 }
 
-// HasRedis: true jika Redis aktif (bukan in-memory).
+// HasRedis: true jika Redis aktif (bukan hanya in-memory).
 func HasRedis() bool {
 	rdbMu.RLock()
 	defer rdbMu.RUnlock()
 	return rdb != nil
 }
 
+// Get mengambil data dari L1 In-Memory terlebih dahulu (untuk key non-counter), lalu fallback ke L2 Redis.
 func Get(ctx context.Context, key string) (string, error) {
+	l1Eligible := isL1CacheEligible(key)
+	if l1Eligible {
+		if val, err := memoryGet(key); err == nil {
+			return val, nil
+		}
+	}
+
 	rdbMu.RLock()
 	r := rdb
 	rdbMu.RUnlock()
 	if r != nil {
-		return r.Get(ctx, key).Result()
+		val, err := r.Get(ctx, key).Result()
+		if err == nil && l1Eligible {
+			memorySet(key, val, l1CacheMaxTTL)
+		}
+		return val, err
 	}
 	return memoryGet(key)
 }
 
+// Set menyimpan data ke L1 In-Memory sekaligus ke L2 Redis (bila aktif).
 func Set(ctx context.Context, key string, value string, ttl time.Duration) error {
+	memorySet(key, value, ttl)
+
 	rdbMu.RLock()
 	r := rdb
 	rdbMu.RUnlock()
 	if r != nil {
 		return r.Set(ctx, key, value, ttl).Err()
 	}
-	memorySet(key, value, ttl)
 	return nil
 }
 
+// Del menghapus key dari L1 In-Memory sekaligus dari L2 Redis.
 func Del(ctx context.Context, keys ...string) error {
+	memoryDel(keys...)
+
 	rdbMu.RLock()
 	r := rdb
 	rdbMu.RUnlock()
 	if r != nil {
 		return r.Del(ctx, keys...).Err()
 	}
-	memoryDel(keys...)
 	return nil
 }
 
-// DelPrefix menghapus semua key yang berawalan prefix (Redis SCAN / in-memory map scan).
+// DelPrefix menghapus semua key berawalan prefix dari L1 In-Memory sekaligus L2 Redis (SCAN).
 func DelPrefix(ctx context.Context, prefix string) error {
+	memoryDelPrefix(prefix)
+
 	rdbMu.RLock()
 	r := rdb
 	rdbMu.RUnlock()
@@ -153,7 +282,6 @@ func DelPrefix(ctx context.Context, prefix string) error {
 		}
 		return nil
 	}
-	memoryDelPrefix(prefix)
 	return nil
 }
 
@@ -231,6 +359,13 @@ func EvalGetDel(ctx context.Context, key string) (int64, error) {
 
 // Close menutup koneksi Redis (dipanggil saat shutdown).
 func Close() {
+	reconnectMu.Lock()
+	if reconnectCancel != nil {
+		reconnectCancel()
+		reconnectCancel = nil
+	}
+	reconnectMu.Unlock()
+
 	rdbMu.Lock()
 	defer rdbMu.Unlock()
 	if rdb != nil {
@@ -239,13 +374,13 @@ func Close() {
 	}
 }
 
-// ---------------- In-memory fallback ----------------
+// ---------------- In-memory fallback & L1 cache ----------------
 
 func memoryGet(key string) (string, error) {
 	memoryStore.RLock()
 	defer memoryStore.RUnlock()
 	e, ok := memoryStore.data[key]
-	if !ok || time.Now().After(e.expiresAt) {
+	if !ok || (!e.expiresAt.IsZero() && time.Now().After(e.expiresAt)) {
 		return "", redis.Nil
 	}
 	return e.value, nil
@@ -254,7 +389,10 @@ func memoryGet(key string) (string, error) {
 func memorySet(key, value string, ttl time.Duration) {
 	memoryStore.Lock()
 	defer memoryStore.Unlock()
-	exp := time.Now().Add(ttl)
+	var exp time.Time
+	if ttl > 0 {
+		exp = time.Now().Add(ttl)
+	}
 	memoryStore.data[key] = memoryEntry{value: value, expiresAt: exp}
 }
 
@@ -281,13 +419,12 @@ func memoryIncr(key string) int64 {
 	defer memoryStore.Unlock()
 	e, ok := memoryStore.data[key]
 	now := time.Now()
-	if !ok || now.After(e.expiresAt) {
+	if !ok || (!e.expiresAt.IsZero() && now.After(e.expiresAt)) {
 		e = memoryEntry{}
 	}
 	n, _ := parseI64(e.value)
 	n++
-	entry := memoryEntry{value: itoa(n)}
-	memoryStore.data[key] = entry
+	memoryStore.data[key] = memoryEntry{value: itoa(n), expiresAt: e.expiresAt}
 	return n
 }
 
@@ -295,12 +432,13 @@ func memoryIncrBy(key string, n int64) int64 {
 	memoryStore.Lock()
 	defer memoryStore.Unlock()
 	e, ok := memoryStore.data[key]
-	if !ok {
+	now := time.Now()
+	if !ok || (!e.expiresAt.IsZero() && now.After(e.expiresAt)) {
 		e = memoryEntry{}
 	}
 	cur, _ := parseI64(e.value)
 	cur += n
-	memoryStore.data[key] = memoryEntry{value: itoa(cur)}
+	memoryStore.data[key] = memoryEntry{value: itoa(cur), expiresAt: e.expiresAt}
 	return cur
 }
 
@@ -320,6 +458,9 @@ func memoryTTL(key string) time.Duration {
 	e, ok := memoryStore.data[key]
 	if !ok {
 		return -2 * time.Second
+	}
+	if e.expiresAt.IsZero() {
+		return -1 * time.Second
 	}
 	if time.Now().After(e.expiresAt) {
 		return -2 * time.Second
@@ -345,12 +486,13 @@ func memoryHIncrBy(key, field string, n int64) int64 {
 	// simpan hash sebagai prefiks field:key
 	hk := "h:" + key + ":" + field
 	e, ok := memoryStore.data[hk]
-	if !ok {
+	now := time.Now()
+	if !ok || (!e.expiresAt.IsZero() && now.After(e.expiresAt)) {
 		e = memoryEntry{}
 	}
 	cur, _ := parseI64(e.value)
 	cur += n
-	memoryStore.data[hk] = memoryEntry{value: itoa(cur)}
+	memoryStore.data[hk] = memoryEntry{value: itoa(cur), expiresAt: e.expiresAt}
 	return cur
 }
 
