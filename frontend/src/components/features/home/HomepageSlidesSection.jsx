@@ -6,11 +6,10 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useHomepageSlides } from "./hooks/useHomepageSlides";
 import SectionHeader from "./components/SectionHeader";
 import CategorySlider from "./components/CategorySlider";
-import EmptySliderState from "./components/EmptySliderState";
 import {
     ChevronLeftIcon,
     ChevronRightIcon,
-    UtamaIcon,
+    SkmIcon,
     IslamIcon,
     KristenIcon,
     KatolikIcon,
@@ -25,19 +24,15 @@ function resolveImage(value = "") {
 export default function HomepageSlidesSection({ slides = [] }) {
     const { t } = useLanguage();
     const {
-    normalizedSlides,
-    katolikSlides,
-    kristenSlides,
-    islamSlides,
-    hinduSlides,
-    sliderSlides,
-    activeTab,
-    setActiveTab,
-    safeActiveIndex,
-    current,
-    prevSlide,
-    handleNextSlide,
-    setActiveIndex
+        normalizedSlides,
+        katolikSlides,
+        kristenSlides,
+        islamSlides,
+        hinduSlides,
+        ipkpSlides,
+        ipakSlides,
+        activeTab,
+        setActiveTab,
     } = useHomepageSlides(slides);
 
     const [selectedSlide, setSelectedSlide] = useState(null);
@@ -58,7 +53,7 @@ export default function HomepageSlidesSection({ slides = [] }) {
     const tabs = [
         { id: "katolik", label: "Katolik", Icon: KatolikIcon },
         { id: "kristen", label: "Kristen", Icon: KristenIcon },
-        { id: "utama", label: "Utama", Icon: UtamaIcon },
+        { id: "skm", label: "Hasil SKM", Icon: SkmIcon },
         { id: "islam", label: "Islam", Icon: IslamIcon },
         { id: "hindu", label: "Hindu", Icon: HinduIcon },
     ];
@@ -70,8 +65,8 @@ export default function HomepageSlidesSection({ slides = [] }) {
                 {/* 1. GLOBAL MOBILE HEADER */}
                 <div className="mb-6 lg:hidden">
                     <SectionHeader
-                        label="INFOGRAFIS"
-                        title="Informasi Utama"
+                        label="SURVEY KEPUASAN MASYARAKAT (SKM)"
+                        title="Laporan Hasil SKM"
                         color="text-emerald-700 dark:text-emerald-300"
                         center
                     />
@@ -165,166 +160,89 @@ export default function HomepageSlidesSection({ slides = [] }) {
                         </div>
                     </div>
 
-                    {/* 3. TENGAH: SLIDER UTAMA (Fokus Utama) */}
-                    <div className={`mobile-tab-content group relative w-full md:col-span-2 lg:col-span-2 transition-all duration-700 lg:scale-[1.05] lg:z-20 ${activeTab === "utama" ? "active flex flex-col" : "inactive lg:flex"}`}>
-                        <div className="absolute -inset-6 -z-10 rounded-[4rem] bg-gradient-to-b from-emerald-100/60 to-transparent dark:from-emerald-950/30" />
+                    {/* 3. TENGAH: SKM (2 Kolom: IPKP di Kiri & IPAK di Kanan) */}
+                    <div className={`mobile-tab-content group relative w-full md:col-span-2 lg:col-span-2 transition-all duration-700 lg:scale-[1.02] lg:z-20 ${activeTab === "skm" ? "active flex flex-col" : "inactive lg:flex"}`}>
+                        <div className="absolute -inset-6 -z-10 rounded-[3.5rem] bg-gradient-to-b from-emerald-100/70 via-teal-50/40 to-transparent dark:from-emerald-950/30 dark:via-teal-950/20" />
                         <div className="relative flex flex-col">
+                            {/* Desktop Header */}
                             <div className="hidden lg:block">
                                 <SectionHeader
-                                    label="INFOGRAFIS"
-                                    title="Informasi Utama"
+                                    label="SURVEY KEPUASAN MASYARAKAT (SKM)"
+                                    title="Laporan Hasil SKM"
                                     color="text-emerald-700 dark:text-emerald-300"
                                     center
                                 />
                             </div>
-                            {sliderSlides.length > 0 ? (
-                                <>
-                                    {/* MOBILE CAROUSEL VIEW */}
-                                    <div className="lg:hidden relative overflow-hidden py-4 -mx-4 sm:-mx-10 mt-2">
-                                        <div
-                                            className="flex transition-transform duration-700 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)]"
-                                            style={{ transform: `translateX(calc(50% - ${safeActiveIndex * 85 + 42.5}%))` }}
-                                        >
-                                            {sliderSlides.map((item, index) => {
-                                                const isActive = index === safeActiveIndex;
-                                                return (
-                                                    <div
-                                                        key={item.id || index}
-                                                        className={`w-[85%] flex-none px-2 transition-all duration-700 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] ${isActive ? "scale-100 opacity-100 z-10" : "scale-[0.92] opacity-40 blur-[1px]"}`}
-                                                    >
-                                                        <div 
-                                                            className="relative flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl shadow-emerald-500/10 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 cursor-pointer"
-                                                            onClick={() => setSelectedSlide(item)}
-                                                        >
-                                                            <div className="relative aspect-[3/4] sm:aspect-[4/5] w-full overflow-hidden">
-                                                                <Image
-                                                                    src={resolveImage(item.image_url)}
-                                                                    alt={item.title || "Slide beranda"}
-                                                                    fill
-                                                                    sizes="(max-width: 1024px) 85vw"
-                                                                    className="object-cover transition-transform duration-700 hover:scale-105"
-                                                                />
-                                                            </div>
-                                                            <div className="pt-5 pb-6 px-5 text-center">
-                                                                <h3 className="text-lg font-black leading-tight text-slate-900 dark:text-slate-100 line-clamp-2">
-                                                                    {item.title}
-                                                                </h3>
-                                                                <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
-                                                                    {item.caption || "Informasi terbaru dari Kemenag Barito Utara."}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
 
-                                        {/* Mobile Navigation Controls */}
-                                        <div className="mt-6 flex flex-col items-center justify-center gap-4">
-                                            <div className="flex items-center gap-4">
-                                                <button
-                                                    type="button"
-                                                    onClick={prevSlide}
-                                                    className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-lg text-emerald-700 transition hover:bg-emerald-700 hover:text-white dark:bg-slate-800"
-                                                    aria-label="Slide sebelumnya"
-                                                >
-                                                    <ChevronLeftIcon />
-                                                </button>
-                                                <div className="flex gap-1.5">
-                                                    {sliderSlides.map((_, index) => (
-                                                        <button
-                                                            key={index}
-                                                            type="button"
-                                                            onClick={() => setActiveIndex(index)}
-                                                            className={`h-1.5 rounded-full transition-all duration-300 ${index === safeActiveIndex ? "w-6 bg-emerald-600" : "w-1.5 bg-slate-300 dark:bg-slate-600"}`}
-                                                            aria-label={`Pilih slide ${index + 1}`}
-                                                        />
-                                                    ))}
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={handleNextSlide}
-                                                    className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-lg text-emerald-700 transition hover:bg-emerald-700 hover:text-white dark:bg-slate-800"
-                                                    aria-label="Slide berikutnya"
-                                                >
-                                                    <ChevronRightIcon />
-                                                </button>
-                                            </div>
-                                        </div>
+                            {/* MOBILE VIEW (Stacked IPKP & IPAK) */}
+                            <div className="lg:hidden flex flex-col gap-6">
+                                {/* Slot IPKP (Mobile) */}
+                                <div className="flex flex-col">
+                                    <div className="mb-1.5 flex items-center justify-center gap-2">
+                                        <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-sm" />
+                                        <span className="text-xs font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                                            IPKP — Kualitas Pelayanan
+                                        </span>
                                     </div>
+                                    <CategorySlider
+                                        slides={ipkpSlides}
+                                        fallbackTitle="Indeks Persepsi Kualitas Pelayanan (IPKP)"
+                                        onSlideClick={setSelectedSlide}
+                                    />
+                                </div>
 
-                                    {/* DESKTOP VIEW (Original) */}
-                                    <div className="hidden lg:block relative">
-                                        <div className="relative overflow-hidden rounded-3xl bg-white shadow-2xl shadow-emerald-500/20 dark:bg-slate-900/50 dark:shadow-none">
-                                            <div
-                                                className="relative h-[600px] w-full cursor-pointer"
-                                                onClick={() => setSelectedSlide(current)}
-                                            >
-                                                <Image
-                                                    src={resolveImage(current.image_url)}
-                                                    alt={current.title || "Slide beranda"}
-                                                    fill
-                                                    priority={safeActiveIndex === 0}
-                                                    sizes="40vw"
-                                                    className="object-contain bg-slate-50 dark:bg-slate-800/50"
-                                                />
-                                            </div>
-
-                                            {sliderSlides.length > 1 && (
-                                                <div className="absolute bottom-6 left-6 right-6 z-20 flex items-center justify-between">
-                                                    <div className="rounded-full bg-black/75 px-4 py-1.5 text-xs font-semibold text-white backdrop-blur">
-                                                        {safeActiveIndex + 1} / {sliderSlides.length}
-                                                    </div>
-
-                                                    <div className="flex items-center gap-3">
-                                                        <button
-                                                            type="button"
-                                                            onClick={prevSlide}
-                                                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/40 bg-black/40 text-white backdrop-blur transition-all duration-200 hover:scale-105 hover:bg-black/60 active:scale-95"
-                                                        >
-                                                            <ChevronLeftIcon />
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={handleNextSlide}
-                                                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/40 bg-black/40 text-white backdrop-blur transition-all duration-200 hover:scale-105 hover:bg-black/60 active:scale-95"
-                                                        >
-                                                            <ChevronRightIcon />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="mt-8 text-center px-4">
-                                            <h3 className="text-xl font-black leading-tight text-slate-900 dark:text-slate-100">
-                                                {current.title}
-                                            </h3>
-                                            <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                                                {current.caption || "Informasi terbaru dari Kemenag Barito Utara."}
-                                            </p>
-                                        </div>
-
-                                        {sliderSlides.length > 1 && (
-                                            <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                                                {sliderSlides.map((item, index) => (
-                                                    <button
-                                                        key={item.id || `${item.title}-${index}`}
-                                                        type="button"
-                                                        onClick={() => setActiveIndex(index)}
-                                                        className={`h-1.5 rounded-full transition-all ${index === safeActiveIndex
-                                                            ? "w-6 bg-emerald-600"
-                                                            : "w-1.5 bg-slate-300 hover:bg-slate-400 dark:bg-slate-600 dark:hover:bg-slate-500"
-                                                            }`}
-                                                    />
-                                                ))}
-                                            </div>
-                                        )}
+                                {/* Slot IPAK (Mobile) */}
+                                <div className="flex flex-col pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
+                                    <div className="mb-1.5 flex items-center justify-center gap-2">
+                                        <span className="h-2 w-2 rounded-full bg-teal-500 shadow-sm" />
+                                        <span className="text-xs font-black uppercase tracking-wider text-teal-800 dark:text-teal-300">
+                                            IPAK — Anti Korupsi
+                                        </span>
                                     </div>
-                                </>
-                            ) : (
-                                <EmptySliderState />
-                            )}
+                                    <CategorySlider
+                                        slides={ipakSlides}
+                                        fallbackTitle="Indeks Persepsi Anti Korupsi (IPAK)"
+                                        onSlideClick={setSelectedSlide}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* DESKTOP VIEW (2 Kolom Berdampingan: IPKP di Kiri, IPAK di Kanan) */}
+                            <div className="hidden lg:grid lg:grid-cols-2 lg:gap-4 xl:gap-5">
+                                {/* Sub-Kolom Kiri: IPKP */}
+                                <div className="flex flex-col">
+                                    <div className="mb-2.5 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50/90 py-1.5 px-3 border border-emerald-200/70 text-center shadow-xs dark:bg-emerald-950/50 dark:border-emerald-800/50">
+                                        <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                                        <span className="text-[10.5px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300 truncate">
+                                            IPKP • Kualitas Pelayanan
+                                        </span>
+                                    </div>
+                                    <div className="lg:rounded-2xl lg:shadow-[0_20px_50px_-20px_rgba(16,185,129,0.2)] lg:transition-all lg:duration-300 lg:hover:-translate-y-1.5 lg:hover:shadow-[0_20px_50px_-10px_rgba(16,185,129,0.35)]">
+                                        <CategorySlider
+                                            slides={ipkpSlides}
+                                            fallbackTitle="Indeks Persepsi Kualitas Pelayanan (IPKP)"
+                                            onSlideClick={setSelectedSlide}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Sub-Kolom Kanan: IPAK */}
+                                <div className="flex flex-col">
+                                    <div className="mb-2.5 flex items-center justify-center gap-1.5 rounded-xl bg-teal-50/90 py-1.5 px-3 border border-teal-200/70 text-center shadow-xs dark:bg-teal-950/50 dark:border-teal-800/50">
+                                        <span className="h-2 w-2 rounded-full bg-teal-500 shrink-0" />
+                                        <span className="text-[10.5px] font-black uppercase tracking-wider text-teal-800 dark:text-teal-300 truncate">
+                                            IPAK • Anti Korupsi
+                                        </span>
+                                    </div>
+                                    <div className="lg:rounded-2xl lg:shadow-[0_20px_50px_-20px_rgba(20,184,166,0.2)] lg:transition-all lg:duration-300 lg:hover:-translate-y-1.5 lg:hover:shadow-[0_20px_50px_-10px_rgba(20,184,166,0.35)]">
+                                        <CategorySlider
+                                            slides={ipakSlides}
+                                            fallbackTitle="Indeks Persepsi Anti Korupsi (IPAK)"
+                                            onSlideClick={setSelectedSlide}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

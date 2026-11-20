@@ -148,6 +148,7 @@ export async function getPublicBeritaList({
   page = 1,
   perPage = 18,
   category = "",
+  month = "",
   search = "",
   sort = "-published_at",
 } = {}) {
@@ -157,6 +158,15 @@ export async function getPublicBeritaList({
 
     if (category && category !== "Semua") {
       filters.push(`category = "${category}"`);
+    }
+
+    if (month && /^\d{4}-\d{2}$/.test(month)) {
+      const [y, m] = month.split("-").map(Number);
+      const startDate = `${month}-01 00:00:00.000Z`;
+      const endYear = m === 12 ? y + 1 : y;
+      const endMonth = m === 12 ? 1 : m + 1;
+      const endDate = `${endYear}-${String(endMonth).padStart(2, "0")}-01 00:00:00.000Z`;
+      filters.push(`published_at >= "${startDate}" && published_at < "${endDate}"`);
     }
 
     if (search) {
@@ -186,11 +196,47 @@ export async function getPublicBeritaList({
     if (search) {
       return await fetchList();
     }
-    const cacheKey = `berita:list:${page}:${perPage}:${category || "all"}:${sort || "-published_at"}`;
+    const cacheKey = `berita:list:${page}:${perPage}:${category || "all"}:${month || "all"}:${sort || "-published_at"}`;
     return await withCache(cacheKey, 45_000, 300_000, fetchList);
   } catch (err) {
     console.error("[PocketBase] Error getPublicBeritaList:", err);
     return { items: [], total: 0, page: 1, perPage, totalPages: 1 };
+  }
+}
+
+export async function getPublicBeritaMonths() {
+  try {
+    return await withCache("berita:months", 300_000, 1_800_000, async () => {
+      const pb = getPocketBase();
+      const records = await pb.collection("berita").getFullList({
+        filter: "is_published = true",
+        fields: "published_at",
+        sort: "-published_at",
+        requestKey: null,
+      });
+
+      const monthMap = new Map();
+      const monthFormatter = new Intl.DateTimeFormat("id-ID", {
+        month: "long",
+        year: "numeric",
+      });
+
+      for (const r of records) {
+        if (!r.published_at) continue;
+        const d = new Date(r.published_at);
+        if (Number.isNaN(d.getTime())) continue;
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        if (!monthMap.has(key)) {
+          monthMap.set(key, {
+            value: key,
+            label: monthFormatter.format(new Date(d.getFullYear(), d.getMonth(), 1)),
+          });
+        }
+      }
+      return Array.from(monthMap.values());
+    });
+  } catch {
+    return [];
   }
 }
 

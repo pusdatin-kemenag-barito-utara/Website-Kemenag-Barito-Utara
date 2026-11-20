@@ -118,14 +118,18 @@ function SlideImageThumb({ src, alt, onUploadClick }) {
 }
 
 const CATEGORY_COLORS = {
+  ipkp: "bg-emerald-600/95 text-white border-emerald-400/50",
+  ipak: "bg-teal-600/95 text-white border-teal-400/50",
   utama: "bg-emerald-600/95 text-white border-emerald-400/50",
-  islam: "bg-teal-600/95 text-white border-teal-400/50",
+  islam: "bg-amber-600/95 text-white border-amber-400/50",
   kristen: "bg-sky-600/95 text-white border-sky-400/50",
   katolik: "bg-indigo-600/95 text-white border-indigo-400/50",
-  hindu: "bg-amber-600/95 text-white border-amber-400/50",
+  hindu: "bg-rose-600/95 text-white border-rose-400/50",
 };
 
 const CATEGORY_LABELS = {
+  ipkp: "SKM: IPKP",
+  ipak: "SKM: IPAK",
   utama: "Utama",
   islam: "Mutiara Islam",
   kristen: "Renungan Kristen",

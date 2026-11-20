@@ -1,3 +1,12 @@
+export function isImageFile(file) {
+  if (!file || typeof file !== "object") return false;
+  if (file.type && typeof file.type === "string" && file.type.startsWith("image/")) {
+    return true;
+  }
+  const name = file.name || "";
+  return /\.(jpe?g|png|webp|gif|bmp|svg|avif|heic|heif|jfif)$/i.test(name);
+}
+
 export async function compressImageToBase64(
   file,
   {
@@ -20,8 +29,8 @@ export async function compressImageToBase64(
     throw new Error("File gambar tidak valid.");
   }
 
-  if (!file.type.startsWith("image/")) {
-    throw new Error("File harus berupa gambar.");
+  if (!isImageFile(file)) {
+    throw new Error("File harus berupa gambar (JPG, PNG, WebP, GIF, JFIF, AVIF).");
   }
 
   const originalSizeKB = Math.ceil(file.size / 1024);

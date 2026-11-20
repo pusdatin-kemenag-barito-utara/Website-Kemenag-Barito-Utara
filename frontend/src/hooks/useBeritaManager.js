@@ -17,7 +17,7 @@ import {
   plainTextToEditorHtml,
   BERITA_CATEGORIES,
 } from "@/lib/berita-utils";
-import { compressImageToBase64 } from "@/lib/image-compress";
+import { compressImageToBase64, isImageFile } from "@/lib/image-compress";
 import { toCoverPreviewUrl, normalizeCoverImageUrl } from "@/lib/cover-image";
 import { getPocketBase, getPocketBaseFileUrl } from "@/lib/pocketbase/client";
 import { readAdminCache, writeAdminCache, bustAdminAndPublicCache } from "@/lib/admin-cache";
@@ -433,7 +433,7 @@ export function useBeritaManager() {
         return {
           ...prev,
           title: nextTitle,
-          slug: slugPreview(nextTitle),
+          slug: slugManuallyEdited ? prev.slug : slugPreview(nextTitle),
         };
       }
 
@@ -738,8 +738,8 @@ export function useBeritaManager() {
 
   async function processCoverFile(file) {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("File harus berupa gambar.");
+    if (!isImageFile(file)) {
+      setError("File harus berupa gambar (JPG, PNG, WebP, GIF, JFIF, AVIF).");
       return;
     }
 
@@ -811,7 +811,16 @@ export function useBeritaManager() {
     const currentContentRaw =
       editorRef.current?.innerHTML || form.content || "";
     const currentContent = sanitizeEditorHtml(currentContentRaw);
-    const finalSlug = sanitizeSlugInput(form.slug || slugPreview(form.title));
+    let finalSlug = sanitizeSlugInput(form.slug || slugPreview(form.title));
+    if (finalSlug) {
+      let uniqueSlug = finalSlug;
+      let counter = 1;
+      while (items.some((it) => it.slug === uniqueSlug && it.id !== editingId)) {
+        counter += 1;
+        uniqueSlug = `${finalSlug}-${counter}`;
+      }
+      finalSlug = uniqueSlug;
+    }
     const autoExcerpt = buildExcerptFromHtml(currentContent, 180);
 
     if (!form.title.trim()) {

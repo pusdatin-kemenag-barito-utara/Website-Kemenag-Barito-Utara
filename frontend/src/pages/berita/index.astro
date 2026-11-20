@@ -1,6 +1,6 @@
 ---
 import { siteInfo } from "@/data/site";
-import { getPublicBeritaList } from "@/lib/pocketbase/db";
+import { getPublicBeritaList, getPublicBeritaMonths } from "@/lib/pocketbase/db";
 import { normalizeBerita } from "@/lib/berita-normalize";
 import { BERITA_CATEGORIES } from "@/lib/berita-utils";
 import BaseLayout from "@/layouts/BaseLayout.astro";
@@ -29,18 +29,24 @@ let totalResults = 0;
 let months: any[] = [];
 
 try {
-  const listRes = await getPublicBeritaList({
-    page: initialPage,
-    perPage: limit,
-    category,
-    search: q,
-    sort,
-  });
+  const [listRes, monthsRes] = await Promise.all([
+    getPublicBeritaList({
+      page: initialPage,
+      perPage: limit,
+      category,
+      month,
+      search: q,
+      sort,
+    }),
+    getPublicBeritaMonths(),
+  ]);
   dbData = (listRes?.items || []).map(normalizeBerita).filter(Boolean);
   totalResults = Number(listRes?.total || 0);
+  months = monthsRes || [];
 } catch (err) {
   dbData = [];
   totalResults = 0;
+  months = [];
 }
 
 const remainingTotal = Math.max(0, totalResults - 1);

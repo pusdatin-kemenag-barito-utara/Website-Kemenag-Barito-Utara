@@ -384,15 +384,26 @@ func BeritaReactionHandler(c fiber.Ctx) error {
 		return response.Error(c, 404, "ID berita tidak valid", "NOT_FOUND")
 	}
 
+	getVal := func(key string) float64 {
+		if v, ok := record[key].(float64); ok {
+			return v
+		}
+		return 0
+	}
+
 	patch := map[string]any{}
 	switch body.Action {
 	case "add":
 		patch["reaction_"+body.Type+"+"] = 1
 	case "remove":
-		patch["reaction_"+body.Type+"-"] = 1
+		if getVal("reaction_"+body.Type) > 0 {
+			patch["reaction_"+body.Type+"-"] = 1
+		}
 	case "switch":
 		if validTypes[body.PreviousType] && body.PreviousType != body.Type {
-			patch["reaction_"+body.PreviousType+"-"] = 1
+			if getVal("reaction_"+body.PreviousType) > 0 {
+				patch["reaction_"+body.PreviousType+"-"] = 1
+			}
 		}
 		patch["reaction_"+body.Type+"+"] = 1
 	default:

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { compressImageToBase64, dataURLtoFile } from "@/lib/image-compress";
+import { compressImageToBase64, dataURLtoFile, isImageFile } from "@/lib/image-compress";
 import { preloadImages } from "@/lib/cover-image";
 import { getPocketBase, getPocketBaseFileUrl } from "@/lib/pocketbase/client";
 import { bustAdminAndPublicCache } from "@/lib/admin-cache";
@@ -298,7 +298,7 @@ export function useGaleriManager() {
 
     // Filter file gambar dan batasi maksimal 20 foto per batch
     const validFiles = Array.from(files)
-      .filter((file) => file && file.type && file.type.startsWith("image/"))
+      .filter((file) => isImageFile(file))
       .slice(0, 20);
 
     if (validFiles.length === 0) {

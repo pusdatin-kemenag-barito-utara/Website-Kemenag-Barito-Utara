@@ -3,6 +3,7 @@ import { IconTrashWarning, IconAlertCircle, IconLink, IconImage } from "./Berita
 import DatePicker from "@/components/ui/DatePicker";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import { isImageFile } from "@/lib/image-compress";
 
 export function DeleteConfirmModal({
   open,
@@ -256,14 +257,14 @@ export function ImagePromptModal({ open, onClose, onSubmit, isUploading, initial
     e.preventDefault();
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && droppedFile.type.startsWith("image/")) {
+    if (droppedFile && isImageFile(droppedFile)) {
       setFile(droppedFile);
     }
   };
 
   const handleChange = (e) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile && selectedFile.type.startsWith("image/")) {
+    if (selectedFile && isImageFile(selectedFile)) {
       setFile(selectedFile);
     }
     e.target.value = "";
@@ -335,7 +336,7 @@ export function ImagePromptModal({ open, onClose, onSubmit, isUploading, initial
                     : "border-slate-200 bg-slate-50 hover:border-slate-900 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-white"
                 }`}
               >
-                <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleChange} disabled={isUploading} />
+                <input type="file" ref={fileInputRef} accept="image/*,.jpg,.jpeg,.png,.webp,.gif,.avif,.jfif" className="hidden" onChange={handleChange} disabled={isUploading} />
                 
                 {previewUrl ? (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 p-2">

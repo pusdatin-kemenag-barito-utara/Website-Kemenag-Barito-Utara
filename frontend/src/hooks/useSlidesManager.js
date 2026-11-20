@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { compressImageToBase64, dataURLtoFile } from "@/lib/image-compress";
+import { compressImageToBase64, dataURLtoFile, isImageFile } from "@/lib/image-compress";
 import { toCoverPreviewUrl, preloadImages } from "@/lib/cover-image";
 import { getPocketBase, getPocketBaseFileUrl } from "@/lib/pocketbase/client";
 import { readAdminCache, writeAdminCache, bustAdminAndPublicCache } from "@/lib/admin-cache";
@@ -14,7 +14,7 @@ const emptyForm = {
   image_upload_name: "",
   is_published: true,
   sort_order: 1,
-  category: "utama",
+  category: "ipkp",
 };
 
 function toNumber(value, fallback = 1) {
@@ -51,7 +51,9 @@ export function buildCleanInfografisFileName(title, rawFileName = "") {
 }
 
 function normalizeCategoryId(value) {
-  return String(value || "utama").toLowerCase().trim() || "utama";
+  const v = String(value || "ipkp").toLowerCase().trim() || "ipkp";
+  if (v === "utama") return "ipkp";
+  return v;
 }
 
 function formatCategoryLabel(catId) {
@@ -76,19 +78,22 @@ function getNextSortOrder(itemsList, categoryId) {
 }
 
 const DEFAULT_CATEGORIES = [
-  { id: "utama", label: "Infografis Utama (Slider Tengah)", shortLabel: "Utama", slotDesc: "Slider Utama (Tengah)", color: "bg-emerald-500" },
-  { id: "islam", label: "Mutiara Hikmah Islam (Kanan Tengah)", shortLabel: "Mutiara Islam", slotDesc: "Kanan Tengah", color: "bg-teal-500" },
+  { id: "ipkp", label: "SKM: Indeks Persepsi Kualitas Pelayanan (IPKP - Kiri)", shortLabel: "IPKP", slotDesc: "SKM: Kualitas Pelayanan (Kiri)", color: "bg-emerald-600" },
+  { id: "ipak", label: "SKM: Indeks Persepsi Anti Korupsi (IPAK - Kanan)", shortLabel: "IPAK", slotDesc: "SKM: Anti Korupsi (Kanan)", color: "bg-teal-600" },
+  { id: "islam", label: "Mutiara Hikmah Islam (Kanan Tengah)", shortLabel: "Mutiara Islam", slotDesc: "Kanan Tengah", color: "bg-amber-500" },
   { id: "kristen", label: "Renungan Iman Kristen (Kiri Tengah)", shortLabel: "Renungan Kristen", slotDesc: "Kiri Tengah", color: "bg-sky-500" },
   { id: "katolik", label: "Doa & Renungan Katolik (Ujung Kiri)", shortLabel: "Renungan Katolik", slotDesc: "Ujung Kiri", color: "bg-indigo-500" },
-  { id: "hindu", label: "Dharma Wacana Hindu (Ujung Kanan)", shortLabel: "Dharma Hindu", slotDesc: "Ujung Kanan", color: "bg-amber-500" },
+  { id: "hindu", label: "Dharma Wacana Hindu (Ujung Kanan)", shortLabel: "Dharma Hindu", slotDesc: "Ujung Kanan", color: "bg-rose-500" },
 ];
 
 const CATEGORY_ORDER = {
-  utama: 0,
-  islam: 1,
-  kristen: 2,
-  katolik: 3,
-  hindu: 4,
+  ipkp: 0,
+  ipak: 1,
+  utama: 1.5,
+  islam: 2,
+  kristen: 3,
+  katolik: 4,
+  hindu: 5,
 };
 
 function getCategoryRank(cat) {
@@ -335,7 +340,7 @@ export function useSlidesManager() {
   }, []);
 
   const handleOpenCreate = useCallback(() => {
-    const initialCategory = categoryFilter !== "all" ? categoryFilter : "utama";
+    const initialCategory = categoryFilter !== "all" ? categoryFilter : "ipkp";
     const nextOrder = getNextSortOrder(items, initialCategory);
     setEditingId("");
     setForm({
@@ -505,8 +510,8 @@ export function useSlidesManager() {
 
   async function processImageFile(file) {
     if (!file) return;
-    if (!file.type || !file.type.startsWith("image/")) {
-      setError("File harus berupa gambar (JPG, PNG, WebP).");
+    if (!isImageFile(file)) {
+      setError("File harus berupa gambar (JPG, PNG, WebP, GIF, JFIF, AVIF).");
       return;
     }
 

@@ -59,7 +59,7 @@ export function SlideFormModal({
 
   if (!open) return null;
 
-  const normalizedCat = String(form.category || "utama").toLowerCase().trim() || "utama";
+  const normalizedCat = String(form.category || "ipkp").toLowerCase().trim() || "ipkp";
   const currentCategory =
     categories.find((c) => c.id === normalizedCat) || {
       id: normalizedCat,

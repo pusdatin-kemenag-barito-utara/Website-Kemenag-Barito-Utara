@@ -68,6 +68,17 @@ export function BeritaFormModal({
     };
   }, [open]);
 
+  // Sync editor content when modal opens or editing content changes
+  React.useEffect(() => {
+    if (open && editorRef?.current) {
+      if (form.content && editorRef.current.innerHTML !== form.content) {
+        editorRef.current.innerHTML = form.content;
+      } else if (!form.content && !editingId) {
+        editorRef.current.innerHTML = "";
+      }
+    }
+  }, [open, form.content, editingId, editorRef]);
+
   if (!open) return null;
 
   return (
@@ -239,7 +250,7 @@ export function BeritaFormModal({
                   <input
                     type="file"
                     ref={fileInputRef}
-                    accept="image/*"
+                    accept="image/*,.jpg,.jpeg,.png,.webp,.gif,.avif,.jfif"
                     className="hidden"
                     onChange={onCoverChange}
                   />

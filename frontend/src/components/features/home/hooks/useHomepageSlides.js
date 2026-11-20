@@ -7,7 +7,7 @@ export function useHomepageSlides(slides) {
       .filter((item) => item?.image_url && item?.title)
       .map((item) => ({
         ...item,
-        category: String(item.category || "utama").toLowerCase().trim() || "utama",
+        category: String(item.category || "ipkp").toLowerCase().trim() || "ipkp",
         sort_order: Number(item.sort_order || 0),
       }))
       .sort((a, b) => a.sort_order - b.sort_order);
@@ -30,13 +30,34 @@ export function useHomepageSlides(slides) {
     () => normalizedSlides.filter((s) => s.category === "hindu"),
     [normalizedSlides],
   );
+
+  // SKM (Survey Kepuasan Masyarakat): IPKP & IPAK
+  const ipkpSlides = useMemo(
+    () =>
+      normalizedSlides.filter(
+        (s) =>
+          s.category === "ipkp" ||
+          (s.category === "utama" && !s.title?.toLowerCase().includes("ipak")),
+      ),
+    [normalizedSlides],
+  );
+  const ipakSlides = useMemo(
+    () =>
+      normalizedSlides.filter(
+        (s) =>
+          s.category === "ipak" ||
+          (s.category === "utama" && s.title?.toLowerCase().includes("ipak")),
+      ),
+    [normalizedSlides],
+  );
+
   const sliderSlides = useMemo(() => {
     const religiousSlots = new Set(["katolik", "kristen", "islam", "hindu"]);
     return normalizedSlides.filter((s) => !religiousSlots.has(s.category));
   }, [normalizedSlides]);
 
   const [activeIndex, setActiveIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState("utama");
+  const [activeTab, setActiveTab] = useState("skm");
 
   useEffect(() => {
     if (sliderSlides.length <= 1) return undefined;
@@ -64,6 +85,8 @@ export function useHomepageSlides(slides) {
     kristenSlides,
     islamSlides,
     hinduSlides,
+    ipkpSlides,
+    ipakSlides,
     sliderSlides,
     activeIndex,
     setActiveIndex,

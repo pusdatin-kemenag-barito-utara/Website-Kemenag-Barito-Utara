@@ -36,17 +36,18 @@ try {
       .map(normalizeBerita)
       .filter(Boolean);
 
-    const normAdjacent = (item: any) =>
-      item
-        ? {
-            id: item.id,
-            slug: item.slug,
-            title: item.title,
-            category: item.category,
-            coverImage: toCoverPreviewUrl(item.cover_image),
-            isoDate: item.published_at,
-          }
-        : null;
+    const normAdjacent = (item: any) => {
+      if (!item) return null;
+      const norm = normalizeBerita(item);
+      return {
+        id: item.id,
+        slug: item.slug,
+        title: item.title,
+        category: item.category,
+        coverImage: norm?.coverImage || toCoverPreviewUrl(item.cover_image),
+        isoDate: item.published_at,
+      };
+    };
 
     adjacent = {
       older: normAdjacent(adj.prev),
